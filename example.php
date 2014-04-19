@@ -1,5 +1,4 @@
 <?php
-
 require_once('minestat.php');
 
 $ms = new MineStat("cubekingdom.net", 25565);
@@ -13,5 +12,4 @@ else
 {
   printf("Server is offline!<br>");
 }
-
 ?>
