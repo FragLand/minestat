@@ -1,5 +1,4 @@
 <?php
-
 /*
  * $Id$
  * minestat.php - A Minecraft server status checker
@@ -104,5 +103,4 @@ class MineStat
     return $this->max_players;
   }
 }
-
 ?>
