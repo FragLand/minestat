@@ -23,13 +23,13 @@
 
 class MineStat
 {
-  private $address = address;
-  private $port = port;
-  private $online;             // online or offline?
-  private $version;            // Minecraft server version
-  private $motd;               // message of the day
-  private $current_players;    // current number of players online
-  private $max_players;        // maximum player capacity
+  private $address
+  private $port
+  private $online;          // online or offline?
+  private $version;         // Minecraft server version
+  private $motd;            // message of the day
+  private $current_players; // current number of players online
+  private $max_players;     // maximum player capacity
 
   public function __construct($address, $port)
   {
