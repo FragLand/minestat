@@ -3,6 +3,7 @@ minestat
 
 A Minecraft server status checker
 
+```ruby
 # Below is an example using the MineStat class.
 # If server is offline, other instance members will be nil.
 ms = MineStat.new("cubekingdom.net", 25565)
@@ -13,3 +14,4 @@ if ms.online
 else
   puts "Server is offline!"
 end
+```
