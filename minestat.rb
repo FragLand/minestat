@@ -1,7 +1,7 @@
 # $Id$
 # minestat.rb - A Minecraft server status checker
 # Copyright (C) 2014 Lloyd Dilley
-# http://www.dilley.me/
+# http://www.devux.org/projects/minestat/
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,8 +20,8 @@
 require 'socket'
 
 class MineStat
-  def initialize(hostname, port)
-    @hostname = hostname
+  def initialize(address, port)
+    @address = address
     @port = port
     @online              # online or offline?
     @version             # Minecraft server version
@@ -30,7 +30,7 @@ class MineStat
     @max_players         # maximum player capacity
 
     begin
-      server = TCPSocket.new(hostname, port)
+      server = TCPSocket.new(address, port)
       server.write("\xFE\x01")
       data=server.gets()
       server.close()
@@ -52,5 +52,5 @@ class MineStat
     end
   end
 
-  attr_reader :hostname, :port, :online, :version, :motd, :current_players, :max_players
+  attr_reader :address, :port, :online, :version, :motd, :current_players, :max_players
 end
