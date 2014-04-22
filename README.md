@@ -14,8 +14,7 @@ class Example
 {
   public static void main(String[] args)
   {
-    MineStat ms=new MineStat("cubekingdom.net", 25565);
-    ms.doQuery();
+    MineStat ms = new MineStat("cubekingdom.net", 25565);
     System.out.println("Minecraft server status of " + ms.getAddress() + " on port " + ms.getPort() + ":");
     if(ms.isServerUp())
     {
