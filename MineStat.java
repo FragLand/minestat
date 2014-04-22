@@ -11,7 +11,7 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License along
@@ -67,8 +67,32 @@ public class MineStat
 
   public MineStat(String address, int port)
   {
-    this.address = address;
-    this.port = port;
+    String rawServerData;
+    String[] serverData;
+
+    setAddress(address);
+    setPort(port);
+
+    try
+    {
+      Socket clientSocket = new Socket(getAddress(), getPort());
+      DataOutputStream dos = new DataOutputStream(clientSocket.getOutputStream());
+      BufferedReader br = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+      dos.writeBytes("\u00FE\u0001");
+      rawServerData = br.readLine();
+      clientSocket.close();
+    }
+    catch(Exception e)
+    {
+      serverUp = false;
+      return;
+    }
+    serverUp = true;
+    serverData = rawServerData.split("\u0000\u0000\u0000");
+    setVersion(serverData[2]);
+    setMotd(serverData[3]);
+    setCurrentPlayers(serverData[4]);
+    setMaximumPlayers(serverData[5]);
   }
 
   public String getAddress()
@@ -76,7 +100,7 @@ public class MineStat
     return address;
   }
 
-  public void setAddress(String Address)
+  public void setAddress(String address)
   {
     this.address = address;
   }
@@ -134,31 +158,5 @@ public class MineStat
   public boolean isServerUp()
   {
     return serverUp;
-  }
-
-  public void doQuery()
-  {
-    String rawServerData;
-    String[] serverData;
-    try
-    {
-      Socket clientSocket = new Socket(address, port);
-      DataOutputStream dos = new DataOutputStream(clientSocket.getOutputStream());
-      BufferedReader br = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-      dos.writeBytes("\u00FE\u0001");
-      rawServerData = br.readLine();
-      clientSocket.close();
-    }
-    catch(Exception e)
-    {
-      serverUp = false;
-      return;
-    }
-    serverUp = true;
-    serverData = rawServerData.split("\u0000\u0000\u0000");
-    setVersion(serverData[2]);
-    setMotd(serverData[3]);
-    setCurrentPlayers(serverData[4]);
-    setMaximumPlayers(serverData[5]);
   }
 }
