@@ -50,8 +50,6 @@ Ruby example:
 ```ruby
 require_relative 'minestat'
 
-# Below is an example using the MineStat class.
-# If server is offline, other instance members will be nil.
 ms = MineStat.new("cubekingdom.net", 25565)
 puts "Minecraft server status of #{ms.address} on port #{ms.port}:"
 if ms.online
