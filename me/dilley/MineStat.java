@@ -2,7 +2,7 @@
  * $Id$
  * MineStat - A Minecraft server status checker
  * Copyright (C) 2014 Lloyd Dilley
- * http://www.devux.org/projects/minestat/
+ * http://www.dilley.me/
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  * @author Lloyd Dilley
  */
 
-package org.devux;
+package me.dilley;
 
 import java.io.*;
 import java.net.*;
