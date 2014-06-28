@@ -1,4 +1,4 @@
-import org.devux.MineStat;
+import me.dilley.MineStat;
 
 class Example
 {
