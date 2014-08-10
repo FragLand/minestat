@@ -57,9 +57,10 @@ public class MineStat
     catch(Exception)
     {
       serverUp = false;
+      return;
     }
 
-    if(rawServerData == null)
+    if(rawServerData == null || rawServerData.Length == 0)
       serverUp = false;
     else
     {
