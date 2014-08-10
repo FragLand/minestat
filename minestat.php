@@ -22,8 +22,10 @@
 
 class MineStat
 {
-  private $address
-  private $port
+  const DATA_SIZE = 512;    // this will hopefully suffice since the MotD should be <=59 characters
+  const NUM_FIELDS = 6;     // number of values expected from server
+  private $address;
+  private $port;
   private $online;          // online or offline?
   private $version;         // Minecraft server version
   private $motd;            // message of the day
@@ -51,7 +53,7 @@ class MineStat
       }
       $payload = "\xFE\x01";
       socket_write($socket, $payload, strlen($payload));
-      $raw_data = socket_read($socket, 512);
+      $raw_data = socket_read($socket, $DATA_SIZE);
       socket_close($socket);
     }
     catch(Exeption $e)
@@ -60,12 +62,22 @@ class MineStat
       return;
     }
 
-    $this->online = true;
-    $server_info = explode("\x00\x00\x00", $raw_data);
-    $this->version = $server_info[2];
-    $this->motd = $server_info[3];
-    $this->current_players = $server_info[4];
-    $this->max_players = $server_info[5];
+    if(isset($raw_data))
+    {
+      $server_info = explode("\x00\x00\x00", $raw_data);
+      if(isset($server_info) && sizeof($server_info) >= $NUM_FIELDS)
+      {
+        $this->online = true;
+        $this->version = $server_info[2];
+        $this->motd = $server_info[3];
+        $this->current_players = $server_info[4];
+        $this->max_players = $server_info[5];
+      }
+      else
+        $this->online = false;
+    }
+    else
+      $this->online = false;
   }
 
   public function get_address()

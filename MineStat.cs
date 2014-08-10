@@ -26,6 +26,8 @@ using System.Text;
 
 public class MineStat
 {
+  const ushort dataSize = 512; // this will hopefully suffice since the MotD should be <=59 characters
+  const ushort numFields = 6;  // number of values expected from server
   private string address;
   private ushort port;
   private bool serverUp;
@@ -36,7 +38,7 @@ public class MineStat
 
   public MineStat(string address, ushort port)
   {
-    byte[] rawServerData = new byte[512];
+    byte[] rawServerData = new byte[dataSize];
     string[] serverData;
 
     SetAddress(address);
@@ -49,19 +51,30 @@ public class MineStat
       Stream stream = tcpclient.GetStream();
       byte[] payload = { 0xFE, 0x01 };
       stream.Write(payload, 0, payload.Length);
-      stream.Read(rawServerData, 0, 512);
+      stream.Read(rawServerData, 0, dataSize);
       tcpclient.Close();
     }
-    catch(Exception e)
+    catch(Exception)
     {
-      Console.WriteLine("{0} exception caught.", e);
+      serverUp = false;
     }
-    serverUp = true;
-    serverData = Encoding.Unicode.GetString(rawServerData).Split("\u0000\u0000\u0000".ToCharArray());
-    SetVersion(serverData[2]);
-    SetMotd(serverData[3]);
-    SetCurrentPlayers(serverData[4]);
-    SetMaximumPlayers(serverData[5]);
+
+    if(rawServerData == null)
+      serverUp = false;
+    else
+    {
+      serverData = Encoding.Unicode.GetString(rawServerData).Split("\u0000\u0000\u0000".ToCharArray());
+      if(serverData != null && serverData.Length >= numFields)
+      {
+        serverUp = true;
+        SetVersion(serverData[2]);
+        SetMotd(serverData[3]);
+        SetCurrentPlayers(serverData[4]);
+        SetMaximumPlayers(serverData[5]);
+      }
+      else
+        serverUp = false;
+    }
   }
 
   public string GetAddress()

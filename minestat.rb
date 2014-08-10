@@ -20,6 +20,8 @@
 require 'socket'
 
 class MineStat
+  NUM_FIELDS = 6         # number of values expected from server
+
   def initialize(address, port)
     @address = address
     @port = port
@@ -43,12 +45,16 @@ class MineStat
     if data == nil || data.empty?
       @online = false
     else
-      @online = true
       server_info = data.split("\x00\x00\x00")
-      @version = server_info[2]
-      @motd = server_info[3]
-      @current_players = server_info[4]
-      @max_players = server_info[5]
+      if server_info != nil && server_info.length >= NUM_FIELDS
+        @online = true
+        @version = server_info[2]
+        @motd = server_info[3]
+        @current_players = server_info[4]
+        @max_players = server_info[5]
+      else
+        @online = false
+      end
     end
   end
 

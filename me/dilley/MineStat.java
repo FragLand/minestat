@@ -30,6 +30,8 @@ import java.net.*;
 
 public class MineStat
 {
+  final byte NUM_FIELDS = 6;
+
   /**
    * Hostname or IP address of the Minecraft server
    */
@@ -87,12 +89,23 @@ public class MineStat
       serverUp = false;
       return;
     }
-    serverUp = true;
-    serverData = rawServerData.split("\u0000\u0000\u0000");
-    setVersion(serverData[2]);
-    setMotd(serverData[3]);
-    setCurrentPlayers(serverData[4]);
-    setMaximumPlayers(serverData[5]);
+
+    if(rawServerData == null)
+      serverUp = false;
+    else
+    {
+      serverData = rawServerData.split("\u0000\u0000\u0000");
+      if(serverData != null && serverData.length >= NUM_FIELDS)
+      {
+        serverUp = true;
+        setVersion(serverData[2]);
+        setMotd(serverData[3]);
+        setCurrentPlayers(serverData[4]);
+        setMaximumPlayers(serverData[5]);
+      }
+      else
+        serverUp = false;
+    }
   }
 
   public String getAddress()
