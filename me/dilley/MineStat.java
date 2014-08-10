@@ -80,7 +80,9 @@ public class MineStat
       Socket clientSocket = new Socket(getAddress(), getPort());
       DataOutputStream dos = new DataOutputStream(clientSocket.getOutputStream());
       BufferedReader br = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-      dos.writeBytes("\u00FE\u0001");
+      byte[] payload = { (byte)0xFE, (byte)0x01 };
+      //dos.writeBytes("\u00FE\u0001");
+      dos.write(payload, 0, payload.length);
       rawServerData = br.readLine();
       clientSocket.close();
     }
