@@ -4,7 +4,7 @@ class Example
 {
   public static void main(String[] args)
   {
-    MineStat ms = new MineStat("cubekingdom.net", 25565);
+    MineStat ms = new MineStat("minecraft.dilley.me", 25565);
     System.out.println("Minecraft server status of " + ms.getAddress() + " on port " + ms.getPort() + ":");
     if(ms.isServerUp())
     {
