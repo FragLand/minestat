@@ -1,7 +1,7 @@
 <?php
 require_once('minestat.php');
 
-$ms = new MineStat("cubekingdom.net", 25565);
+$ms = new MineStat("minecraft.dilley.me", 25565);
 printf("Minecraft server status of %s on port %s:<br>", $ms->get_address(), $ms->get_port());
 if($ms->is_online())
 {
