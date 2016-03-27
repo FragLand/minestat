@@ -30,7 +30,7 @@ class MineStat:
     self.current_players = None # current number of players online
     self.max_players = None     # maximum player capacity
 
-    # Connect to the server and get the data we need
+    # Connect to the server and get the data
     byte_array = bytearray([0xFE, 0x01])
     raw_data = None
     data = []

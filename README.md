@@ -48,6 +48,25 @@ class Example
 }
 ```
 
+JavaScript example:
+```javascript
+// For use with Node.js
+var ms = require('./minestat');
+ms.init('minecraft.dilley.me', 25565, function(result)
+{
+  console.log("Minecraft server status of " + ms.address + " on port " + ms.port + ":");
+  if(ms.online)
+  {
+    console.log("Server is online running version " + ms.version + " with " + ms.current_players + " out of " + ms.max_players + " players.");
+    console.log("Message of the day: " + ms.motd);
+  }
+  else
+  {
+    console.log("Server is offline!");
+  }
+});
+```
+
 PHP example:
 ```php
 <?php
@@ -65,6 +84,24 @@ else
   printf("Server is offline!<br>");
 }
 ?>
+```
+
+Perl example:
+```perl
+use lib '.';
+use MineStat;
+
+&MineStat::init("minecraft.dilley.me", 25565);
+print "Minecraft server status of $MineStat::address on port $MineStat::port:\n";
+if($MineStat::online)
+{
+  print "Server is online running version $MineStat::version with $MineStat::current_players out of $MineStat::max_players players.\n";
+  print "Message of the day: $MineStat::motd\n";
+}
+else
+{
+  print "Server is offline!\n";
+}
 ```
 
 Python example:
