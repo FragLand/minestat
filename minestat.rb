@@ -25,11 +25,12 @@ class MineStat
     @address = address
     @port = port
     @online              # online or offline?
-    @version             # Minecraft server version
+    @version             # server version
     @motd                # message of the day
     @current_players     # current number of players online
     @max_players         # maximum player capacity
 
+    # Connect to the server and get the data
     begin
       server = TCPSocket.new(address, port)
       server.write("\xFE\x01")
@@ -41,6 +42,7 @@ class MineStat
       @online = false
     end
 
+    # Parse the received data
     if data == nil || data.empty?
       @online = false
     else
