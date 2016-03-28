@@ -3,7 +3,7 @@ minestat
 
 A Minecraft server status checker
 
-You can use these classes in a monitoring script to poll multiple Minecraft servers or to let
+You can use these classes/modules in a monitoring script to poll multiple Minecraft servers or to let
 visitors see the status of your server from their browser.
 
 C# example:
@@ -25,6 +25,11 @@ class Example
       Console.WriteLine("Server is offline!");
   }
 }
+```
+
+Go example:
+```go
+// To be continued...
 ```
 
 Java example:
