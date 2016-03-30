@@ -1,5 +1,5 @@
 /*
- * MineStat - A Minecraft server status checker
+ * MineStat.java - A Minecraft server status checker
  * Copyright (C) 2014, 2016 Lloyd Dilley
  * http://www.dilley.me/
  *
@@ -66,17 +66,21 @@ public class MineStat
    */
   private String maximumPlayers;
 
-  public MineStat(String address, int port)
+  public MineStat(String address, int port, int... timeout)
   {
     String rawServerData;
     String[] serverData;
-
     setAddress(address);
     setPort(port);
 
+    if(timeout.length == 0)
+      timeout = new int[] { 7000 };
+
     try
     {
-      Socket clientSocket = new Socket(getAddress(), getPort());
+      //Socket clientSocket = new Socket(getAddress(), getPort());
+      Socket clientSocket = new Socket();
+      clientSocket.connect(new InetSocketAddress(getAddress(), getPort()), timeout[0]);
       DataOutputStream dos = new DataOutputStream(clientSocket.getOutputStream());
       BufferedReader br = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
       byte[] payload = { (byte)0xFE, (byte)0x01 };

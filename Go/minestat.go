@@ -35,6 +35,7 @@ var Max_players string     // maximum player capacity
 func Init(given_address string, given_port string) {
     Address = given_address
     Port = given_port
+    // ToDo: Add timeout
     conn, err := net.Dial("tcp", Address + ":" + Port)
     if err != nil {
       Online = false

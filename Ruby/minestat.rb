@@ -17,11 +17,12 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 require 'socket'
+require 'timeout'
 
 class MineStat
   NUM_FIELDS = 6         # number of values expected from server
 
-  def initialize(address, port)
+  def initialize(address, port, timeout = 7)
     @address = address
     @port = port
     @online              # online or offline?
@@ -32,13 +33,16 @@ class MineStat
 
     # Connect to the server and get the data
     begin
-      server = TCPSocket.new(address, port)
-      server.write("\xFE\x01")
-      data=server.gets()
-      server.close()
+      data = nil
+      Timeout::timeout(timeout) do
+        server = TCPSocket.new(address, port)
+        server.write("\xFE\x01")
+        data=server.gets()
+        server.close()
+      end
     rescue Errno::ECONNREFUSED => e
       @online = false
-    rescue => e
+    rescue => e # timeout is handled here
       @online = false
     end
 

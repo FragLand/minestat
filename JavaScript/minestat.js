@@ -37,6 +37,10 @@ module.exports =
     this.port = port;
 
     const net = require('net');
+    // ToDo: Add timeout
+    //client = new net.Socket();
+    //client.setTimeout(7000);
+    //client.connect(port, address, () =>
     const client = net.connect(port, address, () =>
     {
       var buff = new Buffer([ 0xFE, 0x01 ]);
@@ -68,6 +72,11 @@ module.exports =
     client.on('end', () =>
     {
       // nothing needed here
+    });
+
+    client.on('error', (err) =>
+    {
+      console.log(err);
     });
   }
 };

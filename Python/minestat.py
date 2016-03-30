@@ -21,7 +21,7 @@ import socket
 class MineStat:
   NUM_FIELDS = 6                # number of values expected from server
 
-  def __init__(self, address, port):
+  def __init__(self, address, port, timeout = 7):
     self.address = address
     self.port = port
     self.online = None          # online or offline?
@@ -36,7 +36,9 @@ class MineStat:
     data = []
     try:
       sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+      sock.settimeout(timeout)
       sock.connect((address, port))
+      sock.settimeout(None)
       sock.send(byte_array)
       raw_data = sock.recv(512)
       sock.close()
