@@ -38,6 +38,7 @@ class MineStat
 
     try
     {
+      // ToDo: Add timeout 
       $socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
       if($socket === false)
       {

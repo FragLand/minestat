@@ -1,5 +1,5 @@
 /*
- * MineStat - A Minecraft server status checker
+ * MineStat.cs - A Minecraft server status checker
  * Copyright (C) 2014, 2016 Lloyd Dilley
  * http://www.dilley.me/
  *
@@ -45,6 +45,7 @@ public class MineStat
 
     try
     {
+      // ToDo: Add timeout
       TcpClient tcpclient = new TcpClient();
       tcpclient.Connect(address, port);
       Stream stream = tcpclient.GetStream();
