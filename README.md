@@ -4,7 +4,7 @@ minestat
 A Minecraft server status checker
 
 You can use these classes/modules in a monitoring script to poll multiple Minecraft servers or to let
-visitors see the status of your server from their browser.
+visitors see the status of your server from their browser. Minestat has been ported to multiple languages for use with ASP.NET, FastCGI, mod_perl, mod_php, mod_python, Node.js, Rails, Tomcat, and more.
 
 C# example:
 ```cs
