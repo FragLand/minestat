@@ -6,7 +6,7 @@ A Minecraft server status checker
 You can use these classes/modules in a monitoring script to poll multiple Minecraft servers or to let
 visitors see the status of your server from their browser. Minestat has been ported to multiple languages for use with ASP.NET, FastCGI, mod_perl, mod_php, mod_python, Node.js, Rails, Tomcat, and more.
 
-C# example:
+### C# example
 ```cs
 using System;
 
@@ -27,7 +27,7 @@ class Example
 }
 ```
 
-Go example:
+### Go example
 ```go
 package main
 
@@ -46,7 +46,7 @@ func main() {
 }
 ```
 
-Java example:
+### Java example
 ```java
 import org.devux.MineStat;
 
@@ -67,7 +67,7 @@ class Example
 }
 ```
 
-JavaScript example:
+### JavaScript example
 ```javascript
 // For use with Node.js
 var ms = require('./minestat');
@@ -86,7 +86,7 @@ ms.init('minecraft.dilley.me', 25565, function(result)
 });
 ```
 
-PHP example:
+### PHP example
 ```php
 <?php
 require_once('minestat.php');
@@ -105,7 +105,7 @@ else
 ?>
 ```
 
-Perl example:
+### Perl example
 ```perl
 use lib '.';
 use MineStat;
@@ -123,7 +123,7 @@ else
 }
 ```
 
-Python example:
+### Python example
 ```python
 import minestat
 
@@ -136,7 +136,8 @@ else:
   print('Server is offline!')
 ```
 
-Ruby example:
+### Ruby example
+
 :warning: You must install gem `minestat` (e.g. `gem install minestat`)
 
 ```ruby
