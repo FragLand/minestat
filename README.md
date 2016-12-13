@@ -137,8 +137,10 @@ else:
 ```
 
 Ruby example:
+:warning: You must install gem `minestat` (e.g. `gem install minestat`)
+
 ```ruby
-require_relative 'minestat'
+require 'minestat'
 
 ms = MineStat.new("cubekingdom.net", 25565)
 puts "Minecraft server status of #{ms.address} on port #{ms.port}:"
