@@ -1,4 +1,4 @@
-require_relative 'minestat'
+require 'minestat'
 
 # Below is an example using the MineStat class.
 # If server is offline, other instance members will be nil.
