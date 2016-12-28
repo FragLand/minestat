@@ -53,10 +53,10 @@ class MineStat
       server_info = data.split("\x00\x00\x00")
       if server_info != nil && server_info.length >= NUM_FIELDS
         @online = true
-        @version = server_info[2]
-        @motd = server_info[3]
-        @current_players = server_info[4]
-        @max_players = server_info[5]
+        @version = server_info[2].gsub("\x00",'')
+        @motd = server_info[3].gsub("\x00",'')
+        @current_players = server_info[4].gsub("\x00",'')
+        @max_players = server_info[5].gsub("\x00",'')
       else
         @online = false
       end
