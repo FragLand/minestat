@@ -76,7 +76,9 @@ public class MineStat
         MaximumPlayers = serverData[5];
       }
       else
+      {
         ServerUp = false;
+      }
     }
   }
 
