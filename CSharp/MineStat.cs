@@ -27,119 +27,140 @@ public class MineStat
 {
   const ushort dataSize = 512; // this will hopefully suffice since the MotD should be <=59 characters
   const ushort numFields = 6;  // number of values expected from server
-  private string address;
-  private ushort port;
-  private bool serverUp;
-  private string motd;
-  private string version;
-  private string currentPlayers;
-  private string maximumPlayers;
+
+  public string Address { get; set; }
+  public ushort Port { get; set; }
+  public string Motd { get; set; }
+  public string Version { get; set; }
+  public string CurrentPlayers { get; set; }
+  public string MaximumPlayers { get; set; }
+  public bool ServerUp { get; set; }
 
   public MineStat(string address, ushort port)
   {
-    byte[] rawServerData = new byte[dataSize];
-    string[] serverData;
+    var rawServerData = new byte[dataSize];
 
-    SetAddress(address);
-    SetPort(port);
+    Address = address;
+    Port = port;
 
     try
     {
       // ToDo: Add timeout
-      TcpClient tcpclient = new TcpClient();
+      var tcpclient = new TcpClient();
       tcpclient.Connect(address, port);
-      Stream stream = tcpclient.GetStream();
-      byte[] payload = { 0xFE, 0x01 };
+      var stream = tcpclient.GetStream();
+      var payload = new byte[] { 0xFE, 0x01 };
       stream.Write(payload, 0, payload.Length);
       stream.Read(rawServerData, 0, dataSize);
       tcpclient.Close();
     }
     catch(Exception)
     {
-      serverUp = false;
+      ServerUp = false;
       return;
     }
 
     if(rawServerData == null || rawServerData.Length == 0)
-      serverUp = false;
+    {
+      ServerUp = false;
+    }
     else
     {
-      serverData = Encoding.Unicode.GetString(rawServerData).Split("\u0000\u0000\u0000".ToCharArray());
+      var serverData = Encoding.Unicode.GetString(rawServerData).Split("\u0000\u0000\u0000".ToCharArray());
       if(serverData != null && serverData.Length >= numFields)
       {
-        serverUp = true;
-        SetVersion(serverData[2]);
-        SetMotd(serverData[3]);
-        SetCurrentPlayers(serverData[4]);
-        SetMaximumPlayers(serverData[5]);
+        ServerUp = true;
+        Version = serverData[2];
+        Motd = serverData[3];
+        CurrentPlayers = serverData[4];
+        MaximumPlayers = serverData[5];
       }
       else
-        serverUp = false;
+      {
+        ServerUp = false;
+      }
     }
   }
 
+  #region Obsolete
+
+  [Obsolete]
   public string GetAddress()
   {
-    return address;
+    return Address;
   }
 
+  [Obsolete]
   public void SetAddress(string address)
   {
-    this.address = address;
+    Address = address;
   }
 
+  [Obsolete]
   public ushort GetPort()
   {
-    return port;
+    return Port;
   }
 
+  [Obsolete]
   public void SetPort(ushort port)
   {
-    this.port = port;
+    Port = port;
   }
 
+  [Obsolete]
   public string GetMotd()
   {
-    return motd;
+    return Motd;
   }
 
+  [Obsolete]
   public void SetMotd(string motd)
   {
-    this.motd = motd;
+    Motd = motd;
   }
 
+  [Obsolete]
   public string GetVersion()
   {
-    return version;
+    return Version;
   }
 
+  [Obsolete]
   public void SetVersion(string version)
   {
-    this.version = version;
+    Version = version;
   }
 
+  [Obsolete]
   public string GetCurrentPlayers()
   {
-    return currentPlayers;
+    return CurrentPlayers;
   }
 
+  [Obsolete]
   public void SetCurrentPlayers(string currentPlayers)
   {
-    this.currentPlayers = currentPlayers;
+    CurrentPlayers = currentPlayers;
   }
 
+  [Obsolete]
   public string GetMaximumPlayers()
   {
-    return maximumPlayers;
+    return MaximumPlayers;
   }
 
+  [Obsolete]
   public void SetMaximumPlayers(string maximumPlayers)
   {
-    this.maximumPlayers = maximumPlayers;
+    MaximumPlayers = maximumPlayers;
   }
 
+  [Obsolete]
   public bool IsServerUp()
   {
-    return serverUp;
+    return ServerUp;
   }
+
+  #endregion
 }
