@@ -14,9 +14,9 @@ class Example
 {
   public static void Main()
   {
-    MineStat ms = new MineStat("cubekingdom.net", 25565);
+    MineStat ms = new MineStat("minecraft.dilley.me", 25565);
     Console.WriteLine("Minecraft server status of {0} on port {1}:", ms.Address, ms.Port);
-    if(ms.ServerUp
+    if(ms.ServerUp)
     {
       Console.WriteLine("Server is online running version {0} with {1} out of {2} players.", ms.Version, ms.CurrentPlayers, ms.MaximumPlayers);
       Console.WriteLine("Message of the day: {0}", ms.Motd);
@@ -54,7 +54,7 @@ class Example
 {
   public static void main(String[] args)
   {
-    MineStat ms = new MineStat("cubekingdom.net", 25565);
+    MineStat ms = new MineStat("minecraft.dilley.me", 25565);
     System.out.println("Minecraft server status of " + ms.getAddress() + " on port " + ms.getPort() + ":");
     if(ms.isServerUp())
     {
@@ -91,7 +91,7 @@ ms.init('minecraft.dilley.me', 25565, function(result)
 <?php
 require_once('minestat.php');
 
-$ms = new MineStat("cubekingdom.net", 25565);
+$ms = new MineStat("minecraft.dilley.me", 25565);
 printf("Minecraft server status of %s on port %s:<br>", $ms->get_address(), $ms->get_port());
 if($ms->is_online())
 {
@@ -143,7 +143,7 @@ else:
 ```ruby
 require 'minestat'
 
-ms = MineStat.new("cubekingdom.net", 25565)
+ms = MineStat.new("minecraft.dilley.me", 25565)
 puts "Minecraft server status of #{ms.address} on port #{ms.port}:"
 if ms.online
   puts "Server is online running version #{ms.version} with #{ms.current_players} out of #{ms.max_players} players."
