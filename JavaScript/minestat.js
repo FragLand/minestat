@@ -55,8 +55,8 @@ module.exports =
         if(server_info != null && server_info.length >= NUM_FIELDS)
         {
           this.online = true;
-          this.version = server_info[2];
-          this.motd = server_info[3];
+          this.version = server_info[2].replace(/\0/g,'');
+          this.motd = server_info[3].replace(/\0/g,'');
           this.current_players = server_info[4];
           this.max_players = server_info[5];
         }
