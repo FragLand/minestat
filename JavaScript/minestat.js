@@ -37,15 +37,14 @@ module.exports =
     this.port = port;
 
     const net = require('net');
-    // ToDo: Add timeout
-    //client = new net.Socket();
-    //client.setTimeout(7000);
-    //client.connect(port, address, () =>
     const client = net.connect(port, address, () =>
     {
       var buff = new Buffer([ 0xFE, 0x01 ]);
       client.write(buff);
     });
+
+    // Set timeout to 5 seconds
+    client.setTimeout(5000);
 
     client.on('data', (data) =>
     {
@@ -69,6 +68,13 @@ module.exports =
       client.end();
     });
 
+    client.on('timeout', () =>
+    {
+      callback();
+      client.end();
+      process.exit();
+    });
+
     client.on('end', () =>
     {
       // nothing needed here
@@ -76,7 +82,27 @@ module.exports =
 
     client.on('error', (err) =>
     {
-      console.log(err);
+      // Uncomment the lines below to handle error codes individually. Otherwise,
+      // call callback() and simply report the remote server as being offline.
+
+      /*
+      if(err.code == "ENOTFOUND")
+      {
+        console.log("Unable to resolve " + this.address + ".");
+        return;
+      }
+
+      if(err.code == "ECONNREFUSED")
+      {
+        console.log("Unable to connect to port " + this.port + ".");
+        return;
+      }
+      */
+
+      callback();
+
+      // Uncomment the line below for more details pertaining to network errors.
+      //console.log(err);
     });
   }
 };

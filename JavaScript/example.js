@@ -1,6 +1,6 @@
 // For use with Node.js
 var ms = require('./minestat');
-ms.init('minecraft.dilley.me', 25565, function(result)
+ms.init('minecraft.frag.land', 25565, function(result)
 {
   console.log("Minecraft server status of " + ms.address + " on port " + ms.port + ":");
   if(ms.online)
