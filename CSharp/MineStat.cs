@@ -22,6 +22,7 @@ using System;
 using System.IO;
 using System.Net.Sockets;
 using System.Text;
+using System.Diagnostics;
 
 public class MineStat
 {
@@ -35,6 +36,7 @@ public class MineStat
   public string CurrentPlayers { get; set; }
   public string MaximumPlayers { get; set; }
   public bool ServerUp { get; set; }
+  public long Delay { get; set; }
 
   public MineStat(string address, ushort port)
   {
@@ -46,13 +48,17 @@ public class MineStat
     try
     {
       // ToDo: Add timeout
+      var stopWatch = new Stopwatch();
       var tcpclient = new TcpClient();
+      stopWatch.Start();
       tcpclient.Connect(address, port);
+      stopWatch.Stop();
       var stream = tcpclient.GetStream();
       var payload = new byte[] { 0xFE, 0x01 };
       stream.Write(payload, 0, payload.Length);
       stream.Read(rawServerData, 0, dataSize);
       tcpclient.Close();
+      Delay = stopWatch.ElapsedMilliseconds;
     }
     catch(Exception)
     {
