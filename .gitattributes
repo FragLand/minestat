@@ -1,0 +1,6 @@
+# Define binary file attributes.
+# - Treat attributes as text.
+
+* text = auto
+
+.java text
