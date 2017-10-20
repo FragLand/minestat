@@ -1,8 +1,0 @@
-# Define binary file attributes.
-# - Treat attributes as text.
-
-* text=auto
-* text eol=lf
-
-*.java text
-*.java diff
