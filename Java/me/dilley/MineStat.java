@@ -103,10 +103,10 @@ public class MineStat
       if(serverData != null && serverData.length >= NUM_FIELDS)
       {
         serverUp = true;
-        setVersion(serverData[2]);
-        setMotd(serverData[3]);
-        setCurrentPlayers(serverData[4]);
-        setMaximumPlayers(serverData[5]);
+        setVersion(serverData[2].replace("\u0000", ""));
+        setMotd(serverData[3].replace("\u0000", ""));
+        setCurrentPlayers(serverData[4].replace("\u0000", ""));
+        setMaximumPlayers(serverData[5].replace("\u0000", ""));
       }
       else
         serverUp = false;
