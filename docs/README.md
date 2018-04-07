@@ -48,7 +48,7 @@ func main() {
 
 ### Java example
 ```java
-import org.devux.MineStat;
+import me.dilley.MineStat;
 
 class Example
 {
