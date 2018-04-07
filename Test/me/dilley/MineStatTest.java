@@ -1,5 +1,5 @@
 /* JUnit tests for MineStat.java class */
-/* Contributed by Annukka Törmälä (nukka)*/
+/* Contributed by Annukka Tormala (nukka) */
 
 package me.dilley;
 
