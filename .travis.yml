@@ -4,9 +4,10 @@ matrix:
   include:
     - language: java
       jdk:
-        - oraclejdk7
-        - openjdk7
+        - openjdk8
         - oraclejdk8
+        - openjdk9
+        - oraclejdk9
       before_script:
         - cd Java
       script:
