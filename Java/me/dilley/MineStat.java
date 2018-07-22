@@ -29,7 +29,8 @@ import java.net.*;
 
 public class MineStat
 {
-  final byte NUM_FIELDS = 6;
+  final byte NUM_FIELDS = 6;         // expected number of fields returned from server after query
+  final int DEFAULT_TIMEOUT = 7000;  // default TCP socket connection timeout in milliseconds
 
   /**
    * Hostname or IP address of the Minecraft server
@@ -42,9 +43,9 @@ public class MineStat
   private int port;
 
   /**
-   * Query timeout in milliseconds (default is 7000ms)
+   * TCP socket connection timeout in milliseconds
    */
-  private int[] timeout;
+  private int timeout;
 
   /**
    * Is the server up? (true or false)
@@ -71,16 +72,16 @@ public class MineStat
    */
   private String maximumPlayers;
 
-  public MineStat(String address, int port, int... timeout)
+  public MineStat(String address, int port)
+  {
+    MineStat(address, port, DEFAULT_TIMEOUT);
+  }
+
+  public MineStat(String address, int port, int timeout)
   {
     setAddress(address);
     setPort(port);
-
-    if(timeout.length == 0)
-      setTimeout(new int[]{7000});
-    else
-      setTimeout(timeout);
-
+    setTimeout(timeout);
     refresh();
   }
 
@@ -96,7 +97,7 @@ public class MineStat
     {
       //Socket clientSocket = new Socket(getAddress(), getPort());
       Socket clientSocket = new Socket();
-      clientSocket.connect(new InetSocketAddress(getAddress(), getPort()), timeout[0]);
+      clientSocket.connect(new InetSocketAddress(getAddress(), getPort()), timeout);
       DataOutputStream dos = new DataOutputStream(clientSocket.getOutputStream());
       BufferedReader br = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
       byte[] payload = {(byte) 0xFE, (byte) 0x01};
@@ -151,12 +152,12 @@ public class MineStat
     this.port = port;
   }
 
-  public int[] getTimeout()
+  public int getTimeout()
   {
     return timeout;
   }
 
-  public void setTimeout(int[] timeout)
+  public void setTimeout(int timeout)
   {
     this.timeout = timeout;
   }
