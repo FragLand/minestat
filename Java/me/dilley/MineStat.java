@@ -19,7 +19,7 @@
  */
 
 /**
- * @author Lloyd Dilley
+ * @author Lloyd Dilley, Arne Sacnussem
  */
 
 package me.dilley;
@@ -29,7 +29,8 @@ import java.net.*;
 
 public class MineStat
 {
-  final byte NUM_FIELDS = 6;
+  public static final byte NUM_FIELDS = 6;        // expected number of fields returned from server after query
+  public static final int DEFAULT_TIMEOUT = 7000; // default TCP socket connection timeout in milliseconds
 
   /**
    * Hostname or IP address of the Minecraft server
@@ -42,12 +43,17 @@ public class MineStat
   private int port;
 
   /**
+   * TCP socket connection timeout in milliseconds
+   */
+  private int timeout;
+
+  /**
    * Is the server up? (true or false)
    */
   private boolean serverUp;
 
   /**
-   *  Message of the day from the server
+   * Message of the day from the server
    */
   private String motd;
 
@@ -66,24 +72,35 @@ public class MineStat
    */
   private String maximumPlayers;
 
-  public MineStat(String address, int port, int... timeout)
+  public MineStat(String address, int port)
   {
-    String rawServerData;
-    String[] serverData;
+    this(address, port, DEFAULT_TIMEOUT);
+  }
+
+  public MineStat(String address, int port, int timeout)
+  {
     setAddress(address);
     setPort(port);
+    setTimeout(timeout);
+    refresh();
+  }
 
-    if(timeout.length == 0)
-      timeout = new int[] { 7000 };
-
+  /**
+   * Refresh state of the server
+   * @return <code>true</code>; <code>false</code> if the server is down
+   */
+  public boolean refresh()
+  {
+    String[] serverData;
+    String rawServerData;
     try
     {
       //Socket clientSocket = new Socket(getAddress(), getPort());
       Socket clientSocket = new Socket();
-      clientSocket.connect(new InetSocketAddress(getAddress(), getPort()), timeout[0]);
+      clientSocket.connect(new InetSocketAddress(getAddress(), getPort()), timeout);
       DataOutputStream dos = new DataOutputStream(clientSocket.getOutputStream());
       BufferedReader br = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-      byte[] payload = { (byte)0xFE, (byte)0x01 };
+      byte[] payload = {(byte) 0xFE, (byte) 0x01};
       //dos.writeBytes("\u00FE\u0001");
       dos.write(payload, 0, payload.length);
       rawServerData = br.readLine();
@@ -92,7 +109,8 @@ public class MineStat
     catch(Exception e)
     {
       serverUp = false;
-      return;
+      //e.printStackTrace();
+      return serverUp;
     }
 
     if(rawServerData == null)
@@ -111,6 +129,7 @@ public class MineStat
       else
         serverUp = false;
     }
+    return serverUp;
   }
 
   public String getAddress()
@@ -133,14 +152,19 @@ public class MineStat
     this.port = port;
   }
 
+  public int getTimeout()
+  {
+    return timeout;
+  }
+
+  public void setTimeout(int timeout)
+  {
+    this.timeout = timeout;
+  }
+
   public String getMotd()
   {
     return motd;
-  }
-
-  public void setMotd(String motd)
-  {
-    this.motd = motd;
   }
 
   public String getVersion()
@@ -148,19 +172,9 @@ public class MineStat
     return version;
   }
 
-  public void setVersion(String version)
-  {
-    this.version = version;
-  }
-
   public String getCurrentPlayers()
   {
     return currentPlayers;
-  }
-
-  public void setCurrentPlayers(String currentPlayers)
-  {
-    this.currentPlayers = currentPlayers;
   }
 
   public String getMaximumPlayers()
@@ -171,6 +185,21 @@ public class MineStat
   public void setMaximumPlayers(String maximumPlayers)
   {
     this.maximumPlayers = maximumPlayers;
+  }
+
+  public void setCurrentPlayers(String currentPlayers)
+  {
+    this.currentPlayers = currentPlayers;
+  }
+
+  public void setMotd(String motd)
+  {
+    this.motd = motd;
+  }
+
+  public void setVersion(String version)
+  {
+    this.version = version;
   }
 
   public boolean isServerUp()
