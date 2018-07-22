@@ -29,8 +29,8 @@ import java.net.*;
 
 public class MineStat
 {
-  final byte NUM_FIELDS = 6;         // expected number of fields returned from server after query
-  final int DEFAULT_TIMEOUT = 7000;  // default TCP socket connection timeout in milliseconds
+  public static final byte NUM_FIELDS = 6;        // expected number of fields returned from server after query
+  public static final int DEFAULT_TIMEOUT = 7000; // default TCP socket connection timeout in milliseconds
 
   /**
    * Hostname or IP address of the Minecraft server
@@ -74,7 +74,7 @@ public class MineStat
 
   public MineStat(String address, int port)
   {
-    MineStat(address, port, DEFAULT_TIMEOUT);
+    this(address, port, DEFAULT_TIMEOUT);
   }
 
   public MineStat(String address, int port, int timeout)
