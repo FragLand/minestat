@@ -52,9 +52,9 @@ class MineStat:
       data = raw_data.decode('cp437').split('\x00\x00\x00')
       if data and len(data) >= self.NUM_FIELDS:
         self.online = True
-        self.version = data[2]
-        self.motd = data[3]
-        self.current_players = data[4]
-        self.max_players = data[5]
+        self.version = data[2].replace("\x00", "")
+        self.motd = data[3].encode('utf-8').replace("\x00", "")
+        self.current_players = data[4].replace("\x00", "")
+        self.max_players = data[5].replace("\x00", "")
       else:
         self.online = False
