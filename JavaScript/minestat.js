@@ -39,7 +39,7 @@ module.exports =
     const net = require('net');
     const client = net.connect(port, address, () =>
     {
-      var buff = new Buffer([ 0xFE, 0x01 ]);
+      var buff = Buffer.from([ 0xFE, 0x01 ]);
       client.write(buff);
     });
 
