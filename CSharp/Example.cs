@@ -12,6 +12,6 @@ class Example
       Console.WriteLine("Message of the day: {0}", ms.GetMotd());
     }
     else
-      Console.WriteLine("Server is offline!");    
+      Console.WriteLine("Server is offline!");
   }
 }
