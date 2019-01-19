@@ -138,7 +138,9 @@ else:
 
 ### Ruby example
 
-:warning: You must install gem `minestat` (e.g. `gem install minestat`)
+[![Gem Version](https://badge.fury.io/rb/minestat.png)](https://badge.fury.io/rb/minestat)
+
+:warning: You must install the `minestat` gem (`gem install minestat`)
 
 ```ruby
 require 'minestat'
