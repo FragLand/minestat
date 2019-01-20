@@ -8,6 +8,6 @@ Gem::Specification.new do |s|
   s.description = "MineStat polls Minecraft server data such as version," \
                   " motd, current players, and max players using a variety" \
                   " of programming languages."
-  s.license = "GPL-3"
+  s.license = "GPL-3.0"
   s.files = ["lib/minestat.rb"]
 end
