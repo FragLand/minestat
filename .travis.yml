@@ -5,7 +5,7 @@ matrix:
         - cd CSharp && mcs Example.cs MineStat.cs
 
     - language: go
-      go_import_path: github.com/ldilley/minestat
+      #go_import_path: github.com/ldilley/minestat
       install:
         - echo "Skipping default install process..."
       script:
