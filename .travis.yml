@@ -1,36 +1,24 @@
 matrix:
   include:
     - language: csharp
-      before_script:
-        - cd CSharp
       script:
-        - mcs Example.cs MineStat.cs
+        - cd CSharp && mcs Example.cs MineStat.cs
 
     - language: go
-#      before_install:
-#        - cd Go
+      go_import_path: github.com/ldilley/minestat
       install:
-        - cd Go
-        - export GOBIN="$GOPATH/bin"
-        - export PATH="$PATH:$GOBIN"
-        - go install minestat.go
-#      before_script:
-#        - cd Go
+        - echo ""
       script:
-        - go build example.go
+        - cd Go && go install minestat.go && go build example.go
 
     - language: java
       jdk: openjdk9
-      before_script:
-        - cd Java
       script:
-        - javac Example.java
+        - cd Java && javac Example.java
 
     - language: ruby
-      before_script:
-        - cd Ruby
       script:
-        - gem build minestat.gemspec && gem install minestat
+        - cd Ruby && gem build minestat.gemspec && gem install minestat
 
 notifications:
   email: false
