@@ -7,9 +7,12 @@ matrix:
         - mcs Example.cs MineStat.cs
 
     - language: go
-      before_install:
-        - cd Go
+#      before_install:
+#        - cd Go
       install:
+        - cd Go
+        - export GOBIN="$GOPATH/bin"
+        - export PATH="$PATH:$GOBIN"
         - go install minestat.go
 #      before_script:
 #        - cd Go
