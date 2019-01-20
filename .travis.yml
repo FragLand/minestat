@@ -7,9 +7,12 @@ matrix:
         - mcs Example.cs MineStat.cs
 
     - language: go
-      install: go install minestat.go
-      before_script:
+      before_install:
         - cd Go
+      install:
+        - go install minestat.go
+#      before_script:
+#        - cd Go
       script:
         - go build example.go
 
