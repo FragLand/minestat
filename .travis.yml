@@ -9,8 +9,7 @@ matrix:
       install:
         - echo "Skipping default install process..."
       script:
-        - export GOBIN=${TRAVIS_HOME}/gopath/bin
-        - cd Go && go install minestat.go && go build example.go
+        - cd Go && go build example.go
 
     - language: java
       jdk: openjdk9
