@@ -1,7 +1,7 @@
 package main
 
 import "fmt"
-import "github.com/ldilley/minestat/minestat"
+import "github.com/ldilley/minestat/Go/minestat"
 
 func main() {
   minestat.Init("minecraft.dilley.me", "25565")
