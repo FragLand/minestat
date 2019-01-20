@@ -8,24 +8,20 @@ matrix:
 
     - language: go
       before_script:
-        - cd ../Go
+        - cd Go
       script:
         - go build example.go
 
     - language: java
-      jdk:
-        - openjdk9
-        - oraclejdk9
-        - openjdk11
-        - oraclejdk11
+      jdk: openjdk9
       before_script:
-        - cd ../Java
+        - cd Java
       script:
         - javac Example.java
 
     - language: ruby
       before_script:
-        - cd ../Ruby
+        - cd Ruby
       script:
         - gem build minestat.gemspec && gem install minestat
 
