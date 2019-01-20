@@ -22,8 +22,7 @@ matrix:
 
 notifications:
   email: false
-# Temporarily disable IRC notifications while testing builds
-#  irc:
-#    - "irc.dilley.me#sysadmininkudzu"
-#    - "chat.freenode.net#minestat"
-#    - "irc.oftc.net#minestat"
+  irc:
+    - "irc.dilley.me#sysadmininkudzu"
+    - "chat.freenode.net#minestat"
+    - "irc.oftc.net#minestat"
