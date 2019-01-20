@@ -7,7 +7,7 @@ matrix:
         - mcs Example.cs MineStat.cs
 
     - language: go
-      go_import_path: github.com/ldilley/minestat/minestat
+      install: go install minestat.go
       before_script:
         - cd Go
       script:
