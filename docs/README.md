@@ -1,7 +1,9 @@
-minestat
+MineStat
 ========
 
-A Minecraft server status checker
+[![Build Status](https://travis-ci.com/ldilley/minestat.svg?branch=master)](https://travis-ci.com/ldilley/minestat)
+
+MineStat is a Minecraft server status checker.
 
 You can use these classes/modules in a monitoring script to poll multiple Minecraft servers or to let
 visitors see the status of your server from their browser. MineStat has been ported to multiple languages for use with ASP.NET, FastCGI, mod_perl, mod_php, mod_python, Node.js, Rails, Tomcat, and more.
