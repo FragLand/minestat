@@ -31,7 +31,7 @@ our $version = undef;         # server version
 our $motd = undef;            # message of the day
 our $current_players = undef; # current number of players online
 our $max_players = undef;     # maximum player capacity
-our $timeout = 7;             # TCP connection timeout
+our $timeout = 5;             # TCP connection timeout
 
 sub init
 {
@@ -47,7 +47,7 @@ sub init
     $port = shift;
   }
 
-  # Connect to the server and get the data  
+  # Connect to the server and get the data
   my $sock = new IO::Socket::INET(PeerHost => $address, PeerPort => $port, Proto => 'tcp', Timeout => $timeout);
   return unless defined($sock);
   $sock->send("\xFE\x01");

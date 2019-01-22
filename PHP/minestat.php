@@ -31,15 +31,15 @@ class MineStat
   private $current_players; // current number of players online
   private $max_players;     // maximum player capacity
 
-  public function __construct($address, $port)
+  public function __construct($address, $port, $timeout = 5)
   {
     $this->address = $address;
     $this->port = $port;
 
     try
     {
-      // ToDo: Add timeout 
       $socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
+      socket_set_option($socket, SOL_SOCKET, SO_RCVTIMEO, array('sec' => $timeout, 'usec' => 0));
       if($socket === false)
       {
         $this->online = false;
@@ -53,7 +53,7 @@ class MineStat
       }
       $payload = "\xFE\x01";
       socket_write($socket, $payload, strlen($payload));
-      $raw_data = socket_read($socket, $DATA_SIZE);
+      $raw_data = socket_read($socket, MineStat::DATA_SIZE);
       socket_close($socket);
     }
     catch(Exeption $e)
@@ -65,7 +65,7 @@ class MineStat
     if(isset($raw_data))
     {
       $server_info = explode("\x00\x00\x00", $raw_data);
-      if(isset($server_info) && sizeof($server_info) >= $NUM_FIELDS)
+      if(isset($server_info) && sizeof($server_info) >= MineStat::NUM_FIELDS)
       {
         $this->online = true;
         $this->version = $server_info[2];

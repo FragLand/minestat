@@ -22,7 +22,7 @@ require 'timeout'
 class MineStat
   NUM_FIELDS = 6         # number of values expected from server
 
-  def initialize(address, port, timeout = 7)
+  def initialize(address, port, timeout = 5)
     @address = address
     @port = port
     @online              # online or offline?

@@ -21,7 +21,7 @@ import socket
 class MineStat:
   NUM_FIELDS = 6                # number of values expected from server
 
-  def __init__(self, address, port, timeout = 7):
+  def __init__(self, address, port, timeout = 5):
     self.address = address
     self.port = port
     self.online = None          # online or offline?
