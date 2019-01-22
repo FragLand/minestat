@@ -26,11 +26,13 @@ using System.Diagnostics;
 
 public class MineStat
 {
-  const ushort dataSize = 512; // this will hopefully suffice since the MotD should be <=59 characters
-  const ushort numFields = 6;  // number of values expected from server
+  const ushort dataSize = 512;  // this will hopefully suffice since the MotD should be <=59 characters
+  const ushort numFields = 6;   // number of values expected from server
+  const int defaultTimeout = 5; // default TCP timeout in seconds
 
   public string Address { get; set; }
   public ushort Port { get; set; }
+  public int Timeout { get; set; }
   public string Motd { get; set; }
   public string Version { get; set; }
   public string CurrentPlayers { get; set; }
@@ -38,19 +40,20 @@ public class MineStat
   public bool ServerUp { get; set; }
   public long Delay { get; set; }
 
-  public MineStat(string address, ushort port)
+  public MineStat(string address, ushort port, int timeout = defaultTimeout)
   {
     var rawServerData = new byte[dataSize];
 
     Address = address;
     Port = port;
+    Timeout = timeout * 1000;   // milliseconds
 
     try
     {
-      // ToDo: Add timeout
       var stopWatch = new Stopwatch();
       var tcpclient = new TcpClient();
       stopWatch.Start();
+      tcpclient.ReceiveTimeout = Timeout;
       tcpclient.Connect(address, port);
       stopWatch.Stop();
       var stream = tcpclient.GetStream();

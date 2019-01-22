@@ -29,8 +29,8 @@ import java.net.*;
 
 public class MineStat
 {
-  public static final byte NUM_FIELDS = 6;        // expected number of fields returned from server after query
-  public static final int DEFAULT_TIMEOUT = 7000; // default TCP socket connection timeout in milliseconds
+  public static final byte NUM_FIELDS = 6;     // expected number of fields returned from server after query
+  public static final int DEFAULT_TIMEOUT = 5; // default TCP socket connection timeout in seconds
 
   /**
    * Hostname or IP address of the Minecraft server
@@ -154,12 +154,12 @@ public class MineStat
 
   public int getTimeout()
   {
-    return timeout;
+    return timeout * 1000;         // milliseconds
   }
 
   public void setTimeout(int timeout)
   {
-    this.timeout = timeout;
+    this.timeout = timeout * 1000; // milliseconds
   }
 
   public String getMotd()

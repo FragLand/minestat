@@ -20,21 +20,29 @@
 
 // For use with Node.js
 
-const NUM_FIELDS = 6;   // number of values expected from server
+const NUM_FIELDS = 6;      // number of values expected from server
+const DEFAULT_TIMEOUT = 5; // default TCP timeout in seconds
 address = null;
 port = null;
-online = null;          // online or offline?
-version = null;         // server version
-motd = null;            // message of the day
-current_players = null; // current number of players online
-max_players = null;     // maximum player capacity
+online = null;             // online or offline?
+version = null;            // server version
+motd = null;               // message of the day
+current_players = null;    // current number of players online
+max_players = null;        // maximum player capacity
 
 module.exports =
 {
-  init: function(address, port, callback)
+  init: function(address, port, timeout, callback)
   {
     this.address = address;
     this.port = port;
+
+    // if 3rd argument is a function, it's the callback (timeout is optional)
+    if(typeof(timeout) === typeof(Function()))
+    {
+      callback = timeout;
+      timeout = DEFAULT_TIMEOUT;
+    }
 
     const net = require('net');
     const client = net.connect(port, address, () =>
@@ -43,8 +51,7 @@ module.exports =
       client.write(buff);
     });
 
-    // Set timeout to 5 seconds
-    client.setTimeout(5000);
+    client.setTimeout(timeout * 1000);
 
     client.on('data', (data) =>
     {
