@@ -22,6 +22,7 @@ use strict;
 use warnings;
 
 use IO::Socket::INET;
+use Time::HiRes qw(time);
 
 our $NUM_FIELDS = 6;          # number of values expected from server
 our $address = undef;
@@ -31,6 +32,7 @@ our $version = undef;         # server version
 our $motd = undef;            # message of the day
 our $current_players = undef; # current number of players online
 our $max_players = undef;     # maximum player capacity
+our $latency = undef;         # ping time to server in milliseconds
 our $timeout = 5;             # TCP connection timeout
 
 sub init
@@ -48,7 +50,10 @@ sub init
   }
 
   # Connect to the server and get the data
+  my $start_time = time;
   my $sock = new IO::Socket::INET(PeerHost => $address, PeerPort => $port, Proto => 'tcp', Timeout => $timeout);
+  $latency = (time - $start_time) * 1000;
+  $latency = int($latency + 0.5);
   return unless defined($sock);
   $sock->send("\xFE\x01");
   my $raw_data = <$sock>;

@@ -9,6 +9,7 @@ if($MineStat::online)
 {
   print "Server is online running version $MineStat::version with $MineStat::current_players out of $MineStat::max_players players.\n";
   print "Message of the day: $MineStat::motd\n";
+  print "Latency: ${MineStat::latency}ms\n";
 }
 else
 {
