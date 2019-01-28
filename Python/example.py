@@ -7,5 +7,6 @@ print('Minecraft server status of %s on port %d:' % (ms.address, ms.port))
 if ms.online:
   print('Server is online running version %s with %s out of %s players.' % (ms.version, ms.current_players, ms.max_players))
   print('Message of the day: %s' % ms.motd)
+  print('Latency: %sms' % ms.latency)
 else:
   print('Server is offline!')
