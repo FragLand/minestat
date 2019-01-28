@@ -30,6 +30,7 @@ class MineStat
   private $motd;            // message of the day
   private $current_players; // current number of players online
   private $max_players;     // maximum player capacity
+  private $latency;         // ping time to server in milliseconds
 
   public function __construct($address, $port, $timeout = 5)
   {
@@ -45,7 +46,9 @@ class MineStat
         $this->online = false;
         return;
       }
+      $start_time = microtime();
       $result = socket_connect($socket, $address, $port);
+      $this->latency = round((microtime() - $start_time) * 1000);
       if($result === false)
       {
         $this->online = false;
@@ -113,6 +116,11 @@ class MineStat
   public function get_max_players()
   {
     return $this->max_players;
+  }
+
+  public function get_latency()
+  {
+    return $this->latency;
   }
 }
 ?>
