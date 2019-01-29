@@ -1,6 +1,6 @@
 /*
  * MineStat.java - A Minecraft server status checker
- * Copyright (C) 2014, 2016 Lloyd Dilley
+ * Copyright (C) 2014 Lloyd Dilley
  * http://www.dilley.me/
  *
  * This program is free software; you can redistribute it and/or modify
