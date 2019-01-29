@@ -9,6 +9,9 @@ func main() {
   if minestat.Online {
     fmt.Printf("Server is online running version %s with %s out of %s players.\n", minestat.Version, minestat.Current_players, minestat.Max_players)
     fmt.Printf("Message of the day: %s\n", minestat.Motd)
+    /* Latency may report a misleading value of >1s due to name resolution delay when using net.Dial().
+       A workaround for this issue is to use an IP address instead of a hostname or FQDN. */
+    fmt.Printf("Latency: %s\n", minestat.Latency)
   } else {
     fmt.Println("Server is offline!")
   }
