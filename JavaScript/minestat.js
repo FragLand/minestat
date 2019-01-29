@@ -29,6 +29,7 @@ version = null;            // server version
 motd = null;               // message of the day
 current_players = null;    // current number of players online
 max_players = null;        // maximum player capacity
+latency = null;            // ping time to server in milliseconds
 
 module.exports =
 {
@@ -45,8 +46,10 @@ module.exports =
     }
 
     const net = require('net');
+    var start_time = new Date();
     const client = net.connect(port, address, () =>
     {
+      this.latency = Math.round(new Date() - start_time);
       var buff = Buffer.from([ 0xFE, 0x01 ]);
       client.write(buff);
     });
