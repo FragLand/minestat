@@ -6,4 +6,6 @@
 
 ### MineStat version
 
+### Programming language and compiler/interpreter version
+
 ### Operating system
