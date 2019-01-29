@@ -1,6 +1,6 @@
 /*
  * MineStat.cs - A Minecraft server status checker
- * Copyright (C) 2014, 2016 Lloyd Dilley
+ * Copyright (C) 2014 Lloyd Dilley
  * http://www.dilley.me/
  *
  * This program is free software; you can redistribute it and/or modify
@@ -38,7 +38,7 @@ public class MineStat
   public string CurrentPlayers { get; set; }
   public string MaximumPlayers { get; set; }
   public bool ServerUp { get; set; }
-  public long Delay { get; set; }
+  public long Latency { get; set; }
 
   public MineStat(string address, ushort port, int timeout = defaultTimeout)
   {
@@ -52,16 +52,16 @@ public class MineStat
     {
       var stopWatch = new Stopwatch();
       var tcpclient = new TcpClient();
-      stopWatch.Start();
       tcpclient.ReceiveTimeout = Timeout;
+      stopWatch.Start();
       tcpclient.Connect(address, port);
       stopWatch.Stop();
+      Latency = stopWatch.ElapsedMilliseconds;
       var stream = tcpclient.GetStream();
       var payload = new byte[] { 0xFE, 0x01 };
       stream.Write(payload, 0, payload.Length);
       stream.Read(rawServerData, 0, dataSize);
       tcpclient.Close();
-      Delay = stopWatch.ElapsedMilliseconds;
     }
     catch(Exception)
     {
@@ -163,6 +163,18 @@ public class MineStat
   public void SetMaximumPlayers(string maximumPlayers)
   {
     MaximumPlayers = maximumPlayers;
+  }
+
+  [Obsolete]
+  public long GetLatency()
+  {
+    return Latency;
+  }
+
+  [Obsolete]
+  public void SetLatency(long latency)
+  {
+    Latency = latency;
   }
 
   [Obsolete]
