@@ -72,6 +72,11 @@ public class MineStat
    */
   private String maximumPlayers;
 
+  /**
+   * Ping time to server in milliseconds
+   */
+  private long latency;
+
   public MineStat(String address, int port)
   {
     this(address, port, DEFAULT_TIMEOUT);
@@ -97,7 +102,9 @@ public class MineStat
     {
       //Socket clientSocket = new Socket(getAddress(), getPort());
       Socket clientSocket = new Socket();
+      long startTime = System.currentTimeMillis();
       clientSocket.connect(new InetSocketAddress(getAddress(), getPort()), timeout);
+      setLatency(System.currentTimeMillis() - startTime);
       DataOutputStream dos = new DataOutputStream(clientSocket.getOutputStream());
       BufferedReader br = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
       byte[] payload = {(byte) 0xFE, (byte) 0x01};
@@ -180,6 +187,16 @@ public class MineStat
   public String getMaximumPlayers()
   {
     return maximumPlayers;
+  }
+
+  public long getLatency()
+  {
+    return latency;
+  }
+
+  public void setLatency(long latency)
+  {
+    this.latency = latency;
   }
 
   public void setMaximumPlayers(String maximumPlayers)
