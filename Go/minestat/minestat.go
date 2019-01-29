@@ -33,6 +33,7 @@ var Version string            // server version
 var Motd string               // message of the day
 var Current_players string    // current number of players online
 var Max_players string        // maximum player capacity
+var Latency time.Duration     // ping time to server in milliseconds
 
 func Init(given_address string, given_port string, optional_timeout ...int) {
   timeout := DEFAULT_TIMEOUT
@@ -41,7 +42,12 @@ func Init(given_address string, given_port string, optional_timeout ...int) {
   }
   Address = given_address
   Port = given_port
+  /* Latency may report a misleading value of >1s due to name resolution delay when using net.Dial().
+     A workaround for this issue is to use an IP address instead of a hostname or FQDN. */
+  start_time := time.Now()
   conn, err := net.DialTimeout("tcp", Address + ":" + Port, time.Duration(timeout) * time.Second)
+  Latency = time.Since(start_time)
+  Latency = Latency.Round(time.Millisecond)
   if err != nil {
     Online = false
     return
