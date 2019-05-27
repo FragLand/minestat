@@ -59,7 +59,7 @@ class MineStat
       $raw_data = socket_read($socket, MineStat::DATA_SIZE);
       socket_close($socket);
     }
-    catch(Exeption $e)
+    catch(Exception $e)
     {
       $this->online = false;
       return;
