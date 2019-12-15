@@ -149,7 +149,9 @@ else:
 
 [![Gem Version](https://badge.fury.io/rb/minestat.png)](https://badge.fury.io/rb/minestat)
 
-:warning: You must install the `minestat` gem (`gem install minestat`)
+To use the gem: `gem install minestat`
+
+:warning: The `minestat` gem is out of date since the owner has been unresponsive. See [issue #24](https://github.com/ldilley/minestat/issues/24) for details.
 
 ```ruby
 require 'minestat'
