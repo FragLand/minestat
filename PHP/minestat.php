@@ -46,9 +46,9 @@ class MineStat
         $this->online = false;
         return;
       }
-      $start_time = microtime();
+      $start_time = microtime(true);
       $result = socket_connect($socket, $address, $port);
-      $this->latency = round((microtime() - $start_time) * 1000);
+      $this->latency = round((microtime(true) - $start_time) * 1000);
       if($result === false)
       {
         $this->online = false;
