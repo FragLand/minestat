@@ -3,7 +3,7 @@ use MineStat;
 
 # Below is an example using the MineStat class.
 # If server is offline, other instance members will be undef.
-&MineStat::init("minecraft.dilley.me", 25565);
+&MineStat::init("minecraft.frag.land", 25565);
 print "Minecraft server status of $MineStat::address on port $MineStat::port:\n";
 if($MineStat::online)
 {
