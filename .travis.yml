@@ -5,7 +5,7 @@ matrix:
         - cd CSharp && mcs Example.cs MineStat.cs
 
     - language: go
-      #go_import_path: github.com/ldilley/minestat
+      #go_import_path: github.com/FragLand/minestat
       install:
         - echo "Skipping default install process..."
       script:
@@ -23,6 +23,6 @@ matrix:
 notifications:
   email: false
   irc:
-    - "irc.dilley.me#sysadmininkudzu"
+    - "irc.frag.land#sysadmininkudzu"
     - "chat.freenode.net#minestat"
     - "irc.oftc.net#minestat"
