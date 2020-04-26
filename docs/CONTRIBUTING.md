@@ -1,10 +1,14 @@
 # Contributing to MineStat
 
+## Discord
+
+[Frag Land](https://discord.frag.land/)
+
 ## IRC
 
 Feel free to chat using the information below.
 
-**Server:** irc.magnibyte.com
+**Server:** irc.frag.land
 
 **Port:** 6667
 
