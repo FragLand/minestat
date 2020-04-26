@@ -52,7 +52,7 @@ func main() {
 
 ### Java example
 ```java
-import land.frag.MineStat;
+import land.Frag.MineStat;
 
 class Example
 {
