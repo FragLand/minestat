@@ -2,6 +2,7 @@ MineStat
 ========
 
 [![Build Status](https://travis-ci.com/FragLand/minestat.svg?branch=master)](https://travis-ci.com/FragLand/minestat)
+[![Discord](https://img.shields.io/discord/540333638479380487?label=Discord)](https://discord.frag.land/)
 
 MineStat is a Minecraft server status checker.
 
