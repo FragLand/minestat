@@ -1,7 +1,7 @@
 MineStat
 ========
 
-[![Build Status](https://travis-ci.com/ldilley/minestat.svg?branch=master)](https://travis-ci.com/ldilley/minestat)
+[![Build Status](https://travis-ci.com/FragLand/minestat.svg?branch=master)](https://travis-ci.com/FragLand/minestat)
 
 MineStat is a Minecraft server status checker.
 
@@ -16,7 +16,7 @@ class Example
 {
   public static void Main()
   {
-    MineStat ms = new MineStat("minecraft.dilley.me", 25565);
+    MineStat ms = new MineStat("minecraft.frag.land", 25565);
     Console.WriteLine("Minecraft server status of {0} on port {1}:", ms.Address, ms.Port);
     if(ms.ServerUp)
     {
@@ -35,10 +35,10 @@ class Example
 package main
 
 import "fmt"
-import "github.com/ldilley/minestat/minestat"
+import "github.com/FragLand/minestat/minestat"
 
 func main() {
-  minestat.Init("minecraft.dilley.me", "25565")
+  minestat.Init("minecraft.frag.land", "25565")
   fmt.Printf("Minecraft server status of %s on port %s:\n", minestat.Address, minestat.Port)
   if minestat.Online {
     fmt.Printf("Server is online running version %s with %s out of %s players.\n", minestat.Version, minestat.Current_players, minestat.Max_players)
@@ -52,13 +52,13 @@ func main() {
 
 ### Java example
 ```java
-import me.dilley.MineStat;
+import land.frag.MineStat;
 
 class Example
 {
   public static void main(String[] args)
   {
-    MineStat ms = new MineStat("minecraft.dilley.me", 25565);
+    MineStat ms = new MineStat("minecraft.frag.land", 25565);
     System.out.println("Minecraft server status of " + ms.getAddress() + " on port " + ms.getPort() + ":");
     if(ms.isServerUp())
     {
@@ -76,7 +76,7 @@ class Example
 ```javascript
 // For use with Node.js
 var ms = require('./minestat');
-ms.init('minecraft.dilley.me', 25565, function(result)
+ms.init('minecraft.frag.land', 25565, function(result)
 {
   console.log("Minecraft server status of " + ms.address + " on port " + ms.port + ":");
   if(ms.online)
@@ -97,7 +97,7 @@ ms.init('minecraft.dilley.me', 25565, function(result)
 <?php
 require_once('minestat.php');
 
-$ms = new MineStat("minecraft.dilley.me", 25565);
+$ms = new MineStat("minecraft.frag.land", 25565);
 printf("Minecraft server status of %s on port %s:<br>", $ms->get_address(), $ms->get_port());
 if($ms->is_online())
 {
@@ -117,7 +117,7 @@ else
 use lib '.';
 use MineStat;
 
-&MineStat::init("minecraft.dilley.me", 25565);
+&MineStat::init("minecraft.frag.land", 25565);
 print "Minecraft server status of $MineStat::address on port $MineStat::port:\n";
 if($MineStat::online)
 {
@@ -135,7 +135,7 @@ else
 ```python
 import minestat
 
-ms = minestat.MineStat('minecraft.dilley.me', 25565)
+ms = minestat.MineStat('minecraft.frag.land', 25565)
 print('Minecraft server status of %s on port %d:' % (ms.address, ms.port))
 if ms.online:
   print('Server is online running version %s with %s out of %s players.' % (ms.version, ms.current_players, ms.max_players))
@@ -151,12 +151,10 @@ else:
 
 To use the gem: `gem install minestat`
 
-:warning: The `minestat` gem is out of date since the owner has been unresponsive. See [issue #24](https://github.com/ldilley/minestat/issues/24) for details.
-
 ```ruby
 require 'minestat'
 
-ms = MineStat.new("minecraft.dilley.me", 25565)
+ms = MineStat.new("minecraft.frag.land", 25565)
 puts "Minecraft server status of #{ms.address} on port #{ms.port}:"
 if ms.online
   puts "Server is online running version #{ms.version} with #{ms.current_players} out of #{ms.max_players} players."
