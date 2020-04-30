@@ -19,7 +19,7 @@
  */
 
 /**
- * @author Lloyd Dilley, Arne Sacnussem
+ * @author Lloyd Dilley, Arne Sacnussem, grimsi
  */
 
 package me.dilley;
@@ -79,7 +79,7 @@ public class MineStat
 
   public MineStat(String address, int port)
   {
-    this(address, port, DEFAULT_TIMEOUT);
+    this(address, port, DEFAULT_TIMEOUT * 1000);
   }
 
   public MineStat(String address, int port, int timeout)
@@ -125,7 +125,7 @@ public class MineStat
     else
     {
       serverData = rawServerData.split("\u0000\u0000\u0000");
-      if(serverData != null && serverData.length >= NUM_FIELDS)
+      if(serverData.length >= NUM_FIELDS)
       {
         serverUp = true;
         setVersion(serverData[2].replace("\u0000", ""));
