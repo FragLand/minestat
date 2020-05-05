@@ -161,12 +161,12 @@ public class MineStat
 
   public int getTimeout()
   {
-    return timeout * 1000;         // milliseconds
+    return timeout;         // milliseconds
   }
 
   public void setTimeout(int timeout)
   {
-    this.timeout = timeout * 1000; // milliseconds
+    this.timeout = timeout; // milliseconds
   }
 
   public String getMotd()
