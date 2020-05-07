@@ -77,12 +77,12 @@ public class MineStat
   /**
    * Current number of players on the server
    */
-  private String currentPlayers;
+  private int currentPlayers;
 
   /**
    * Maximum player capacity of the server
    */
-  private String maximumPlayers;
+  private int maximumPlayers;
 
   /**
    * Ping time to server in milliseconds
@@ -140,13 +140,13 @@ public class MineStat
 
   public void setVersion(String version) { this.version = version; }
 
-  public String getCurrentPlayers() { return currentPlayers; }
+  public int getCurrentPlayers() { return currentPlayers; }
 
-  public void setCurrentPlayers(String currentPlayers) { this.currentPlayers = currentPlayers; }
+  public void setCurrentPlayers(int currentPlayers) { this.currentPlayers = currentPlayers; }
 
-  public String getMaximumPlayers() { return maximumPlayers; }
+  public int getMaximumPlayers() { return maximumPlayers; }
 
-  public void setMaximumPlayers(String maximumPlayers) { this.maximumPlayers = maximumPlayers; }
+  public void setMaximumPlayers(int maximumPlayers) { this.maximumPlayers = maximumPlayers; }
 
   public long getLatency() { return latency; }
 
@@ -198,8 +198,8 @@ public class MineStat
       {
         setVersion("1.8b/1.3"); // since server does not return version, set it
         setMotd(serverData[0]);
-        setCurrentPlayers(serverData[1]);
-        setMaximumPlayers(serverData[2]);
+        setCurrentPlayers(Integer.parseInt(serverData[1]));
+        setMaximumPlayers(Integer.parseInt(serverData[2]));
         serverUp = true;
       }
       else
@@ -281,8 +281,8 @@ public class MineStat
         // serverData[1] contains the protocol version (51 for example)
         setVersion(serverData[2]);
         setMotd(serverData[3]);
-        setCurrentPlayers(serverData[4]);
-        setMaximumPlayers(serverData[5]);
+        setCurrentPlayers(Integer.parseInt(serverData[4]));
+        setMaximumPlayers(Integer.parseInt(serverData[5]));
         serverUp = true;
       }
       else
@@ -381,8 +381,8 @@ public class MineStat
         // serverData[1] contains the protocol version (always 127 for >=1.7.x)
         setVersion(serverData[2]);
         setMotd(serverData[3]);
-        setCurrentPlayers(serverData[4]);
-        setMaximumPlayers(serverData[5]);
+        setCurrentPlayers(Integer.parseInt(serverData[4]));
+        setMaximumPlayers(Integer.parseInt(serverData[5]));
         serverUp = true;
       }
       else
