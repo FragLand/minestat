@@ -1,4 +1,4 @@
-import land.Frag.MineStat;
+import me.dilley.MineStat;
 
 class Example
 {
