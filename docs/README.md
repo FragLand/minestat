@@ -10,6 +10,8 @@ MineStat is a Minecraft server status checker.
 You can use these classes/modules in a monitoring script to poll multiple Minecraft servers or to let
 visitors see the status of your server from their browser. MineStat has been ported to multiple languages for use with ASP.NET, FastCGI, mod_perl, mod_php, mod_python, Node.js, Rails, Tomcat, and more.
 
+If you are planning to host MineStat on a shared webhost, make sure that the provider allows outbound sockets.
+
 ### C# example
 ```cs
 using System;
@@ -95,6 +97,9 @@ ms.init('minecraft.frag.land', 25565, function(result)
 ```
 
 ### PHP example
+
+**Note:** MineStat for PHP requires multi-byte string support to handle character encoding conversion. Enabling `mbstring` support can be as simple as installing the `php-mbstring` package for your platform. If building PHP from source, see https://www.php.net/manual/en/mbstring.installation.php. To validate, `phpinfo()` output will reference `mbstring` if the feature is enabled.
+
 ```php
 <?php
 require_once('minestat.php');
