@@ -23,6 +23,7 @@ class MineStat
 {
   const NUM_FIELDS = 6;      // number of values expected from server
   const NUM_FIELDS_BETA = 3; // number of values expected from a 1.8b/1.3 server
+  const MAX_VARINT_SIZE = 5; // maximum number of bytes a varint can be
   // No enums or class nesting in PHP, so this is our workaround for return values
   const RETURN_SUCCESS = 0;
   const RETURN_CONNFAIL = -1;
@@ -35,21 +36,36 @@ class MineStat
   private $motd;            // message of the day
   private $current_players; // current number of players online
   private $max_players;     // maximum player capacity
+  private $protocol;        // protocol level
+  private $json_data;       // JSON data for 1.7 queries
   private $latency;         // ping time to server in milliseconds
+  private $timeout;         // timeout in seconds
+  private $socket;          // network socket
 
   public function __construct($address, $port = 25565, $timeout = 5)
   {
     $this->address = $address;
     $this->port = $port;
+    $this->timeout = $timeout;
     $this->online = false;
 
-    $retval = $this->json_query($address, $port, $timeout);     // 1.7
+    $retval = $this->json_query();     // 1.7
     if($retval != MineStat::RETURN_SUCCESS && $retval != MineStat::RETURN_CONNFAIL)
-      $retval = $this->new_query($address, $port, $timeout);    // 1.6
+      $retval = $this->new_query();    // 1.6
     if($retval != MineStat::RETURN_SUCCESS && $retval != MineStat::RETURN_CONNFAIL)
-      $retval = $this->legacy_query($address, $port, $timeout); // 1.4/1.5
+      $retval = $this->legacy_query(); // 1.4/1.5
     if($retval != MineStat::RETURN_SUCCESS && $retval != MineStat::RETURN_CONNFAIL)
-      $retval = $this->beta_query($address, $port, $timeout);   // 1.8b/1.3
+      $retval = $this->beta_query();   // 1.8b/1.3
+  }
+
+  public function __destruct()
+  {
+    if(@socket_read($this->socket, 1))
+    {
+      socket_shutdown($this->socket);
+      socket_close($this->socket);
+      $this->socket = null;
+    }
   }
 
   public function get_address() { return $this->address; }
@@ -66,52 +82,56 @@ class MineStat
 
   public function get_max_players() { return $this->max_players; }
 
+  public function get_protocol() { return $this->protocol; }
+
+  public function get_json() { return $this->json_data; }
+
   public function get_latency() { return $this->latency; }
 
   /* Connects to remote server */
-  public function connect(&$socket, $address, $port, $timeout)
+  private function connect()
   {
-    $socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
-    socket_set_option($socket, SOL_SOCKET, SO_RCVTIMEO, array('sec' => $timeout, 'usec' => 0));
-    if($socket === false)
+    $this->socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
+    socket_set_option($this->socket, SOL_SOCKET, SO_RCVTIMEO, array('sec' => $this->timeout, 'usec' => 0));
+    if($this->socket === false)
       return MineStat::RETURN_CONNFAIL;
 
     // Since socket_connect() does not respect timeout, we have to toggle non-blocking mode and enforce the timeout
-    socket_set_nonblock($socket);
+    socket_set_nonblock($this->socket);
     $time = time();
     $start_time = microtime(true);
-    while(!@socket_connect($socket, $address, $port))
+    while(!@socket_connect($this->socket, $this->address, $this->port))
     {
-      if((time() - $time) >= $timeout)
+      if((time() - $time) >= $this->timeout)
       {
-        socket_close($socket);
+        socket_close($this->socket);
         return MineStat::RETURN_TIMEOUT;
       }
       usleep(0);
     }
-    $result = @socket_connect($socket, $address, $port);
+    $result = @socket_connect($this->socket, $this->address, $this->port);
     $this->latency = round((microtime(true) - $start_time) * 1000);
-    socket_set_block($socket);
-    if($result === false && socket_last_error($socket) != SOCKET_EISCONN)
+    socket_set_block($this->socket);
+    if($result === false && socket_last_error($this->socket) != SOCKET_EISCONN)
       return MineStat::RETURN_CONNFAIL;
 
     return MineStat::RETURN_SUCCESS;
   }
 
   /* Populates object fields after connecting */
-  public function parse_data(&$socket, $delimiter, $is_beta = false)
+  private function parse_data($delimiter, $is_beta = false)
   {
-    $response = @unpack("C", socket_read($socket, 1));
-    //socket_recv($socket, $response, 2, MSG_PEEK);
+    $response = @unpack('C', socket_read($this->socket, 1));
+    //socket_recv($this->socket, $response, 2, MSG_PEEK);
     if(!empty($response) && $response[1] == 0xFF) // kick packet (255)
     {
-      $len = unpack("n", socket_read($socket, 2))[1];
-      $raw_data = mb_convert_encoding(socket_read($socket, ($len * 2)), "UTF-8", "UTF-16BE");
-      socket_close($socket);
+      $len = unpack('n', socket_read($this->socket, 2))[1];
+      $raw_data = mb_convert_encoding(socket_read($this->socket, ($len * 2)), "UTF-8", "UTF-16BE");
+      socket_close($this->socket);
     }
     else
     {
-      socket_close($socket);
+      socket_close($this->socket);
       return MineStat::RETURN_UNKNOWN;
     }
 
@@ -135,7 +155,7 @@ class MineStat
         else
         {
           // $server_info[0] contains the section symbol and 1
-          // $server_info[1] contains the protocol version (51 for 1.9 or 78 for 1.6.4 for example)
+          $this->protocol = (int)$server_info[1]; // contains the protocol version (51 for 1.9 or 78 for 1.6.4 for example)
           $this->version = $server_info[2];
           $this->motd = $server_info[3];
           $this->current_players = (int)$server_info[4];
@@ -162,17 +182,16 @@ class MineStat
    *   2c. 3 fields delimited by \u00A7 (section symbol)
    * The 3 fields, in order, are: message of the day, current players, and max players
    */
-  public function beta_query($address, $port, $timeout)
+  public function beta_query()
   {
     try
     {
-      $socket = null;
-      $retval = $this->connect($socket, $address, $port, $timeout);
+      $retval = $this->connect();
       if($retval != MineStat::RETURN_SUCCESS)
         return $retval;
       // Start the handshake and attempt to acquire data
-      socket_write($socket, "\xFE");
-      $retval = $this->parse_data($socket, "\xA7", true);
+      socket_write($this->socket, "\xFE");
+      $retval = $this->parse_data("\xA7", true);
     }
     catch(Exception $e)
     {
@@ -197,17 +216,16 @@ class MineStat
    * The protocol version corresponds with the server version and can be the
    * same for different server versions.
    */
-  public function legacy_query($address, $port, $timeout)
+  public function legacy_query()
   {
     try
     {
-      $socket = null;
-      $retval = $this->connect($socket, $address, $port, $timeout);
+      $retval = $this->connect();
       if($retval != MineStat::RETURN_SUCCESS)
         return $retval;
       // Start the handshake and attempt to acquire data
-      socket_write($socket, "\xFE\x01");
-      $retval = $this->parse_data($socket, "\x00");
+      socket_write($this->socket, "\xFE\x01");
+      $retval = $this->parse_data("\x00");
     }
     catch(Exception $e)
     {
@@ -240,24 +258,23 @@ class MineStat
    * The protocol version corresponds with the server version and can be the
    * same for different server versions.
    */
-  public function new_query($address, $port, $timeout)
+  public function new_query()
   {
     try
     {
-      $socket = null;
-      $retval = $this->connect($socket, $address, $port, $timeout);
+      $retval = $this->connect();
       if($retval != MineStat::RETURN_SUCCESS)
         return $retval;
       // Start the handshake and attempt to acquire data
-      socket_write($socket, "\xFE\x01\xFA");
-      socket_write($socket, "\x00\x0B");                                     // 11 (length of "MC|PingHost")
-      socket_write($socket, mb_convert_encoding("MC|PingHost", "UTF-16BE")); // requires PHP mbstring
-      socket_write($socket, pack("n", (7 + 2 * strlen($address))));
-      socket_write($socket, "\x4E");                                         // 78 (protocol version of 1.6.4)
-      socket_write($socket, pack("n", strlen($address)));
-      socket_write($socket, mb_convert_encoding($address, "UTF-16BE"));
-      socket_write($socket, pack("N", $port));
-      $retval = $this->parse_data($socket, "\x00");
+      socket_write($this->socket, "\xFE\x01\xFA");
+      socket_write($this->socket, "\x00\x0B");                                     // 11 (length of "MC|PingHost")
+      socket_write($this->socket, mb_convert_encoding("MC|PingHost", "UTF-16BE")); // requires PHP mbstring
+      socket_write($this->socket, pack('n', (7 + 2 * strlen($this->address))));
+      socket_write($this->socket, "\x4E");                                         // 78 (protocol version of 1.6.4)
+      socket_write($this->socket, pack('n', strlen($this->address)));
+      socket_write($this->socket, mb_convert_encoding($this->address, "UTF-16BE"));
+      socket_write($this->socket, pack('N', $this->port));
+      $retval = $this->parse_data("\x00");
     }
     catch(Exception $e)
     {
@@ -285,41 +302,40 @@ class MineStat
    *   'version': {'protocol': 404, 'name': '1.13.2'},
    *   'description': {'text': 'A Minecraft Server'}}
    */
-  public function json_query($address, $port, $timeout)
+  public function json_query()
   {
     try
     {
-      $socket = null;
-      $retval = $this->connect($socket, $address, $port, $timeout);
+      $retval = $this->connect();
       if($retval != MineStat::RETURN_SUCCESS)
         return $retval;
       // Start handshake
       $payload = "\x00\x00";
-      $payload .= pack("c", $address);
-      $payload .= pack("n", $port);
+      $payload .= pack('c', strlen($this->address)) . $this->address;
+      $payload .= pack('n', $this->port);
       $payload .= "\x01";
-      $payload = pack("c", strlen($payload)) . $payload;
-      socket_write($socket, $payload);
-      socket_write($socket, "\x01\x00");
+      $payload = pack('c', strlen($payload)) . $payload;
+      socket_write($this->socket, $payload);
+      socket_write($this->socket, "\x01\x00");
 
       // Acquire data
-      $total_len = unpack("C", socket_read($socket, 1))[1];
-      socket_read($socket, 1);                           // 1
-      if(unpack("C", socket_read($socket, 1))[1] != 0)
+      $total_len = $this->unpack_varint();
+      if($this->unpack_varint() != 0)
         return MineStat::RETURN_UNKNOWN;
-      $json_len = unpack("C", socket_read($socket, 1))[1];
-      socket_read($socket, 1);                           // 0x01 (start of heading)
-      $response = socket_read($socket, ($json_len + 1)); // +1 for JSON close
-      socket_close($socket);
+      $json_len = $this->unpack_varint();
+      socket_recv($this->socket, $response, $json_len, MSG_WAITALL);
+      socket_close($this->socket);
       $json_data = json_decode($response, true);
       if(json_last_error() != 0)
       {
         //echo(json_last_error_msg());
         return MineStat::RETURN_UNKNOWN;
       }
+      $this->json_data = $json_data;
 
       // Parse data
       //var_dump($json_data);
+      $this->protocol = (int)@$json_data['version']['protocol'];
       $this->version = @$json_data['version']['name'];
       $this->motd = @$json_data['description']['text'];
       $this->current_players = (int)@$json_data['players']['online'];
@@ -334,6 +350,23 @@ class MineStat
       return MineStat::RETURN_UNKNOWN;
     }
     return MineStat::RETURN_SUCCESS;
+  }
+
+  /* Returns value of varint type */
+  private function unpack_varint()
+  {
+    $vint = 0;
+    for($i = 0; $i <= MineStat::MAX_VARINT_SIZE; $i++)
+    {
+      $data = socket_read($this->socket, 1);
+      if(!$data)
+        return 0;
+      $data = ord($data);
+      $vint |= ($data & 0x7F) << $i++ * 7;
+      if(($data & 0x80) != 128)
+        break;
+    }
+    return $vint;
   }
 }
 ?>
