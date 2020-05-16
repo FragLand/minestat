@@ -37,7 +37,7 @@ class MineStat
   private $max_players;     // maximum player capacity
   private $latency;         // ping time to server in milliseconds
 
-  public function __construct($address, $port, $timeout = 5)
+  public function __construct($address, $port = 25565, $timeout = 5)
   {
     $this->address = $address;
     $this->port = $port;
@@ -287,7 +287,53 @@ class MineStat
    */
   public function json_query($address, $port, $timeout)
   {
-    return MineStat::RETURN_UNKNOWN; // ToDo: Implement me!
+    try
+    {
+      $socket = null;
+      $retval = $this->connect($socket, $address, $port, $timeout);
+      if($retval != MineStat::RETURN_SUCCESS)
+        return $retval;
+      // Start handshake
+      $payload = "\x00\x00";
+      $payload .= pack("c", $address);
+      $payload .= pack("n", $port);
+      $payload .= "\x01";
+      $payload = pack("c", strlen($payload)) . $payload;
+      socket_write($socket, $payload);
+      socket_write($socket, "\x01\x00");
+
+      // Acquire data
+      $total_len = unpack("C", socket_read($socket, 1))[1];
+      socket_read($socket, 1);                           // 1
+      if(unpack("C", socket_read($socket, 1))[1] != 0)
+        return MineStat::RETURN_UNKNOWN;
+      $json_len = unpack("C", socket_read($socket, 1))[1];
+      socket_read($socket, 1);                           // 0x01 (start of heading)
+      $response = socket_read($socket, ($json_len + 1)); // +1 for JSON close
+      socket_close($socket);
+      $json_data = json_decode($response, true);
+      if(json_last_error() != 0)
+      {
+        //echo(json_last_error_msg());
+        return MineStat::RETURN_UNKNOWN;
+      }
+
+      // Parse data
+      //var_dump($json_data);
+      $this->version = @$json_data['version']['name'];
+      $this->motd = @$json_data['description']['text'];
+      $this->current_players = (int)@$json_data['players']['online'];
+      $this->max_players = (int)@$json_data['players']['max'];
+      if(isset($this->version) && isset($this->motd) && isset($this->current_players) && isset($this->max_players))
+        $this->online = true;
+      else
+        return MineStat::RETURN_UNKNOWN;
+    }
+    catch(Exception $e)
+    {
+      return MineStat::RETURN_UNKNOWN;
+    }
+    return MineStat::RETURN_SUCCESS;
   }
 }
 ?>
