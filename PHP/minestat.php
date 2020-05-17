@@ -353,8 +353,8 @@ class MineStat
   }
 
   /* Returns value of varint type */
-	private function unpack_varint()
-	{
+  private function unpack_varint()
+  {
     $vint = 0;
     for($i = 0; $i <= MineStat::MAX_VARINT_SIZE; $i++)
     {
