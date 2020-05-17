@@ -132,7 +132,7 @@ class MineStat
       else
         return Retval::UNKNOWN
       end
-    end      
+    end
     return Retval::SUCCESS
   end
 
@@ -279,7 +279,7 @@ class MineStat
         @server.flush
 
         # Acquire data
-        total_len = unpack_varint
+        _total_len = unpack_varint
         return Retval::UNKNOWN if unpack_varint != 0
         json_len = unpack_varint
         json_data = recv_json(json_len)
@@ -331,7 +331,7 @@ class MineStat
   def unpack_varint()
     vint = 0
     i = 0
-    while i <= MAX_VARINT_SIZE do
+    while i <= MAX_VARINT_SIZE
       data = @server.read(1)
       return 0 if data.nil? || data.empty?
       data = data.ord
