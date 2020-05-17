@@ -16,12 +16,15 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
+require 'json'
 require 'socket'
 require 'timeout'
 
 class MineStat
   NUM_FIELDS = 6       # number of values expected from server
   NUM_FIELDS_BETA = 3  # number of values expected from a 1.8b/1.3 server
+  MAX_VARINT_SIZE = 5  # maximum number of bytes a varint can be
+  DEFAULT_PORT = 25565 # default TCP port
   DEFAULT_TIMEOUT = 5  # default TCP timeout in seconds
 
   module Retval
@@ -31,15 +34,20 @@ class MineStat
     UNKNOWN = -3
   end
 
-  def initialize(address, port, timeout = DEFAULT_TIMEOUT)
-    @address = address
-    @port = port
+  def initialize(address, port = DEFAULT_PORT, timeout = DEFAULT_TIMEOUT)
+    @address = address # address of server
+    @port = port       # TCP port of server
     @online            # online or offline?
     @version           # server version
     @motd              # message of the day
     @current_players   # current number of players online
     @max_players       # maximum player capacity
+    @protocol          # protocol level
+    @json_data         # JSON data for 1.7 queries
     @latency           # ping time to server in milliseconds
+    @timeout = timeout # TCP timeout
+    @server            # server socket
+    @query_type        # SLP query version
 
     # Try the newest protocol first and work down. If the query succeeds or the
     # connection fails, there is no reason to continue with subsequent queries.
@@ -48,21 +56,84 @@ class MineStat
     # Note: Newer server versions may still respond to older ping query types.
     # For example, 1.13.2 responds to 1.4/1.5 queries, but not 1.6 queries.
     # 1.7
-    retval = json_query(address, port, timeout)
+    retval = json_query()
     # 1.6
     unless retval == Retval::SUCCESS || retval == Retval::CONNFAIL
-      retval = new_query(address, port, timeout)
+      retval = new_query()
     end
     # 1.4/1.5
     unless retval == Retval::SUCCESS || retval == Retval::CONNFAIL
-      retval = legacy_query(address, port, timeout)
+      retval = legacy_query()
     end
     # 1.8b/1.3
     unless retval == Retval::SUCCESS || retval == Retval::CONNFAIL
-      retval = beta_query(address, port, timeout)
+      retval = beta_query()
     end
 
     @online = false unless retval == Retval::SUCCESS
+  end
+
+  # Connects to remote server
+  def connect()
+    begin
+      start_time = Time.now
+      @server = TCPSocket.new(@address, @port)
+      @latency = ((Time.now - start_time) * 1000).round
+    rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH
+      return Retval::CONNFAIL
+    rescue => exception
+      $stderr.puts exception
+      return Retval::UNKNOWN
+    end
+    return Retval::SUCCESS
+  end
+
+  # Populates object fields after connecting
+  def parse_data(delimiter, is_beta = false)
+    data = nil
+    begin
+      if @server.read(1).unpack('C').first == 0xFF # kick packet (255)
+        len = @server.read(2).unpack('n').first
+        data = @server.read(len * 2).force_encoding('UTF-16BE').encode('UTF-8')
+        @server.close
+      else
+        @server.close
+        return Retval::UNKNOWN
+      end
+    rescue => exception
+      $stderr.puts exception
+      return Retval::UNKNOWN
+    end
+
+    if data == nil || data.empty?
+      return Retval::UNKNOWN
+    end
+
+    server_info = data.split(delimiter)
+    if is_beta
+      if server_info != nil && server_info.length >= NUM_FIELDS_BETA
+        @version = "1.8b/1.3" # since server does not return version, set it
+        @motd = server_info[0]
+        @current_players = server_info[1].to_i
+        @max_players = server_info[2].to_i
+        @online = true
+      else
+        return Retval::UNKNOWN
+      end
+    else
+      if server_info != nil && server_info.length >= NUM_FIELDS
+        # server_info[0] contains the section symbol and 1
+        @protocol = server_info[1].to_i # contains the protocol version (51 for 1.9 or 78 for 1.6.4 for example)
+        @version = server_info[2]
+        @motd = server_info[3]
+        @current_players = server_info[4].to_i
+        @max_players = server_info[5].to_i
+        @online = true
+      else
+        return Retval::UNKNOWN
+      end
+    end
+    return Retval::SUCCESS
   end
 
   # 1.8b/1.3
@@ -73,45 +144,24 @@ class MineStat
   #   2b. data length
   #   2c. 3 fields delimited by \u00A7 (section symbol)
   # The 3 fields, in order, are: message of the day, current players, and max players
-  def beta_query(address, port, timeout)
+  def beta_query()
+    retval = nil
     begin
-      data = nil
-      Timeout::timeout(timeout) do
-        start_time = Time.now
-        server = TCPSocket.new(address, port)
-        @latency = ((Time.now - start_time) * 1000).round
-        server.write("\xFE")
-        if server.read(1).unpack('C').first == 0xFF # kick packet (255)
-          len = server.read(2).unpack('n').first
-          data = server.read(len * 2).force_encoding('UTF-16BE').encode('UTF-8')
-          server.close
-        else
-          server.close
-          return Retval::UNKNOWN
-        end
+      Timeout::timeout(@timeout) do
+        retval = connect()
+        return retval unless retval == Retval::SUCCESS
+        # Perform handshake and acquire data
+        @query_type = "1.8b/1.3"
+        @server.write("\xFE")
+        retval = parse_data("\u00A7", true) # section symbol
       end
-
-      if data == nil || data.empty?
-        return Retval::UNKNOWN
-      else
-        server_info = data.split("\u00A7") # section symbol
-        if server_info != nil && server_info.length >= NUM_FIELDS_BETA
-          @version = "1.8b/1.3" # since server does not return version, set it
-          @motd = server_info[0]
-          @current_players = server_info[1]
-          @max_players = server_info[2]
-          @online = true
-        end
-      end
-    rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH
-      return Retval::CONNFAIL
     rescue Timeout::Error
       return Retval::TIMEOUT
     rescue => exception
       $stderr.puts exception
       return Retval::UNKNOWN
     end
-    return Retval::SUCCESS
+    return retval
   end
 
   # 1.4/1.5
@@ -127,49 +177,24 @@ class MineStat
   # server version, message of the day, current players, and max players
   # The protocol version corresponds with the server version and can be the
   # same for different server versions.
-  def legacy_query(address, port, timeout)
+  def legacy_query()
+    retval = nil
     begin
-      data = nil
-      Timeout::timeout(timeout) do
-        start_time = Time.now
-        server = TCPSocket.new(address, port)
-        @latency = ((Time.now - start_time) * 1000).round
-        server.write("\xFE\x01")
-        if server.read(1).unpack('C').first == 0xFF # kick packet (255)
-          len = server.read(2).unpack('n').first
-          data = server.read(len * 2).force_encoding('UTF-16BE').encode('UTF-8')
-          server.close
-        else
-          server.close
-          return Retval::UNKNOWN
-        end
+      Timeout::timeout(@timeout) do
+        retval = connect()
+        return retval unless retval == Retval::SUCCESS
+        # Perform handshake and acquire data
+        @query_type = "1.4/1.5"
+        @server.write("\xFE\x01")
+        retval = parse_data("\x00") # null
       end
-
-      if data == nil || data.empty?
-        return Retval::UNKNOWN
-      else
-        server_info = data.split("\x00") # null
-        if server_info != nil && server_info.length >= NUM_FIELDS
-          # server_info[0] contains the section symbol and 1
-          # server_info[1] contains the protocol version (51 for example)
-          @version = server_info[2]
-          @motd = server_info[3]
-          @current_players = server_info[4]
-          @max_players = server_info[5]
-          @online = true
-        else
-          return Retval::UNKNOWN
-        end
-      end
-    rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH
-      return Retval::CONNFAIL
     rescue Timeout::Error
       return Retval::TIMEOUT
     rescue => exception
       $stderr.puts exception
       return Retval::UNKNOWN
     end
-    return Retval::SUCCESS
+    return retval
   end
 
   # 1.6
@@ -193,56 +218,31 @@ class MineStat
   # server version, message of the day, current players, and max players
   # The protocol version corresponds with the server version and can be the
   # same for different server versions.
-  def new_query(address, port, timeout)
+  def new_query()
+    retval = nil
     begin
-      data = nil
-      Timeout::timeout(DEFAULT_TIMEOUT) do
-        start_time = Time.now
-        server = TCPSocket.new(address, port)
-        @latency = ((Time.now - start_time) * 1000).round
-        server.write("\xFE\x01\xFA")
-        server.write("\x00\x0B") # 11 (length of "MC|PingHost")
-        server.write('MC|PingHost'.encode('UTF-16BE').force_encoding('ASCII-8BIT'))
-        server.write([7 + 2 * address.length].pack('n'))
-        server.write("\x4E")     # 78 (protocol version of 1.6.4)
-        server.write([address.length].pack('n'))
-        server.write(address.encode('UTF-16BE').force_encoding('ASCII-8BIT'))
-        server.write([port].pack('N'))
-        if server.read(1).unpack('C').first == 0xFF # kick packet (255)
-          len = server.read(2).unpack('n').first
-          data = server.read(len * 2).force_encoding('UTF-16BE').encode('UTF-8')
-          server.close
-        else
-          server.close
-          return Retval::UNKNOWN
-        end
+      Timeout::timeout(@timeout) do
+        retval = connect()
+        return retval unless retval == Retval::SUCCESS
+        # Perform handshake and acquire data
+        @query_type = "1.6"
+        @server.write("\xFE\x01\xFA")
+        @server.write("\x00\x0B") # 11 (length of "MC|PingHost")
+        @server.write('MC|PingHost'.encode('UTF-16BE').force_encoding('ASCII-8BIT'))
+        @server.write([7 + 2 * @address.length].pack('n'))
+        @server.write("\x4E")     # 78 (protocol version of 1.6.4)
+        @server.write([@address.length].pack('n'))
+        @server.write(@address.encode('UTF-16BE').force_encoding('ASCII-8BIT'))
+        @server.write([@port].pack('N'))
+        retval = parse_data("\x00") # null
       end
-
-      if data == nil || data.empty?
-        return Retval::UNKNOWN
-      else
-        server_info = data.split("\x00") # null
-        if server_info != nil && server_info.length >= NUM_FIELDS
-          # server_info[0] contains the section symbol and 1
-          # server_info[1] contains the protocol version (78 for example)
-          @version = server_info[2]
-          @motd = server_info[3]
-          @current_players = server_info[4]
-          @max_players = server_info[5]
-          @online = true
-        else
-          return Retval::UNKNOWN
-        end
-      end
-    rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH
-      return Retval::CONNFAIL
     rescue Timeout::Error
       return Retval::TIMEOUT
     rescue => exception
       $stderr.puts exception
       return Retval::UNKNOWN
     end
-    return Retval::SUCCESS
+    return retval
   end
 
   # 1.7
@@ -261,9 +261,86 @@ class MineStat
   # {'players': {'max': 20, 'online': 0},
   # 'version': {'protocol': 404, 'name': '1.13.2'},
   # 'description': {'text': 'A Minecraft Server'}}
-  def json_query(address, port, timeout)
-    return Retval::UNKNOWN # ToDo: Implement me!
+  def json_query()
+    retval = nil
+    begin
+      Timeout::timeout(@timeout) do
+        retval = connect()
+        return retval unless retval == Retval::SUCCESS
+        # Perform handshake
+        @query_type = "1.7"
+        payload = "\x00\x00"
+        payload += [@address.length].pack('c') << @address
+        payload += [@port].pack('n')
+        payload += "\x01"
+        payload = [payload.length].pack('c') << payload
+        @server.write(payload)
+        @server.write("\x01\x00")
+        @server.flush
+
+        # Acquire data
+        _total_len = unpack_varint
+        return Retval::UNKNOWN if unpack_varint != 0
+        json_len = unpack_varint
+        json_data = recv_json(json_len)
+        @server.close
+
+        # Parse data
+        json_data = JSON.parse(json_data)
+        @json_data = json_data
+        @protocol = json_data['version']['protocol'].to_i
+        @version = json_data['version']['name']
+        @motd = json_data['description']['text']
+        @current_players = json_data['players']['online'].to_i
+        @max_players = json_data['players']['max'].to_i
+        if !@version.empty? && !@motd.empty? && !@current_players.nil? && !@max_players.nil?
+          @online = true
+        else
+          retval = Retval::UNKNOWN
+        end
+      end
+    rescue Timeout::Error
+      return Retval::TIMEOUT
+    rescue JSON::ParserError
+      return Retval::UNKNOWN
+    rescue => exception
+      $stderr.puts exception
+      return Retval::UNKNOWN
+    end
+    return retval
   end
 
-  attr_reader :address, :port, :online, :version, :motd, :current_players, :max_players, :latency
+  # Reads JSON data from the socket
+  def recv_json(json_len)
+    json_data = ""
+    begin
+      loop do
+        remaining = json_len - json_data.length
+        data = @server.recv(remaining)
+        @server.flush
+        json_data += data
+        break if json_data.length >= json_len
+      end
+    rescue => exception
+      $stderr.puts exception
+    end
+    return json_data
+  end
+
+  # Returns value of varint type
+  def unpack_varint()
+    vint = 0
+    i = 0
+    while i <= MAX_VARINT_SIZE
+      data = @server.read(1)
+      return 0 if data.nil? || data.empty?
+      data = data.ord
+      vint |= (data & 0x7F) << 7 * i
+      break if (data & 0x80) != 128
+      i += 1
+    end
+    return vint
+  end
+
+  attr_reader :address, :port, :online, :version, :motd, :current_players, :max_players, :protocol, :json_data, :latency, :query_type
 end
