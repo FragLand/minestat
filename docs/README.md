@@ -96,6 +96,25 @@ ms.init('minecraft.frag.land', 25565, function(result)
 });
 ```
 
+### Perl example
+```perl
+use lib '.';
+use MineStat;
+
+&MineStat::init("minecraft.frag.land", 25565);
+print "Minecraft server status of $MineStat::address on port $MineStat::port:\n";
+if($MineStat::online)
+{
+  print "Server is online running version $MineStat::version with $MineStat::current_players out of $MineStat::max_players players.\n";
+  print "Message of the day: $MineStat::motd\n";
+  print "Latency: ${MineStat::latency}ms\n";
+}
+else
+{
+  print "Server is offline!\n";
+}
+```
+
 ### PHP example
 
 **Note:** MineStat for PHP requires multi-byte string support to handle character encoding conversion. Enabling `mbstring` support can be as simple as installing the `php-mbstring` package for your platform. If building PHP from source, see https://www.php.net/manual/en/mbstring.installation.php. To validate, `phpinfo()` output will reference `mbstring` if the feature is enabled.
@@ -119,22 +138,22 @@ else
 ?>
 ```
 
-### Perl example
-```perl
-use lib '.';
-use MineStat;
+### PowerShell example
+```powershell
+. .\ServerStatus.ps1
 
-&MineStat::init("minecraft.frag.land", 25565);
-print "Minecraft server status of $MineStat::address on port $MineStat::port:\n";
-if($MineStat::online)
+$ms = ServerStatus -Address "minecraft.frag.land" -port 25565
+"Minecraft server status of {0} on port {1}:" -f $ms.address, $ms.port
+
+if ($ms.online)
 {
-  print "Server is online running version $MineStat::version with $MineStat::current_players out of $MineStat::max_players players.\n";
-  print "Message of the day: $MineStat::motd\n";
-  print "Latency: ${MineStat::latency}ms\n";
+  "Server is online running with {0} out of {1} players." -f $ms.current_players, $ms.max_players
+  "Message of the day: {0}" -f $ms.motd
+  "Latency: {0}ms" -f $ms.latency
 }
 else
 {
-  print "Server is offline!\n";
+  "Server is offline!"
 }
 ```
 
@@ -170,21 +189,4 @@ if ms.online
 else
   puts "Server is offline!"
 end
-```
-
-### Powershell example
-```powershell
-. .\ServerStatus.ps1
-
-$ms = ServerStatus -Address "minecraft.frag.land" -port 25565
-"Minecraft server status of {0} on port {1}:" -f $ms.address, $ms.port
-
-if ($ms.online) {
-  "Server is online running with {0} out of {1} players." -f $ms.current_players, $ms.max_players
-  "Message of the day: {0}" -f $ms.motd
-  "Latency: {0}ms" -f $ms.latency
-}else {
-  "Server is offline!"
-}
-
 ```
