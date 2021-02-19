@@ -19,10 +19,3 @@ matrix:
     - language: ruby
       script:
         - cd Ruby && gem build minestat.gemspec && gem install minestat
-
-notifications:
-  email: false
-  irc:
-    - "irc.frag.land#sysadmininkudzu"
-    - "chat.freenode.net#minestat"
-    - "irc.oftc.net#minestat"
