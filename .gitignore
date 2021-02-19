@@ -1,3 +1,7 @@
 *.class
 *.pyc
 __pycache__/
+build/
+dist/
+minestat.egg-info/
+tests/
