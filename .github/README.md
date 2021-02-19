@@ -158,6 +158,11 @@ else
 ```
 
 ### Python example
+
+[![PyPI Version](https://badge.fury.io/py/minestat.png)](https://badge.fury.io/py/minestat)
+
+To use the PyPI package: `pip install minestat`
+
 ```python
 import minestat
 

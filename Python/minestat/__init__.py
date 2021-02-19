@@ -1,5 +1,5 @@
 # minestat.py - A Minecraft server status checker
-# Copyright (C) 2016 Lloyd Dilley
+# Copyright (C) 2016-2021 Lloyd Dilley
 # http://www.dilley.me/
 #
 # This program is free software; you can redistribute it and/or modify
@@ -20,6 +20,7 @@ import socket
 from datetime import datetime
 
 class MineStat:
+  VERSION = "1.0.1"             # MineStat version
   NUM_FIELDS = 6                # number of values expected from server
   NUM_FIELDS_BETA = 3           # number of values expected from a 1.8b/1.3 server
   DEFAULT_TIMEOUT = 5           # default TCP timeout in seconds
