@@ -1,0 +1,8 @@
+Changes
+LICENSE
+MANIFEST
+Makefile.PL
+META.yml
+META.json
+lib/Minecraft/ServerStatus.pm
+README.md

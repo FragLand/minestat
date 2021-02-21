@@ -1,7 +1,13 @@
 *.class
 *.pyc
 __pycache__/
+blib/
 build/
 dist/
+Makefile
+Minecraft-ServerStatus-*.tar.gz
 minestat.egg-info/
+MYMETA.json
+MYMETA.yml
+pm_to_blib
 tests/
