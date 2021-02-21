@@ -13,8 +13,12 @@ visitors see the status of your server from their browser. MineStat has been por
 If you are planning to host MineStat on a shared webhost, make sure that the provider allows outbound sockets.
 
 ### C# example
+
+[![NuGet Version](https://badge.fury.io/nu/MineStat.png)](https://badge.fury.io/nu/MineStat)
+
 ```cs
 using System;
+using MineStatLib;
 
 class Example
 {
