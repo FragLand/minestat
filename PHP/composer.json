@@ -1,0 +1,19 @@
+{
+  "name": "fragland/minestat",
+  "version": "2.0.1",
+  "type": "library",
+  "description": "A Minecraft server status checker",
+  "keywords": ["Minecraft","status"],
+  "homepage": "https://github.com/FragLand/minestat",
+  "license": "GPL-3.0-or-later",
+  "authors": [
+    {
+      "name": "Lloyd Dilley",
+      "homepage": "http://www.dilley.me/",
+      "role": "Developer"
+    }
+  ],
+  "require": {
+    "php": ">=7.2"
+  }
+}
