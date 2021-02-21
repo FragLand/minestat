@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<package>
+  <metadata>
+    <id>$id$</id>
+    <version>$version$</version>
+    <title>$title$</title>
+    <authors>Lloyd Dilley</authors>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <license type="expression">GPL-3.0-or-later</license>
+    <projectUrl>https://github.com/FragLand/minestat</projectUrl>
+    <description>$description$</description>
+    <copyright>$copyright$</copyright>
+    <tags>Minecraft status checker library</tags>
+    <dependencies>
+      <group targetFramework=".NETFramework4.6" />
+    </dependencies>
+    <frameworkAssemblies>
+      <frameworkAssembly assemblyName="System.Core" targetFramework="net46" />
+    </frameworkAssemblies>
+  </metadata>
+</package>
