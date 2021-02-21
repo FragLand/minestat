@@ -14,7 +14,7 @@ If you are planning to host MineStat on a shared webhost, make sure that the pro
 
 ### C# example
 
-![Nuget](https://img.shields.io/nuget/v/minestat?color=purple&label=NuGet%20package&style=plastic)
+[![Nuget](https://img.shields.io/nuget/v/minestat?color=purple&label=NuGet%20package&style=plastic)](https://www.nuget.org/packages/MineStat/)
 
 ```cs
 using System;
@@ -102,7 +102,7 @@ ms.init('minecraft.frag.land', 25565, function(result)
 
 ### Perl example
 
-![CPAN](https://img.shields.io/cpan/v/Minecraft-ServerStatus?color=yellow&label=CPAN%20module&style=plastic)
+[![CPAN](https://img.shields.io/cpan/v/Minecraft-ServerStatus?color=yellow&label=CPAN%20module&style=plastic)](https://metacpan.org/release/Minecraft-ServerStatus)
 
 To use the CPAN module: `cpan Minecraft::ServerStatus`
 
@@ -128,7 +128,7 @@ else
 
 **Note:** MineStat for PHP requires multi-byte string support to handle character encoding conversion. Enabling `mbstring` support can be as simple as installing the `php-mbstring` package for your platform. If building PHP from source, see https://www.php.net/manual/en/mbstring.installation.php. To validate, `phpinfo()` output will reference `mbstring` if the feature is enabled.
 
-![Packagist Version](https://img.shields.io/packagist/v/fragland/minestat?color=orange&label=Packagist&style=plastic)
+[![Packagist Version](https://img.shields.io/packagist/v/fragland/minestat?color=orange&label=Packagist%20package&style=plastic)](https://packagist.org/packages/fragland/minestat)
 
 ```php
 <?php
@@ -170,7 +170,7 @@ else
 
 ### Python example
 
-![PyPI](https://img.shields.io/pypi/v/minestat?color=green&label=PyPI%20package&style=plastic)
+[![PyPI](https://img.shields.io/pypi/v/minestat?color=green&label=PyPI%20package&style=plastic)](https://pypi.org/project/minestat/)
 
 To use the PyPI package: `pip install minestat`
 
@@ -189,7 +189,7 @@ else:
 
 ### Ruby example
 
-![Gem](https://img.shields.io/gem/v/minestat?color=red&label=Ruby%20gem&style=plastic)
+[![Gem](https://img.shields.io/gem/v/minestat?color=red&label=Ruby%20gem&style=plastic)](https://rubygems.org/gems/minestat)
 
 To use the gem: `gem install minestat`
 
