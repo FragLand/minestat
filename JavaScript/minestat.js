@@ -20,6 +20,7 @@
 
 // For use with Node.js
 
+const VERSION = "1.0.3";   // MineStat version
 const NUM_FIELDS = 6;      // number of values expected from server
 const DEFAULT_TIMEOUT = 5; // default TCP timeout in seconds
 address = null;
