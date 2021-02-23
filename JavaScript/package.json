@@ -1,0 +1,24 @@
+{
+  "name": "minestat",
+  "version": "1.0.3",
+  "description": "A Minecraft server status checker",
+  "main": "minestat.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FragLand/minestat.git"
+  },
+  "keywords": [
+    "Minecraft",
+    "status",
+    "checker"
+  ],
+  "author": "Lloyd Dilley",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/FragLand/minestat/issues"
+  },
+  "homepage": "https://github.com/FragLand/minestat#readme"
+}
