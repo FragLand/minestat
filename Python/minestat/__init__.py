@@ -29,13 +29,21 @@ Contains possible connection states.
 
 - `SUCCESS`: The specified SLP connection succeeded (Request & response parsing OK)
 - `CONNFAIL`: The socket to the server could not be established. Server offline, wrong hostname or port?
-- `TIMEOUT`:
+- `TIMEOUT`: The connection timed out. (Server under too much load? Firewall rules OK?)
+- `UNKNOWN`: The connection was established, but the server spoke an unknown/unsupported SLP protocol.
   """
 
   SUCCESS = 0
+  """The specified SLP connection succeeded (Request & response parsing OK)"""
+
   CONNFAIL = -1
+  """The socket to the server could not be established. (Server offline, wrong hostname or port?)"""
+
   TIMEOUT = -2
+  """The connection timed out. (Server under too much load? Firewall rules OK?)"""
+
   UNKNOWN = -3
+  """The connection was established, but the server spoke an unknown/unsupported SLP protocol."""
 
 
 class MineStat:
