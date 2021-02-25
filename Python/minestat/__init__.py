@@ -18,8 +18,7 @@
 
 import socket
 import struct
-from datetime import datetime
-from time import perf_counter, perf_counter_ns
+from time import perf_counter
 from enum import Enum
 from typing import Union
 
