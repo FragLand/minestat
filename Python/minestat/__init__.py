@@ -105,7 +105,7 @@ class MineStat:
       self.latency = round((perf_counter() - start_time) * 1000)
     except socket.timeout:
       return ConnStatus.TIMEOUT
-    except:
+    except OSError:
       return ConnStatus.CONNFAIL
 
     # Construct Handshake packet
@@ -136,7 +136,7 @@ class MineStat:
       packet_len = self._unpack_varint(sock)
     except socket.timeout:
       return ConnStatus.TIMEOUT
-    except:
+    except OSError:
       return ConnStatus.CONNFAIL
 
     # Receive actual packet id
@@ -234,7 +234,7 @@ class MineStat:
       self.latency = round((perf_counter() - start_time) * 1000)
     except socket.timeout:
       return ConnStatus.TIMEOUT
-    except:
+    except OSError:
       return ConnStatus.CONNFAIL
 
     # Send 0xFE as packet identifier,
@@ -268,7 +268,7 @@ class MineStat:
       raw_header = sock.recv(3)
     except socket.timeout:
       return ConnStatus.TIMEOUT
-    except:
+    except OSError:
       return ConnStatus.CONNFAIL
 
     # Extract payload length
@@ -301,7 +301,7 @@ class MineStat:
       self.latency = round((perf_counter() - start_time) * 1000)
     except socket.timeout:
       return ConnStatus.TIMEOUT
-    except:
+    except OSError:
       return ConnStatus.CONNFAIL
 
     # Send 0xFE 0x01 as packet id
@@ -312,7 +312,7 @@ class MineStat:
       raw_header = sock.recv(3)
     except socket.timeout:
       return ConnStatus.TIMEOUT
-    except:
+    except OSError:
       return ConnStatus.CONNFAIL
 
     # Extract payload length
@@ -382,7 +382,7 @@ class MineStat:
       self.latency = round((perf_counter() - start_time) * 1000)
     except socket.timeout:
       return ConnStatus.TIMEOUT
-    except:
+    except OSError:
       return ConnStatus.CONNFAIL
 
     # Send 0xFE as packet id
@@ -393,7 +393,7 @@ class MineStat:
       raw_header = sock.recv(3)
     except socket.timeout:
       return ConnStatus.TIMEOUT
-    except:
+    except OSError:
       return ConnStatus.CONNFAIL
 
     # Extract payload length
