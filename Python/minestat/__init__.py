@@ -1,5 +1,5 @@
 # minestat.py - A Minecraft server status checker
-# Copyright (C) 2016-2021 Lloyd Dilley
+# Copyright (C) 2016-2021 Lloyd Dilley, Felix Ern (MindSolve)
 # http://www.dilley.me/
 #
 # This program is free software; you can redistribute it and/or modify
