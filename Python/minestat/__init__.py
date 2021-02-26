@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License along
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-
+import json
 import socket
 import struct
 from time import perf_counter
@@ -46,6 +46,8 @@ Contains possible connection states.
   """The connection was established, but the server spoke an unknown/unsupported SLP protocol."""
 
 
+
+
 class MineStat:
   VERSION = "2.0.0"             # MineStat version
   DEFAULT_TIMEOUT = 5           # default TCP timeout in seconds
@@ -60,10 +62,7 @@ class MineStat:
     self.max_players = None      # maximum player capacity
     self.latency = None          # ping time to server in milliseconds
     self.timeout = timeout       # socket timeout
-
-    # TODO: Minecraft SRV resolution
-    # Maybe allow setting port to None, then internally try to resolve Minecraft SRV
-    # DNS entries?
+    self.slp_protocol = None     # Server List Ping protocol
 
     # TODO: Next problem: IPv4/IPv6, multiple addresses
     # If a host has multiple IP addresses or a IPv4 and a IPv6 address,
@@ -105,7 +104,119 @@ class MineStat:
 
     TODO: Implement
     """
-    return ConnStatus.UNKNOWN
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(self.timeout)
+
+    try:
+      start_time = perf_counter()
+      sock.connect((self.address, self.port))
+      self.latency = round((perf_counter() - start_time) * 1000)
+    except socket.timeout:
+      return ConnStatus.TIMEOUT
+    except:
+      return ConnStatus.CONNFAIL
+
+    # Construct Handshake packet
+    req_data = bytearray([0x00])
+    # Add protocol version. If pinging to determine version, use `-1`
+    req_data += self._pack_varint(0)
+    # Add server address length
+    req_data += self._pack_varint(len(self.address))
+    # Server address. Encoded with UTF8
+    req_data += bytearray(self.address, "utf8")
+    # Server port
+    req_data += struct.pack(">H", self.port)
+    # Next packet state (1 for status, 2 for login)
+    req_data += bytearray([0x01])
+
+    # Prepend full packet length
+    req_data = self._pack_varint(len(req_data)) + req_data
+
+    # Now actually send the constructed client request
+    sock.send(req_data)
+
+    # Now send empty "Request" packet
+    # varint len, 0x00
+    sock.send(bytearray([0x01, 0x00]))
+
+    # Receive answer: full packet lenght as varint
+    try:
+      packet_len = self._unpack_varint(sock)
+    except socket.timeout:
+      return ConnStatus.TIMEOUT
+    except:
+      return ConnStatus.CONNFAIL
+
+    # Receive actual packet id
+    packet_id = self._unpack_varint(sock)
+
+    # Receive & unpack payload length
+    content_len = self._unpack_varint(sock)
+
+    # Receive full payload and close socket
+    payload_raw = bytearray(sock.recv(content_len * 2))
+    sock.close()
+
+    # If we receive a packet with id 0x19, something went wrong.
+    # Usually the payload is JSON text, telling us what exactly.
+    # We could stop here, and display something to the user, as this is not normal
+    # behaviour, maybe a bug somewhere here.
+
+    # Instead I am just going to check for the correct packet id: 0x00
+    if packet_id != 0:
+      return ConnStatus.UNKNOWN
+
+    # Set protocol version
+    self.slp_protocol = "json"
+
+    # Parse and save to object attributes
+    return self.__parse_json_payload(payload_raw)
+
+  def __parse_json_payload(self, payload_raw: Union[bytes, bytearray]):
+    try:
+      payload_obj = json.loads(payload_raw.decode('utf8'))
+    except json.JSONDecodeError:
+      return ConnStatus.UNKNOWN
+
+    # Now that we have the status object, set all fields
+    self.version = payload_obj["version"]["name"]
+    self.motd = payload_obj["description"]["text"]
+    self.max_players = payload_obj["players"]["max"]
+    self.current_players = payload_obj["players"]["online"]
+
+    self.online = True
+    return ConnStatus.SUCCESS
+
+  def _unpack_varint(self, sock: socket.socket):
+    """ Small helper method for unpacking an int from an varint. """
+    data = 0
+    for i in range(5):
+      ordinal = sock.recv(1)
+
+      if len(ordinal) == 0:
+        break
+
+      byte = ord(ordinal)
+      data |= (byte & 0x7F) << 7 * i
+
+      if not byte & 0x80:
+        break
+
+    return data
+
+  def _pack_varint(self, data):
+    """ Small helper method for packing a varint from an int. """
+    ordinal = b''
+
+    while True:
+      byte = data & 0x7F
+      data >>= 7
+      ordinal += struct.pack('B', byte | (0x80 if data > 0 else 0))
+
+      if data == 0:
+        break
+
+    return ordinal
 
   def extended_legacy_query(self):
     """
@@ -138,7 +249,7 @@ class MineStat:
     req_data += struct.pack(">h", 7 + (len(self.address) * 2))
     # 0xXX [legacy] protocol version (before netty rewrite)
     # Used here: 74 (MC 1.6.2)
-    req_data += bytearray([0x4A])
+    req_data += bytearray([0x49])
     # strlen of serverhostname (big-endian short)
     req_data += struct.pack(">h", len(self.address))
     # the hostname of the server
@@ -146,17 +257,30 @@ class MineStat:
     # port of the server, as int (4 byte)
     req_data += struct.pack(">i", self.port)
 
+    # DEBUG
+    with open("req_data.bin", "wb") as fp:
+      fp.write(req_data)
+
     # Now send the contructed client requests
     sock.send(req_data)
 
     # Receive answer packet id (1 byte) and payload lengh (signed big-endian short; 2 byte)
-    raw_header = sock.recv(3)
+    try:
+      raw_header = sock.recv(3)
+    except socket.timeout:
+      return ConnStatus.TIMEOUT
+    except:
+      return ConnStatus.CONNFAIL
+
     # Extract payload length
     content_len = struct.unpack(">xh", raw_header)[0]
 
     # Receive full payload and close socket
     payload_raw = bytearray(sock.recv(content_len * 2))
     sock.close()
+
+    # Set protocol version
+    self.slp_protocol = "extended_legacy"
 
     # Parse and save to object attributes
     return self.__parse_legacy_payload(payload_raw)
@@ -183,14 +307,24 @@ class MineStat:
 
     # Send 0xFE 0x01 as packet id
     sock.send(bytearray([0xFE, 0x01]))
+
     # Receive answer packet id (1 byte) and payload lengh (signed big-endian short; 2 byte)
-    raw_header = sock.recv(3)
+    try:
+      raw_header = sock.recv(3)
+    except socket.timeout:
+      return ConnStatus.TIMEOUT
+    except:
+      return ConnStatus.CONNFAIL
+
     # Extract payload length
     content_len = struct.unpack(">xh", raw_header)[0]
 
     # Receive full payload and close socket
     payload_raw = bytearray(sock.recv(content_len * 2))
     sock.close()
+
+    # Set protocol version
+    self.slp_protocol = "legacy"
 
     # Parse and save to object attributes
     return self.__parse_legacy_payload(payload_raw)
@@ -254,14 +388,24 @@ class MineStat:
 
     # Send 0xFE as packet id
     sock.send(bytearray([0xFE]))
+
     # Receive answer packet id (1 byte) and payload lengh (signed big-endian short; 2 byte)
-    raw_header = sock.recv(3)
+    try:
+      raw_header = sock.recv(3)
+    except socket.timeout:
+      return ConnStatus.TIMEOUT
+    except:
+      return ConnStatus.CONNFAIL
+
     # Extract payload length
     content_len = struct.unpack(">xh", raw_header)[0]
 
     # Receive full payload and close socket
     payload_raw = bytearray(sock.recv(content_len * 2))
     sock.close()
+
+    # Set protocol version
+    self.slp_protocol = "beta"
 
     # According to wiki.vg, beta, legacy and extended legacy use UTF-16BE as "payload" encoding
     payload_str = payload_raw.decode('utf-16-be')
