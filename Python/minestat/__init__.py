@@ -47,7 +47,7 @@ Contains possible connection states.
 
 
 class MineStat:
-  VERSION = "2.0.0"             # MineStat version
+  VERSION = "2.0.1"             # MineStat version
   DEFAULT_TIMEOUT = 5           # default TCP timeout in seconds
 
   def __init__(self, address, port, timeout = DEFAULT_TIMEOUT):
