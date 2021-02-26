@@ -10,7 +10,7 @@ If you are planning to host MineStat on a shared webhost, make sure that the pro
 
 ### Python example
 
-[![PyPI Version](https://badge.fury.io/py/minestat.png)](https://badge.fury.io/py/minestat)
+[![PyPI](https://img.shields.io/pypi/v/minestat?color=green&label=PyPI%20package&style=plastic)](https://pypi.org/project/minestat/)
 
 To use the PyPI package: `pip install minestat`
 
