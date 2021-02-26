@@ -46,8 +46,6 @@ Contains possible connection states.
   """The connection was established, but the server spoke an unknown/unsupported SLP protocol."""
 
 
-
-
 class MineStat:
   VERSION = "2.0.0"             # MineStat version
   DEFAULT_TIMEOUT = 5           # default TCP timeout in seconds
@@ -72,13 +70,6 @@ class MineStat:
     # address, but from an internal client, only the internal address is reachable
     # See https://docs.python.org/3/library/socket.html#socket.getaddrinfo
 
-    # TODO: Implement
-    #
-    # 1.: try to connect to MC 1.7+ SLP interface (JSON)
-    # 2.: MC 1.6 SLP int - done
-    # 3.: 1.4/ 1.5 SLP - done
-    # 4.: b1.8 to 1.3 - done
-
     # Minecraft 1.7+ (JSON SLP)
     result = self.json_query()
 
@@ -99,10 +90,11 @@ class MineStat:
 
   def json_query(self):
     """
-    Minecraft 1.7+ SLP query, encoded JSON
-    See https://wiki.vg/Server_List_Ping#Current
+    Method for querying a modern (MC Java >= 1.7) server with the SLP protocol.
+    This protocol is based on encoded JSON, see the documentation at wiki.vg below
+    for a full packet description.
 
-    TODO: Implement
+    See https://wiki.vg/Server_List_Ping#Current
     """
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.settimeout(self.timeout)
@@ -172,7 +164,13 @@ class MineStat:
     # Parse and save to object attributes
     return self.__parse_json_payload(payload_raw)
 
-  def __parse_json_payload(self, payload_raw: Union[bytes, bytearray]):
+  def __parse_json_payload(self, payload_raw: Union[bytes, bytearray]) -> ConnStatus:
+    """
+    Helper method for parsing the modern JSON-based SLP protocol.
+    In use for Minecraft Java >= 1.7, see `json_query()` above for details regarding the protocol.
+
+    :param payload_raw: The raw SLP payload, without header and string lenght
+    """
     try:
       payload_obj = json.loads(payload_raw.decode('utf8'))
     except json.JSONDecodeError:
@@ -184,11 +182,12 @@ class MineStat:
     self.max_players = payload_obj["players"]["max"]
     self.current_players = payload_obj["players"]["online"]
 
+    # If we got here, everything is in order.
     self.online = True
     return ConnStatus.SUCCESS
 
   def _unpack_varint(self, sock: socket.socket):
-    """ Small helper method for unpacking an int from an varint. """
+    """ Small helper method for unpacking an int from an varint (streamed from socket). """
     data = 0
     for i in range(5):
       ordinal = sock.recv(1)
