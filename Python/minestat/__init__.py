@@ -62,7 +62,7 @@ class MineStat:
     self.timeout = timeout       # socket timeout
     self.slp_protocol = None     # Server List Ping protocol
 
-    # TODO: Next problem: IPv4/IPv6, multiple addresses
+    # Future improvement: IPv4/IPv6, multiple addresses
     # If a host has multiple IP addresses or a IPv4 and a IPv6 address,
     # socket.connect choses the first IPv4 address returned by DNS.
     # If a mc server is not available over IPv4, this failes as "offline".
