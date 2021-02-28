@@ -126,7 +126,7 @@ class MineStat:
   VERSION = "2.0.1"             # MineStat version
   DEFAULT_TIMEOUT = 5           # default TCP timeout in seconds
 
-  def __init__(self, address, port, timeout = DEFAULT_TIMEOUT):
+  def __init__(self, address, port, timeout = DEFAULT_TIMEOUT, query_protocol: SlpProtocols = None):
     self.address = address
     self.port = port
     self.online = None           # online or offline?
@@ -145,6 +145,19 @@ class MineStat:
     # Or in some environments, the DNS returns the external and the internal
     # address, but from an internal client, only the internal address is reachable
     # See https://docs.python.org/3/library/socket.html#socket.getaddrinfo
+
+    # If the user wants a specific protocol, use only that.
+    if query_protocol:
+      if query_protocol is SlpProtocols.BETA:
+        self.beta_query()
+      elif query_protocol is SlpProtocols.LEGACY:
+        self.legacy_query()
+      elif query_protocol is SlpProtocols.EXTENDED_LEGACY:
+        self.extended_legacy_query()
+      elif query_protocol is SlpProtocols.JSON:
+        self.json_query()
+
+      return
 
     # Minecraft 1.7+ (JSON SLP)
     result = self.json_query()
