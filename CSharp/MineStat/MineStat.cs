@@ -19,11 +19,14 @@
  */
 
 using System;
+using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Text;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+
+using LEB128;
 
 namespace MineStatLib
 {
@@ -63,17 +66,26 @@ namespace MineStatLib
        * 3. Try legacy protocol
        * 4. Try beta protocol
        */
+      
+      // The order of protocols here is (sadly) important.
+      // Some server versions (1.4seem to have trouble with newer protocols and stop responding for a few seconds.
+      // If, for example, the ext.-legacy protocol triggers this problem, the following connections are dropped/reset
+      // even if they would have worked individually/normally.
+      // This arrangement is quite safe, first try the best protocol (json), then the most supported protocol (beta)
+      // then the "better" protocols legacy and extended legacy.
 
       var result = QueryWithJsonProtocol();
-
+      
       if (result != ConnStatus.Connfail && result != ConnStatus.Success)
-        result = QueryWithExtendedLegacyProtocol();
-
-      if (result != ConnStatus.Connfail && result != ConnStatus.Success)
-        result = QueryWithLegacyProtocol();
-
-      if (result != ConnStatus.Connfail && result != ConnStatus.Success)
-        QueryWithBetaProtocol();
+      {
+        result = QueryWithBetaProtocol();
+        
+        if (result != ConnStatus.Connfail) 
+          result = QueryWithLegacyProtocol();
+      
+        if (result != ConnStatus.Connfail)
+          result = QueryWithExtendedLegacyProtocol();
+      }
       
     }
 
@@ -89,70 +101,221 @@ namespace MineStatLib
       return ConnStatus.Unknown;
     }
 
+    /// <summary>
+    /// Minecraft 1.6 SLP query, extended legacy ping protocol.
+    /// All modern servers are currently backwards compatible with this protocol.<br/>
+    /// 
+    /// See https://wiki.vg/Server_List_Ping#1.6
+    /// </summary>
+    /// <returns></returns>
     public ConnStatus QueryWithExtendedLegacyProtocol()
     {
-      // TODO: Implement
-      return ParseLegacyProtocol(null);
+
+      var tcpclient = new TcpClient {ReceiveTimeout = Timeout * 1000};
+
+      try
+      {
+        var stopWatch = new Stopwatch();
+        stopWatch.Start();
+        tcpclient.Connect(Address, Port);
+        stopWatch.Stop();
+        Latency = stopWatch.ElapsedMilliseconds;
+      }
+      catch(Exception)
+      {
+        ServerUp = false;
+        return ConnStatus.Connfail;
+      }
+      
+      // Send ping packet with id 0xFE, and ping data 0x01
+      // Then 0xFA as packet id for a plugin message
+      // Then 0x00 0x0B as strlen of the following (hardcoded) string
+      
+      var extLegacyPingPacket = new List<byte> { 0xFE, 0x01, 0xFA, 0x00, 0x0B };
+      
+      // the string 'MC|PingHost' as UTF-16BE encoded string
+      extLegacyPingPacket.AddRange(Encoding.BigEndianUnicode.GetBytes("MC|PingHost"));
+      
+      // 0xXX 0xXX byte count of rest of data, 7+len(Address), as short
+      var reqByteLen = BitConverter.GetBytes(Convert.ToInt16(7 + (Address.Length * 2)));
+      // Convert to Big-Endian
+      if (BitConverter.IsLittleEndian)
+        Array.Reverse(reqByteLen);
+      extLegacyPingPacket.AddRange(reqByteLen);
+      
+      // 0xXX [legacy] protocol version (before netty rewrite)
+      // Used here: 74 (MC 1.6.2)
+      extLegacyPingPacket.Add(0x4A);
+      
+      // strlen of Address (big-endian short)
+      var addressLen = BitConverter.GetBytes(Convert.ToInt16(Address.Length));
+      // Convert to Bit-Endian      
+      if (BitConverter.IsLittleEndian)
+        Array.Reverse(addressLen);
+      extLegacyPingPacket.AddRange(addressLen);
+
+      // the hostname of the server (encoded as UTF16-BE)
+      extLegacyPingPacket.AddRange(Encoding.BigEndianUnicode.GetBytes(Address));
+      
+      // port of the server, as int (4 byte)
+      var port = BitConverter.GetBytes(Convert.ToUInt32(Port));
+      // Convert to Bit-Endian      
+      if (BitConverter.IsLittleEndian)
+        Array.Reverse(port);
+      extLegacyPingPacket.AddRange(port);
+      
+      var stream = tcpclient.GetStream();
+      stream.Write(extLegacyPingPacket.ToArray(), 0, extLegacyPingPacket.Count);
+
+      var responsePacketHeader = new byte[3];
+      
+      // Catch timeouts and other network race conditions
+      // A timeout occurs if the server doesn't understand the ping packet
+      // and tries to interpret it as something else
+      try
+      {
+        stream.Read(responsePacketHeader, 0, 3);
+      }
+      catch (Exception)
+      {
+        return ConnStatus.Unknown;
+      }
+
+      // Check for response packet id
+      if (responsePacketHeader[0] != 0xFF)
+      {
+        return ConnStatus.Unknown;
+      }
+
+      var payloadLengthRaw = responsePacketHeader.Skip(1);
+      
+      // Received data is Big-Endian, convert to local endianness, if needed
+      if (BitConverter.IsLittleEndian)
+        payloadLengthRaw = payloadLengthRaw.Reverse();
+      // Get Payload string length
+      var payloadLength = BitConverter.ToUInt16(payloadLengthRaw.ToArray(), 0);
+
+      // Receive payload
+      var payload = new byte[payloadLength * 2];
+      stream.Read(payload, 0, payloadLength*2);
+
+      // Close socket
+      tcpclient.Close();
+      
+      return ParseLegacyProtocol(payload, SlpProtocol.ExtendedLegacy);
+      
     }
 
+    /// <summary>
+    /// Minecraft 1.4-1.5 SLP query, server response contains more info than beta SLP.
+    /// Quite simple to request, but contains all interesting information.
+    /// Still works with modern server implementations.<br/>
+    /// 
+    /// See https://wiki.vg/Server_List_Ping#1.4_to_1.5
+    /// </summary>
+    /// <returns>ConnStatus</returns>
     public ConnStatus QueryWithLegacyProtocol()
     {
-      // TODO: Implement
+      var tcpclient = new TcpClient {ReceiveTimeout = Timeout * 1000};
+
+
+      try
+      {
+        var stopWatch = new Stopwatch();
+        stopWatch.Start();
+        tcpclient.Connect(Address, Port);
+        stopWatch.Stop();
+        Latency = stopWatch.ElapsedMilliseconds;
+      }
+      catch(Exception)
+      {
+        ServerUp = false;
+        return ConnStatus.Connfail;
+      }
       
-      // var rawServerData = new byte[dataSize];
-      //
-      // Address = address;
-      // Port = port;
-      // Timeout = timeout * 1000;   // milliseconds
-      //
-      // try
-      // {
-      //   var stopWatch = new Stopwatch();
-      //   var tcpclient = new TcpClient{ReceiveTimeout = Timeout};
-      //   stopWatch.Start();
-      //   tcpclient.Connect(address, port);
-      //   stopWatch.Stop();
-      //   Latency = stopWatch.ElapsedMilliseconds;
-      //   var stream = tcpclient.GetStream();
-      //   var payload = new byte[] { 0xFE, 0x01 };
-      //   stream.Write(payload, 0, payload.Length);
-      //   stream.Read(rawServerData, 0, dataSize);
-      //   tcpclient.Close();
-      // }
-      // catch(Exception)
-      // {
-      //   ServerUp = false;
-      //   return;
-      // }
-      //
-      // if(rawServerData == null || rawServerData.Length == 0)
-      // {
-      //   ServerUp = false;
-      // }
-      // else
-      // {
-      //   var serverData = Encoding.Unicode.GetString(rawServerData).Split("\u0000\u0000\u0000".ToCharArray());
-      //   if(serverData != null && serverData.Length >= numFields)
-      //   {
-      //     ServerUp = true;
-      //     Version = serverData[2];
-      //     Motd = serverData[3];
-      //     CurrentPlayers = serverData[4];
-      //     MaximumPlayers = serverData[5];
-      //   }
-      //   else
-      //   {
-      //     ServerUp = false;
-      //   }
-      // }
       
-      return ParseLegacyProtocol(null);
+      // Send ping packet with id 0xFE, and ping data 0x01
+      var stream = tcpclient.GetStream();
+      var legacyPingPacket = new byte[] { 0xFE, 0x01 };
+      stream.Write(legacyPingPacket, 0, legacyPingPacket.Length);
+
+      var responsePacketHeader = new byte[3];
+      
+      // Catch timeouts or reset connections
+      // This happens if the server doesn't understand the packet (unsupported protocol)
+      try
+      {
+        stream.Read(responsePacketHeader, 0, 3);
+      }
+      catch (Exception)
+      {
+        return ConnStatus.Unknown;
+      }
+      
+      // Check for response packet id
+      if (responsePacketHeader[0] != 0xFF)
+      {
+        return ConnStatus.Unknown;
+      }
+
+      // Change Endianness to Big-Endian, if needed
+      if (BitConverter.IsLittleEndian)
+        Array.Reverse(responsePacketHeader);
+      // Get Payload string length (ToUInt16 ignores everything after the first 2 bytes)
+      var payloadLength = BitConverter.ToUInt16(responsePacketHeader, 0);
+
+      // Receive payload
+      var payload = new byte[payloadLength * 2];
+      stream.Read(payload, 0, payloadLength*2);
+
+      // Close socket
+      tcpclient.Close();
+
+      return ParseLegacyProtocol(payload, SlpProtocol.Legacy);
     }
 
-    private ConnStatus ParseLegacyProtocol(byte[] rawPayload)
+    /// <summary>
+    /// TODO:
+    /// </summary>
+    /// <param name="rawPayload"></param>
+    /// <param name="protocol"></param>
+    /// <returns></returns>
+    private ConnStatus ParseLegacyProtocol(byte[] rawPayload, SlpProtocol protocol = SlpProtocol.ExtendedLegacy)
     {
-      // TODO: Implement
-      return ConnStatus.Unknown;
+      
+      // Decode byte[] as UTF16BE
+      var payloadString = Encoding.BigEndianUnicode.GetString(rawPayload, 0, rawPayload.Length);
+
+      // This "payload" contains six fields delimited by a NUL character, see below
+      var payloadArray = payloadString.Split('\0');
+      
+      // Check if we got the right amount of parts, expected is 6 for this protocol version
+      if (payloadArray.Length != 6)
+      {
+        return ConnStatus.Unknown;
+      }
+
+      // This "payload" contains six fields delimited by a NUL character:
+      // - a fixed prefix '§1' (ignored)
+      // - the protocol version (ignored)
+      // - the server version
+      Version = payloadArray[2];
+      
+      // - the MOTD
+      Motd = payloadArray[3];
+      
+      // - the online player count
+      CurrentPlayersInt = Convert.ToInt32(payloadArray[4]);
+      
+      // - the max player count
+      MaximumPlayersInt = Convert.ToInt32(payloadArray[5]);
+      
+      
+      // If we got here, everything is in order
+      ServerUp = true;
+      Protocol = protocol;
+
+      return ConnStatus.Success;
     }
 
     public ConnStatus QueryWithBetaProtocol()
@@ -199,11 +362,23 @@ namespace MineStatLib
 
       // Close socket
       tcpclient.Close();
-        
+
+      return ParseBetaProtocol(payload);
+    }
+
+    private ConnStatus ParseBetaProtocol(byte[] rawPayload)
+    {
       // Decode byte[] as UTF16BE
-      var payloadString = Encoding.BigEndianUnicode.GetString(payload, 0, payload.Length);
+      var payloadString = Encoding.BigEndianUnicode.GetString(rawPayload, 0, rawPayload.Length);
 
       var payloadArray = payloadString.Split('§');
+      
+      // The payload contains 3 parts, separated by '§' (section sign)
+      // If the MOTD contains §, there may be more parts here (we take care of that later)
+      if (payloadArray.Length < 3)
+      {
+        return ConnStatus.Unknown;
+      }
         
       // Max player count is the last element
       MaximumPlayersInt = Convert.ToInt32(payloadArray[payloadArray.Length-1]);
