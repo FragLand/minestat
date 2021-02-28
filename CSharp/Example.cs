@@ -5,7 +5,7 @@ class Example
 {
   public static void Main()
   {
-    MineStat ms = new MineStat("gameserv.ng.fx3.eu", 25566);
+    MineStat ms = new MineStat("minecraft.frag.land", 25565);
     Console.WriteLine("Minecraft server status of {0} on port {1}:", ms.Address, ms.Port);
     if(ms.ServerUp)
     {
