@@ -33,6 +33,9 @@ Contains possible connection states.
 - `UNKNOWN`: The connection was established, but the server spoke an unknown/unsupported SLP protocol.
   """
 
+  def __str__(self):
+    return str(self.name)
+
   SUCCESS = 0
   """The specified SLP connection succeeded (Request & response parsing OK)"""
 
@@ -46,11 +49,84 @@ Contains possible connection states.
   """The connection was established, but the server spoke an unknown/unsupported SLP protocol."""
 
 
+class SlpProtocols(Enum):
+  """
+Contains possible SLP (Server List Ping) protocols.
+
+- `JSON`: The newest and currently supported SLP protocol.
+
+  Uses (wrapped) JSON as payload. Complex query, see `json_query()` for the protocol implementation.
+
+  *Available since Minecraft 1.7*
+- `EXTENDED_LEGACY`: The previous SLP protocol
+
+  Used by Minecraft 1.6, it is still supported by all newer server versions.
+  Complex query needed, see implementation `extended_legacy_query()` for full protocol details.
+
+  *Available since Minecraft 1.6*
+- `LEGACY`: The legacy SLP protocol.
+
+  Used by Minecraft 1.4 and 1.5, it is the first protocol to contain the server version number.
+  Very simple protocol call (2 byte), simple response decoding.
+  See `legacy_query()` for full implementation and protocol details.
+
+  *Available since Minecraft 1.4*
+- `BETA`: The first SLP protocol.
+
+  Used by Minecraft Beta 1.8 till Release 1.3, it is the first SLP protocol.
+  It contains very few details, no server version info, only MOTD, max- and online player counts.
+
+  *Available since Minecraft Beta 1.8*
+  """
+
+  def __str__(self):
+    return str(self.name)
+
+  JSON = 3
+  """
+  The newest and currently supported SLP protocol.
+  
+  Uses (wrapped) JSON as payload. Complex query, see `json_query()` for the protocol implementation.
+  
+  *Available since Minecraft 1.7*
+  """
+
+  EXTENDED_LEGACY = 2
+  """The previous SLP protocol
+  
+  Used by Minecraft 1.6, it is still supported by all newer server versions.
+  Complex query needed, see implementation `extended_legacy_query()` for full protocol details.
+  
+  *Available since Minecraft 1.6*
+  """
+
+  LEGACY = 1
+  """
+  The legacy SLP protocol.
+  
+  Used by Minecraft 1.4 and 1.5, it is the first protocol to contain the server version number.
+  Very simple protocol call (2 byte), simple response decoding.
+  See `legacy_query()` for full implementation and protocol details.
+  
+  *Available since Minecraft 1.4*  
+  """
+
+  BETA = 0
+  """
+  The first SLP protocol.
+  
+  Used by Minecraft Beta 1.8 till Release 1.3, it is the first SLP protocol.
+  It contains very few details, no server version info, only MOTD, max- and online player counts.
+  
+  *Available since Minecraft Beta 1.8*
+  """
+
+
 class MineStat:
-  VERSION = "2.0.1"             # MineStat version
+  VERSION = "2.1.0"             # MineStat version
   DEFAULT_TIMEOUT = 5           # default TCP timeout in seconds
 
-  def __init__(self, address, port, timeout = DEFAULT_TIMEOUT):
+  def __init__(self, address, port, timeout = DEFAULT_TIMEOUT, query_protocol: SlpProtocols = None):
     self.address = address
     self.port = port
     self.online = None           # online or offline?
@@ -69,6 +145,19 @@ class MineStat:
     # Or in some environments, the DNS returns the external and the internal
     # address, but from an internal client, only the internal address is reachable
     # See https://docs.python.org/3/library/socket.html#socket.getaddrinfo
+
+    # If the user wants a specific protocol, use only that.
+    if query_protocol:
+      if query_protocol is SlpProtocols.BETA:
+        self.beta_query()
+      elif query_protocol is SlpProtocols.LEGACY:
+        self.legacy_query()
+      elif query_protocol is SlpProtocols.EXTENDED_LEGACY:
+        self.extended_legacy_query()
+      elif query_protocol is SlpProtocols.JSON:
+        self.json_query()
+
+      return
 
     # Minecraft 1.7+ (JSON SLP)
     result = self.json_query()
@@ -159,7 +248,7 @@ class MineStat:
       return ConnStatus.UNKNOWN
 
     # Set protocol version
-    self.slp_protocol = "json"
+    self.slp_protocol = SlpProtocols.JSON
 
     # Parse and save to object attributes
     return self.__parse_json_payload(payload_raw)
@@ -279,7 +368,7 @@ class MineStat:
     sock.close()
 
     # Set protocol version
-    self.slp_protocol = "extended_legacy"
+    self.slp_protocol = SlpProtocols.EXTENDED_LEGACY
 
     # Parse and save to object attributes
     return self.__parse_legacy_payload(payload_raw)
@@ -323,7 +412,7 @@ class MineStat:
     sock.close()
 
     # Set protocol version
-    self.slp_protocol = "legacy"
+    self.slp_protocol = SlpProtocols.LEGACY
 
     # Parse and save to object attributes
     return self.__parse_legacy_payload(payload_raw)
@@ -404,7 +493,7 @@ class MineStat:
     sock.close()
 
     # Set protocol version
-    self.slp_protocol = "beta"
+    self.slp_protocol = SlpProtocols.BETA
 
     # According to wiki.vg, beta, legacy and extended legacy use UTF-16BE as "payload" encoding
     payload_str = payload_raw.decode('utf-16-be')
