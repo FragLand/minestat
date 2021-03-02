@@ -123,7 +123,7 @@ Contains possible SLP (Server List Ping) protocols.
 
 
 class MineStat:
-  VERSION = "2.1.0"             # MineStat version
+  VERSION = "2.1.1"             # MineStat version
   DEFAULT_TIMEOUT = 5           # default TCP timeout in seconds
 
   def __init__(self, address, port, timeout = DEFAULT_TIMEOUT, query_protocol: SlpProtocols = None):
@@ -159,23 +159,27 @@ class MineStat:
 
       return
 
-    # Minecraft 1.7+ (JSON SLP)
-    result = self.json_query()
-
-    # Minecraft 1.6 (extended legacy SLP)
-    if result is not ConnStatus.CONNFAIL \
-        and result is not ConnStatus.SUCCESS:
-      result = self.extended_legacy_query()
+    # Note: The order here is unfortunately important.
+    # Some older versions of MC don't accept packets for a few seconds
+    # after receiving a not understood packet.
+    # An example is MC 1.4: Nothing works directly after a json request.
+    # A legacy query alone works fine.
 
     # Minecraft 1.4 & 1.5 (legacy SLP)
-    if result is not ConnStatus.CONNFAIL \
-        and result is not ConnStatus.SUCCESS:
-      result = self.legacy_query()
+    result = self.legacy_query()
 
     # Minecraft Beta 1.8 to Release 1.3 (beta SLP)
     if result is not ConnStatus.CONNFAIL \
         and result is not ConnStatus.SUCCESS:
-      self.beta_query()
+      result = self.beta_query()
+
+    # Minecraft 1.6 (extended legacy SLP)
+    if result is not ConnStatus.CONNFAIL:
+      result = self.extended_legacy_query()
+
+    # Minecraft 1.7+ (JSON SLP)
+    if result is not ConnStatus.CONNFAIL:
+      self.json_query()
 
   def json_query(self):
     """
@@ -345,10 +349,6 @@ class MineStat:
     # port of the server, as int (4 byte)
     req_data += struct.pack(">i", self.port)
 
-    # DEBUG
-    with open("req_data.bin", "wb") as fp:
-      fp.write(req_data)
-
     # Now send the contructed client requests
     sock.send(req_data)
 
@@ -361,7 +361,11 @@ class MineStat:
       return ConnStatus.CONNFAIL
 
     # Extract payload length
-    content_len = struct.unpack(">xh", raw_header)[0]
+    # Might be empty, if the server keeps the connection open but doesn't send anything
+    try:
+      content_len = struct.unpack(">xh", raw_header)[0]
+    except struct.error:
+      return ConnStatus.UNKNOWN
 
     # Receive full payload and close socket
     payload_raw = bytearray(sock.recv(content_len * 2))
@@ -405,7 +409,11 @@ class MineStat:
       return ConnStatus.CONNFAIL
 
     # Extract payload length
-    content_len = struct.unpack(">xh", raw_header)[0]
+    # Might be empty, if the server keeps the connection open but doesn't send anything
+    try:
+      content_len = struct.unpack(">xh", raw_header)[0]
+    except struct.error:
+      return ConnStatus.UNKNOWN
 
     # Receive full payload and close socket
     payload_raw = bytearray(sock.recv(content_len * 2))
@@ -486,7 +494,11 @@ class MineStat:
       return ConnStatus.CONNFAIL
 
     # Extract payload length
-    content_len = struct.unpack(">xh", raw_header)[0]
+    # Might be empty, if the server keeps the connection open but doesn't send anything
+    try:
+      content_len = struct.unpack(">xh", raw_header)[0]
+    except struct.error:
+      return ConnStatus.UNKNOWN
 
     # Receive full payload and close socket
     payload_raw = bytearray(sock.recv(content_len * 2))
