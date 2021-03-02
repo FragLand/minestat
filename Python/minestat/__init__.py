@@ -349,10 +349,6 @@ class MineStat:
     # port of the server, as int (4 byte)
     req_data += struct.pack(">i", self.port)
 
-    # DEBUG
-    with open("req_data.bin", "wb") as fp:
-      fp.write(req_data)
-
     # Now send the contructed client requests
     sock.send(req_data)
 
