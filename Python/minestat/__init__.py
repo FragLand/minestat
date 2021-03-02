@@ -361,7 +361,11 @@ class MineStat:
       return ConnStatus.CONNFAIL
 
     # Extract payload length
-    content_len = struct.unpack(">xh", raw_header)[0]
+    # Might be empty, if the server keeps the connection open but doesn't send anything
+    try:
+      content_len = struct.unpack(">xh", raw_header)[0]
+    except struct.error:
+      return ConnStatus.UNKNOWN
 
     # Receive full payload and close socket
     payload_raw = bytearray(sock.recv(content_len * 2))
@@ -405,7 +409,11 @@ class MineStat:
       return ConnStatus.CONNFAIL
 
     # Extract payload length
-    content_len = struct.unpack(">xh", raw_header)[0]
+    # Might be empty, if the server keeps the connection open but doesn't send anything
+    try:
+      content_len = struct.unpack(">xh", raw_header)[0]
+    except struct.error:
+      return ConnStatus.UNKNOWN
 
     # Receive full payload and close socket
     payload_raw = bytearray(sock.recv(content_len * 2))
@@ -486,7 +494,11 @@ class MineStat:
       return ConnStatus.CONNFAIL
 
     # Extract payload length
-    content_len = struct.unpack(">xh", raw_header)[0]
+    # Might be empty, if the server keeps the connection open but doesn't send anything
+    try:
+      content_len = struct.unpack(">xh", raw_header)[0]
+    except struct.error:
+      return ConnStatus.UNKNOWN
 
     # Receive full payload and close socket
     payload_raw = bytearray(sock.recv(content_len * 2))
