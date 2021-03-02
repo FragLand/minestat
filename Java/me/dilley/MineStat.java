@@ -1,6 +1,6 @@
 /*
  * MineStat.java - A Minecraft server status checker
- * Copyright (C) 2014 Lloyd Dilley
+ * Copyright (C) 2014-2021 Lloyd Dilley
  * http://www.dilley.me/
  *
  * This program is free software; you can redistribute it and/or modify
@@ -32,6 +32,7 @@ public class MineStat
   public static final byte NUM_FIELDS = 6;      // number of values expected from server
   public static final byte NUM_FIELDS_BETA = 3; // number of values expected from a 1.8b/1.3 server
   public static final int DEFAULT_TIMEOUT = 5;  // default TCP timeout in seconds
+  public static final int DEFAULT_PORT = 25565; // default TCP port
 
   public enum Retval
   {
@@ -42,6 +43,17 @@ public class MineStat
     private Retval(int retval) { this.retval = retval; }
 
     public int getRetval() { return retval; }
+  }
+
+  public enum Request
+  {
+    NONE(-1), BETA(0), LEGACY(1), EXTENDED(2), JSON(3);
+
+    private final int request;
+
+    private Request(int request) { this.request = request; }
+
+    public int getRequest() { return request; }
   }
 
   /**
@@ -89,35 +101,66 @@ public class MineStat
    */
   private long latency;
 
+  /**
+   * SLP protocol version
+   */
+  private String requestType;
+
+  public MineStat(String address)
+  {
+    this(address, DEFAULT_PORT, DEFAULT_TIMEOUT, Request.NONE);
+  }
+
   public MineStat(String address, int port)
   {
-    this(address, port, DEFAULT_TIMEOUT);
+    this(address, port, DEFAULT_TIMEOUT, Request.NONE);
   }
 
   public MineStat(String address, int port, int timeout)
   {
+    this(address, port, timeout, Request.NONE);
+  }
+
+  public MineStat(String address, int port, int timeout, Request requestType)
+  {
     setAddress(address);
     setPort(port);
     setTimeout(timeout);
-    /*
-     * Try the newest protocol first and work down. If the query succeeds or the
-     * connection fails, there is no reason to continue with subsequent queries.
-     * Attempts should continue in the event of a timeout however since it may
-     * be due to an issue during the handshake.
-     * Note: Newer server versions may still respond to older ping query types.
-     * For example, 1.13.2 responds to 1.4/1.5 queries, but not 1.6 queries.
-     */
-    // 1.7
-    Retval retval = jsonQuery(address, port, getTimeout());
-    // 1.6
-    if(retval != Retval.SUCCESS && retval != Retval.CONNFAIL)
-      retval = newQuery(address, port, getTimeout());
-    // 1.4/1.5
-    if(retval != Retval.SUCCESS && retval != Retval.CONNFAIL)
-      retval = legacyQuery(address, port, getTimeout());
-    // 1.8b/1.3
-    if(retval != Retval.SUCCESS && retval != Retval.CONNFAIL)
-      retval = betaQuery(address, port, getTimeout());
+    switch(requestType)
+    {
+      case BETA:
+        betaRequest(address, port, getTimeout());
+        break;
+      case LEGACY:
+        legacyRequest(address, port, getTimeout());
+        break;
+      case EXTENDED:
+        extendedLegacyRequest(address, port, getTimeout());
+        break;
+      case JSON:
+        jsonRequest(address, port, getTimeout());
+        break;
+      default:
+        /*
+         * Attempt various SLP ping requests in a particular order. If the request
+         * succeeds or the connection fails, there is no reason to continue with
+         * subsequent requests. Attempts should continue in the event of a timeout
+         * however since it may be due to an issue during the handshake.
+         * Note: Newer server versions may still respond to older SLP requests.
+         * For example, 1.13.2 responds to 1.4/1.5 queries, but not 1.6 queries.
+         */
+        // SLP 1.4/1.5
+        Retval retval = legacyRequest(address, port, getTimeout());
+        // SLP 1.8b/1.3
+        if(retval != Retval.SUCCESS && retval != Retval.CONNFAIL)
+          retval = betaRequest(address, port, getTimeout());
+        // SLP 1.6
+        if(retval != Retval.SUCCESS && retval != Retval.CONNFAIL)
+          retval = extendedLegacyRequest(address, port, getTimeout());
+        // SLP 1.7
+        if(retval != Retval.SUCCESS && retval != Retval.CONNFAIL)
+          retval = jsonRequest(address, port, getTimeout());
+    }
   }
 
   public String getAddress() { return address; }
@@ -154,17 +197,21 @@ public class MineStat
 
   public boolean isServerUp() { return serverUp; }
 
+  public String getRequestType() { return requestType; }
+
+  public void setRequestType(String requestType) { this.requestType = requestType; }
+
   /*
    * 1.8b/1.3
-   * 1.8 beta through 1.3 servers communicate as follows for a ping query:
+   * 1.8 beta through 1.3 servers communicate as follows for a ping request:
    * 1. Client sends \xFE (server list ping)
    * 2. Server responds with:
    *   2a. \xFF (kick packet)
    *   2b. data length
    *   2c. 3 fields delimited by \u00A7 (section symbol)
-   * The 3 fields, in order, are: message of the day, current players, and max players 
+   * The 3 fields, in order, are: message of the day, current players, and max players
    */
-  public Retval betaQuery(String address, int port, int timeout)
+  public Retval betaRequest(String address, int port, int timeout)
   {
     try
     {
@@ -196,11 +243,12 @@ public class MineStat
       serverData = new String(rawServerData, "UTF16").split("\u00A7"); // section symbol
       if(serverData.length >= NUM_FIELDS_BETA)
       {
-        setVersion("1.8b/1.3"); // since server does not return version, set it
+        setVersion(">=1.8b/1.3"); // since server does not return version, set it
         setMotd(serverData[0]);
         setCurrentPlayers(Integer.parseInt(serverData[1]));
         setMaximumPlayers(Integer.parseInt(serverData[2]));
         serverUp = true;
+        setRequestType("SLP 1.8b/1.3 (beta)");
       }
       else
         return Retval.UNKNOWN;
@@ -232,7 +280,7 @@ public class MineStat
 
   /*
    * 1.4/1.5
-   * 1.4 and 1.5 servers communicate as follows for a ping query:
+   * 1.4 and 1.5 servers communicate as follows for a ping request:
    * 1. Client sends:
    *   1a. \xFE (server list ping)
    *   1b. \x01 (server list ping payload)
@@ -245,7 +293,7 @@ public class MineStat
    * The protocol version corresponds with the server version and can be the
    * same for different server versions.
    */
-  public Retval legacyQuery(String address, int port, int timeout)
+  public Retval legacyRequest(String address, int port, int timeout)
   {
     try
     {
@@ -284,6 +332,7 @@ public class MineStat
         setCurrentPlayers(Integer.parseInt(serverData[4]));
         setMaximumPlayers(Integer.parseInt(serverData[5]));
         serverUp = true;
+        setRequestType("SLP 1.4/1.5 (legacy)");
       }
       else
         return Retval.UNKNOWN;
@@ -315,7 +364,7 @@ public class MineStat
 
   /*
    * 1.6
-   * 1.6 servers communicate as follows for a ping query:
+   * 1.6 servers communicate as follows for a ping request:
    * 1. Client sends:
    *   1a. \xFE (server list ping)
    *   1b. \x01 (server list ping payload)
@@ -336,7 +385,7 @@ public class MineStat
    * The protocol version corresponds with the server version and can be the
    * same for different server versions.
    */
-  public Retval newQuery(String address, int port, int timeout)
+  public Retval extendedLegacyRequest(String address, int port, int timeout)
   {
     try
     {
@@ -384,6 +433,7 @@ public class MineStat
         setCurrentPlayers(Integer.parseInt(serverData[4]));
         setMaximumPlayers(Integer.parseInt(serverData[5]));
         serverUp = true;
+        setRequestType("SLP 1.6 (extended legacy)");
       }
       else
         return Retval.UNKNOWN;
@@ -415,7 +465,7 @@ public class MineStat
 
   /*
    * 1.7
-   * 1.7 to current servers communicate as follows for a ping query:
+   * 1.7 to current servers communicate as follows for a ping request:
    * 1. Client sends:
    *   1a. \x00 (handshake packet containing the fields specified below)
    *   1b. \x00 (request)
@@ -431,8 +481,9 @@ public class MineStat
    *   'version': {'protocol': 404, 'name': '1.13.2'},
    *   'description': {'text': 'A Minecraft Server'}}
    */
-  public Retval jsonQuery(String address, int port, int timeout)
+  public Retval jsonRequest(String address, int port, int timeout)
   {
+    setRequestType("SLP 1.7 (JSON)");
     return Retval.UNKNOWN; // ToDo: Implement me!
   }
 }

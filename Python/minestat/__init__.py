@@ -525,7 +525,7 @@ class MineStat:
     self.motd = "§".join(payload_list[:-2])
 
     # Set general version, as the protocol doesn't contain the server version
-    self.version = "<= 1.3"
+    self.version = ">=1.8b/1.3"
 
     # If we got here, everything is in order
     self.online = True
