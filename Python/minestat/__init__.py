@@ -159,23 +159,27 @@ class MineStat:
 
       return
 
-    # Minecraft 1.7+ (JSON SLP)
-    result = self.json_query()
-
-    # Minecraft 1.6 (extended legacy SLP)
-    if result is not ConnStatus.CONNFAIL \
-        and result is not ConnStatus.SUCCESS:
-      result = self.extended_legacy_query()
+    # Note: The order here is unfortunately important.
+    # Some older versions of MC don't accept packets for a few seconds
+    # after receiving a not understood packet.
+    # An example is MC 1.4: Nothing works directly after a json request.
+    # A legacy query alone works fine.
 
     # Minecraft 1.4 & 1.5 (legacy SLP)
-    if result is not ConnStatus.CONNFAIL \
-        and result is not ConnStatus.SUCCESS:
-      result = self.legacy_query()
+    result = self.legacy_query()
 
     # Minecraft Beta 1.8 to Release 1.3 (beta SLP)
     if result is not ConnStatus.CONNFAIL \
         and result is not ConnStatus.SUCCESS:
-      self.beta_query()
+      result = self.beta_query()
+
+    # Minecraft 1.6 (extended legacy SLP)
+    if result is not ConnStatus.CONNFAIL:
+      result = self.extended_legacy_query()
+
+    # Minecraft 1.7+ (JSON SLP)
+    if result is not ConnStatus.CONNFAIL:
+      self.json_query()
 
   def json_query(self):
     """
