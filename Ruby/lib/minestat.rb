@@ -36,13 +36,14 @@ class MineStat
   end
 
   module Request
+    NONE = -1
     BETA = 0
     LEGACY = 1
     EXTENDED = 2
     JSON = 3
   end
 
-  def initialize(address, port = DEFAULT_PORT, timeout = DEFAULT_TIMEOUT, request_type = nil)
+  def initialize(address, port = DEFAULT_PORT, timeout = DEFAULT_TIMEOUT, request_type = Request::NONE)
     @address = address # address of server
     @port = port       # TCP port of server
     @online            # online or offline?

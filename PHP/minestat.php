@@ -31,6 +31,7 @@ class MineStat
   const RETURN_TIMEOUT = -2;
   const RETURN_UNKNOWN = -3;
   // Request types
+  const REQUEST_NONE = -1;
   const REQUEST_BETA = 0;
   const REQUEST_LEGACY = 1;
   const REQUEST_EXTENDED = 2;
@@ -49,7 +50,7 @@ class MineStat
   private $socket;            // network socket
   private $request_type;      // SLP protocol version
 
-  public function __construct($address, $port = 25565, $timeout = 5, $request_type = -1)
+  public function __construct($address, $port = 25565, $timeout = 5, $request_type = MineStat::REQUEST_NONE)
   {
     $this->address = $address;
     $this->port = $port;
