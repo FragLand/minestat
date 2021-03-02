@@ -8,6 +8,7 @@ if ms.online
   puts "Server is online running version #{ms.version} with #{ms.current_players} out of #{ms.max_players} players."
   puts "Message of the day: #{ms.motd}"
   puts "Latency: #{ms.latency}ms"
+  puts "Connected using protocol: #{ms.request_type}"
 else
   puts "Server is offline!"
 end
