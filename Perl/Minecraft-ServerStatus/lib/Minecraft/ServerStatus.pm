@@ -24,7 +24,7 @@ use warnings;
 use IO::Socket::INET;
 use Time::HiRes qw(time);
 
-our $VERSION = "1.0.1";   # MineStat version
+our $VERSION = "1.0.2";   # MineStat version
 our $NUM_FIELDS = 6;      # number of values expected from server
 our $DEFAULT_TIMEOUT = 5; # TCP connection timeout
 
