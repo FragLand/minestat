@@ -21,42 +21,65 @@
 
 class MineStat
 {
-  const VERSION = "2.0.1";   // MineStat version
-  const NUM_FIELDS = 6;      // number of values expected from server
-  const NUM_FIELDS_BETA = 3; // number of values expected from a 1.8b/1.3 server
-  const MAX_VARINT_SIZE = 5; // maximum number of bytes a varint can be
+  const VERSION = "2.1.0";     // MineStat version
+  const NUM_FIELDS = 6;        // number of values expected from server
+  const NUM_FIELDS_BETA = 3;   // number of values expected from a 1.8b/1.3 server
+  const MAX_VARINT_SIZE = 5;   // maximum number of bytes a varint can be
   // No enums or class nesting in PHP, so this is our workaround for return values
   const RETURN_SUCCESS = 0;
   const RETURN_CONNFAIL = -1;
   const RETURN_TIMEOUT = -2;
   const RETURN_UNKNOWN = -3;
-  private $address;         // hostname or IP address of the Minecraft server
-  private $port;            // port number the Minecraft server accepts connections on
-  private $online;          // online or offline?
-  private $version;         // Minecraft server version
-  private $motd;            // message of the day
-  private $current_players; // current number of players online
-  private $max_players;     // maximum player capacity
-  private $protocol;        // protocol level
-  private $json_data;       // JSON data for 1.7 queries
-  private $latency;         // ping time to server in milliseconds
-  private $timeout;         // timeout in seconds
-  private $socket;          // network socket
+  // Request types
+  const REQUEST_NONE = -1;
+  const REQUEST_BETA = 0;
+  const REQUEST_LEGACY = 1;
+  const REQUEST_EXTENDED = 2;
+  const REQUEST_JSON = 3;
+  private $address;           // hostname or IP address of the Minecraft server
+  private $port;              // port number the Minecraft server accepts connections on
+  private $online;            // online or offline?
+  private $version;           // Minecraft server version
+  private $motd;              // message of the day
+  private $current_players;   // current number of players online
+  private $max_players;       // maximum player capacity
+  private $protocol;          // protocol level
+  private $json_data;         // JSON data for 1.7 queries
+  private $latency;           // ping time to server in milliseconds
+  private $timeout;           // timeout in seconds
+  private $socket;            // network socket
+  private $request_type;      // SLP protocol version
 
-  public function __construct($address, $port = 25565, $timeout = 5)
+  public function __construct($address, $port = 25565, $timeout = 5, $request_type = MineStat::REQUEST_NONE)
   {
     $this->address = $address;
     $this->port = $port;
     $this->timeout = $timeout;
     $this->online = false;
 
-    $retval = $this->json_query();     // 1.7
-    if($retval != MineStat::RETURN_SUCCESS && $retval != MineStat::RETURN_CONNFAIL)
-      $retval = $this->new_query();    // 1.6
-    if($retval != MineStat::RETURN_SUCCESS && $retval != MineStat::RETURN_CONNFAIL)
-      $retval = $this->legacy_query(); // 1.4/1.5
-    if($retval != MineStat::RETURN_SUCCESS && $retval != MineStat::RETURN_CONNFAIL)
-      $retval = $this->beta_query();   // 1.8b/1.3
+    switch($request_type)
+    {
+      case MineStat::REQUEST_BETA:
+        $this->beta_request();
+        break;
+      case MineStat::REQUEST_LEGACY:
+        $this->legacy_request();
+        break;
+      case MineStat::REQUEST_EXTENDED:
+        $this->extended_legacy_request();
+        break;
+      case MineStat::REQUEST_JSON:
+        $this->json_request();
+        break;
+      default:
+        $retval = $this->legacy_request();            // SLP 1.4/1.5
+        if($retval != MineStat::RETURN_SUCCESS && $retval != MineStat::RETURN_CONNFAIL)
+          $retval = $this->beta_request();            // SLP 1.8b/1.3
+        if($retval != MineStat::RETURN_SUCCESS && $retval != MineStat::RETURN_CONNFAIL)
+          $retval = $this->extended_legacy_request(); // SLP 1.6
+        if($retval != MineStat::RETURN_SUCCESS && $retval != MineStat::RETURN_CONNFAIL)
+          $retval = $this->json_request();            // SLP 1.7
+    }
   }
 
   public function __destruct()
@@ -88,6 +111,8 @@ class MineStat
   public function get_json() { return $this->json_data; }
 
   public function get_latency() { return $this->latency; }
+
+  public function get_request_type() { return $this->request_type; }
 
   /* Connects to remote server */
   private function connect()
@@ -147,7 +172,7 @@ class MineStat
       {
         if($is_beta)
         {
-          $this->version = "1.8b/1.3"; // since server does not return version, set it
+          $this->version = ">=1.8b/1.3"; // since server does not return version, set it
           $this->motd = $server_info[0];
           $this->current_players = (int)$server_info[1];
           $this->max_players = (int)$server_info[2];
@@ -175,7 +200,7 @@ class MineStat
 
   /*
    * 1.8b/1.3
-   * 1.8 beta through 1.3 servers communicate as follows for a ping query:
+   * 1.8 beta through 1.3 servers communicate as follows for a ping request:
    * 1. Client sends \xFE (server list ping)
    * 2. Server responds with:
    *   2a. \xFF (kick packet)
@@ -183,10 +208,11 @@ class MineStat
    *   2c. 3 fields delimited by \u00A7 (section symbol)
    * The 3 fields, in order, are: message of the day, current players, and max players
    */
-  public function beta_query()
+  public function beta_request()
   {
     try
     {
+      $this->request_type = "SLP 1.8b/1.3 (beta)";
       $retval = $this->connect();
       if($retval != MineStat::RETURN_SUCCESS)
         return $retval;
@@ -204,7 +230,7 @@ class MineStat
 
   /*
    * 1.4/1.5
-   * 1.4 and 1.5 servers communicate as follows for a ping query:
+   * 1.4 and 1.5 servers communicate as follows for a ping request:
    * 1. Client sends:
    *   1a. \xFE (server list ping)
    *   1b. \x01 (server list ping payload)
@@ -217,10 +243,11 @@ class MineStat
    * The protocol version corresponds with the server version and can be the
    * same for different server versions.
    */
-  public function legacy_query()
+  public function legacy_request()
   {
     try
     {
+      $this->request_type = "SLP 1.4/1.5 (legacy)";
       $retval = $this->connect();
       if($retval != MineStat::RETURN_SUCCESS)
         return $retval;
@@ -238,7 +265,7 @@ class MineStat
 
   /*
    * 1.6
-   * 1.6 servers communicate as follows for a ping query:
+   * 1.6 servers communicate as follows for a ping request:
    * 1. Client sends:
    *   1a. \xFE (server list ping)
    *   1b. \x01 (server list ping payload)
@@ -259,10 +286,11 @@ class MineStat
    * The protocol version corresponds with the server version and can be the
    * same for different server versions.
    */
-  public function new_query()
+  public function extended_legacy_request()
   {
     try
     {
+      $this->request_type = "SLP 1.6 (extended legacy)";
       $retval = $this->connect();
       if($retval != MineStat::RETURN_SUCCESS)
         return $retval;
@@ -287,7 +315,7 @@ class MineStat
 
   /*
    * 1.7
-   * 1.7 to current servers communicate as follows for a ping query:
+   * 1.7 to current servers communicate as follows for a ping request:
    * 1. Client sends:
    *   1a. \x00 (handshake packet containing the fields specified below)
    *   1b. \x00 (request)
@@ -303,10 +331,11 @@ class MineStat
    *   'version': {'protocol': 404, 'name': '1.13.2'},
    *   'description': {'text': 'A Minecraft Server'}}
    */
-  public function json_query()
+  public function json_request()
   {
     try
     {
+      $this->request_type = "SLP 1.7 (JSON)";
       $retval = $this->connect();
       if($retval != MineStat::RETURN_SUCCESS)
         return $retval;

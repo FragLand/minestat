@@ -3,11 +3,6 @@ MineStat
 
 MineStat is a Minecraft server status checker.
 
-You can use this module in a monitoring script to poll multiple Minecraft servers or to let visitors see the status of your server from their browser.
-MineStat has been ported to multiple languages for use with ASP.NET, FastCGI, mod_perl, mod_php, mod_python, Node.js, Rails, Tomcat, and more.
-
-If you are planning to host MineStat on a shared webhost, make sure that the provider allows outbound sockets.
-
 ### Python example
 
 [![PyPI](https://img.shields.io/pypi/v/minestat?color=green&label=PyPI%20package&style=plastic)](https://pypi.org/project/minestat/)

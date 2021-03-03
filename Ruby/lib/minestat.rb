@@ -1,5 +1,5 @@
 # minestat.rb - A Minecraft server status checker
-# Copyright (C) 2014 Lloyd Dilley
+# Copyright (C) 2014-2021 Lloyd Dilley
 # http://www.dilley.me/
 #
 # This program is free software; you can redistribute it and/or modify
@@ -21,6 +21,7 @@ require 'socket'
 require 'timeout'
 
 class MineStat
+  VERSION = "2.0.0"    # MineStat version
   NUM_FIELDS = 6       # number of values expected from server
   NUM_FIELDS_BETA = 3  # number of values expected from a 1.8b/1.3 server
   MAX_VARINT_SIZE = 5  # maximum number of bytes a varint can be
@@ -34,7 +35,15 @@ class MineStat
     UNKNOWN = -3
   end
 
-  def initialize(address, port = DEFAULT_PORT, timeout = DEFAULT_TIMEOUT)
+  module Request
+    NONE = -1
+    BETA = 0
+    LEGACY = 1
+    EXTENDED = 2
+    JSON = 3
+  end
+
+  def initialize(address, port = DEFAULT_PORT, timeout = DEFAULT_TIMEOUT, request_type = Request::NONE)
     @address = address # address of server
     @port = port       # TCP port of server
     @online            # online or offline?
@@ -47,29 +56,39 @@ class MineStat
     @latency           # ping time to server in milliseconds
     @timeout = timeout # TCP timeout
     @server            # server socket
-    @query_type        # SLP query version
+    @request_type      # SLP protocol version
 
-    # Try the newest protocol first and work down. If the query succeeds or the
-    # connection fails, there is no reason to continue with subsequent queries.
-    # Attempts should continue in the event of a timeout however since it may
-    # be due to an issue during the handshake.
-    # Note: Newer server versions may still respond to older ping query types.
-    # For example, 1.13.2 responds to 1.4/1.5 queries, but not 1.6 queries.
-    # 1.7
-    retval = json_query()
-    # 1.6
-    unless retval == Retval::SUCCESS || retval == Retval::CONNFAIL
-      retval = new_query()
+    case request_type
+      when Request::BETA
+        retval = beta_request()
+      when Request::LEGACY
+        retval = legacy_request()
+      when Request::EXTENDED
+        retval = extended_legacy_request()
+      when Request::JSON
+        retval = json_request()
+      else
+        # Attempt various SLP ping requests in a particular order. If the request
+        # succeeds or the connection fails, there is no reason to continue with
+        # subsequent requests. Attempts should continue in the event of a timeout
+        # however since it may be due to an issue during the handshake.
+        # Note: Newer server versions may still respond to older SLP requests.
+        # For example, 1.13.2 responds to 1.4/1.5 queries, but not 1.6 queries.
+        # SLP 1.4/1.5
+        retval = legacy_request()
+        # SLP 1.8b/1.3
+        unless retval == Retval::SUCCESS || retval == Retval::CONNFAIL
+          retval = beta_request()
+        end
+        # SLP 1.6
+        unless retval == Retval::SUCCESS || retval == Retval::CONNFAIL
+          retval = extended_legacy_request()
+        end
+        # SLP 1.7
+        unless retval == Retval::SUCCESS || retval == Retval::CONNFAIL
+          retval = json_request()
+        end
     end
-    # 1.4/1.5
-    unless retval == Retval::SUCCESS || retval == Retval::CONNFAIL
-      retval = legacy_query()
-    end
-    # 1.8b/1.3
-    unless retval == Retval::SUCCESS || retval == Retval::CONNFAIL
-      retval = beta_query()
-    end
-
     @online = false unless retval == Retval::SUCCESS
   end
 
@@ -112,7 +131,7 @@ class MineStat
     server_info = data.split(delimiter)
     if is_beta
       if server_info != nil && server_info.length >= NUM_FIELDS_BETA
-        @version = "1.8b/1.3" # since server does not return version, set it
+        @version = ">=1.8b/1.3" # since server does not return version, set it
         @motd = server_info[0]
         @current_players = server_info[1].to_i
         @max_players = server_info[2].to_i
@@ -137,21 +156,21 @@ class MineStat
   end
 
   # 1.8b/1.3
-  # 1.8 beta through 1.3 servers communicate as follows for a ping query:
+  # 1.8 beta through 1.3 servers communicate as follows for a ping request:
   # 1. Client sends \xFE (server list ping)
   # 2. Server responds with:
   #   2a. \xFF (kick packet)
   #   2b. data length
   #   2c. 3 fields delimited by \u00A7 (section symbol)
   # The 3 fields, in order, are: message of the day, current players, and max players
-  def beta_query()
+  def beta_request()
     retval = nil
     begin
       Timeout::timeout(@timeout) do
         retval = connect()
         return retval unless retval == Retval::SUCCESS
         # Perform handshake and acquire data
-        @query_type = "1.8b/1.3"
+        @request_type = "SLP 1.8b/1.3 (beta)"
         @server.write("\xFE")
         retval = parse_data("\u00A7", true) # section symbol
       end
@@ -165,7 +184,7 @@ class MineStat
   end
 
   # 1.4/1.5
-  # 1.4 and 1.5 servers communicate as follows for a ping query:
+  # 1.4 and 1.5 servers communicate as follows for a ping request:
   # 1. Client sends:
   #   1a. \xFE (server list ping)
   #   1b. \x01 (server list ping payload)
@@ -177,14 +196,14 @@ class MineStat
   # server version, message of the day, current players, and max players
   # The protocol version corresponds with the server version and can be the
   # same for different server versions.
-  def legacy_query()
+  def legacy_request()
     retval = nil
     begin
       Timeout::timeout(@timeout) do
         retval = connect()
         return retval unless retval == Retval::SUCCESS
         # Perform handshake and acquire data
-        @query_type = "1.4/1.5"
+        @request_type = "SLP 1.4/1.5 (legacy)"
         @server.write("\xFE\x01")
         retval = parse_data("\x00") # null
       end
@@ -198,7 +217,7 @@ class MineStat
   end
 
   # 1.6
-  # 1.6 servers communicate as follows for a ping query:
+  # 1.6 servers communicate as follows for a ping request:
   # 1. Client sends:
   #   1a. \xFE (server list ping)
   #   1b. \x01 (server list ping payload)
@@ -218,14 +237,14 @@ class MineStat
   # server version, message of the day, current players, and max players
   # The protocol version corresponds with the server version and can be the
   # same for different server versions.
-  def new_query()
+  def extended_legacy_request()
     retval = nil
     begin
       Timeout::timeout(@timeout) do
         retval = connect()
         return retval unless retval == Retval::SUCCESS
         # Perform handshake and acquire data
-        @query_type = "1.6"
+        @request_type = "SLP 1.6 (extended legacy)"
         @server.write("\xFE\x01\xFA")
         @server.write("\x00\x0B") # 11 (length of "MC|PingHost")
         @server.write('MC|PingHost'.encode('UTF-16BE').force_encoding('ASCII-8BIT'))
@@ -246,7 +265,7 @@ class MineStat
   end
 
   # 1.7
-  # 1.7 to current servers communicate as follows for a ping query:
+  # 1.7 to current servers communicate as follows for a ping request:
   # 1. Client sends:
   #   1a. \x00 (handshake packet containing the fields specified below)
   #   1b. \x00 (request)
@@ -261,14 +280,14 @@ class MineStat
   # {'players': {'max': 20, 'online': 0},
   # 'version': {'protocol': 404, 'name': '1.13.2'},
   # 'description': {'text': 'A Minecraft Server'}}
-  def json_query()
+  def json_request()
     retval = nil
     begin
       Timeout::timeout(@timeout) do
         retval = connect()
         return retval unless retval == Retval::SUCCESS
         # Perform handshake
-        @query_type = "1.7"
+        @request_type = "SLP 1.7 (JSON)"
         payload = "\x00\x00"
         payload += [@address.length].pack('c') << @address
         payload += [@port].pack('n')
@@ -342,5 +361,5 @@ class MineStat
     return vint
   end
 
-  attr_reader :address, :port, :online, :version, :motd, :current_players, :max_players, :protocol, :json_data, :latency, :query_type
+  attr_reader :address, :port, :online, :version, :motd, :current_players, :max_players, :protocol, :json_data, :latency, :request_type
 end
