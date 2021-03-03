@@ -2,7 +2,7 @@ matrix:
   include:
     - language: csharp
       script:
-        - cd CSharp && mcs Example.cs MineStat.cs
+        - cd CSharp && mcs Example.cs MineStat/MineStat.cs
 
     - language: go
       #go_import_path: github.com/FragLand/minestat
