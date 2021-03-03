@@ -4,7 +4,7 @@ Minecraft::ServerStatus - A Minecraft server status checker
 
 # VERSION
 
-Version 1.0.1
+Version 1.0.2
 
 # SYNOPSIS
 

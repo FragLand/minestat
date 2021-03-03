@@ -2,7 +2,7 @@ matrix:
   include:
     - language: csharp
       script:
-        - cd CSharp && mcs Example.cs MineStat.cs
+        - cd CSharp && mcs Example.cs MineStat/MineStat.cs
 
     - language: go
       #go_import_path: github.com/FragLand/minestat
@@ -19,3 +19,12 @@ matrix:
     - language: ruby
       script:
         - cd Ruby && gem build minestat.gemspec && gem install minestat
+
+  after_success:
+    - wget https://raw.githubusercontent.com/DiscordHooks/travis-ci-discord-webhook/master/send.sh
+    - chmod +x send.sh
+    - ./send.sh success $WEBHOOK_URL
+  after_failure:
+    - wget https://raw.githubusercontent.com/DiscordHooks/travis-ci-discord-webhook/master/send.sh
+    - chmod +x send.sh
+    - ./send.sh failure $WEBHOOK_URL
