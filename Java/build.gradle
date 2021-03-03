@@ -1,0 +1,14 @@
+apply plugin: 'java'
+
+sourceSets
+{
+  main
+  {
+    java
+    {
+      srcDir '.'
+      exclude 'Test'
+      println 'Thank you for using MineStat!'
+    }
+  }
+}
