@@ -73,6 +73,7 @@ class Example
      System.out.println("Server is online running version " + ms.getVersion() + " with " + ms.getCurrentPlayers() + " out of " + ms.getMaximumPlayers() + " players.");
      System.out.println("Message of the day: " + ms.getMotd());
      System.out.println("Latency: " + ms.getLatency() + "ms");
+     System.out.println("Connected using protocol: " + ms.getRequestType());
     }
     else
       System.out.println("Server is offline!");
@@ -145,6 +146,7 @@ if($ms->is_online())
   printf("Server is online running version %s with %s out of %s players.<br>", $ms->get_version(), $ms->get_current_players(), $ms->get_max_players());
   printf("Message of the day: %s<br>", $ms->get_motd());
   printf("Latency: %sms<br>", $ms->get_latency());
+  printf("Connected using protocol: %s<br>", $ms->get_request_type());
 }
 else
 {
@@ -207,6 +209,7 @@ if ms.online
   puts "Server is online running version #{ms.version} with #{ms.current_players} out of #{ms.max_players} players."
   puts "Message of the day: #{ms.motd}"
   puts "Latency: #{ms.latency}ms"
+  puts "Connected using protocol: #{ms.request_type}"
 else
   puts "Server is offline!"
 end

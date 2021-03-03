@@ -22,7 +22,6 @@ from time import perf_counter
 from enum import Enum
 from typing import Union
 
-
 class ConnStatus(Enum):
   """
 Contains possible connection states.
@@ -47,7 +46,6 @@ Contains possible connection states.
 
   UNKNOWN = -3
   """The connection was established, but the server spoke an unknown/unsupported SLP protocol."""
-
 
 class SlpProtocols(Enum):
   """
@@ -85,42 +83,41 @@ Contains possible SLP (Server List Ping) protocols.
   JSON = 3
   """
   The newest and currently supported SLP protocol.
-  
+
   Uses (wrapped) JSON as payload. Complex query, see `json_query()` for the protocol implementation.
-  
+
   *Available since Minecraft 1.7*
   """
 
   EXTENDED_LEGACY = 2
   """The previous SLP protocol
-  
+
   Used by Minecraft 1.6, it is still supported by all newer server versions.
   Complex query needed, see implementation `extended_legacy_query()` for full protocol details.
-  
+
   *Available since Minecraft 1.6*
   """
 
   LEGACY = 1
   """
   The legacy SLP protocol.
-  
+
   Used by Minecraft 1.4 and 1.5, it is the first protocol to contain the server version number.
   Very simple protocol call (2 byte), simple response decoding.
   See `legacy_query()` for full implementation and protocol details.
-  
-  *Available since Minecraft 1.4*  
+
+  *Available since Minecraft 1.4*
   """
 
   BETA = 0
   """
   The first SLP protocol.
-  
+
   Used by Minecraft Beta 1.8 till Release 1.3, it is the first SLP protocol.
   It contains very few details, no server version info, only MOTD, max- and online player counts.
-  
+
   *Available since Minecraft Beta 1.8*
   """
-
 
 class MineStat:
   VERSION = "2.1.1"             # MineStat version
@@ -528,7 +525,7 @@ class MineStat:
     self.motd = "§".join(payload_list[:-2])
 
     # Set general version, as the protocol doesn't contain the server version
-    self.version = "<= 1.3"
+    self.version = ">=1.8b/1.3"
 
     # If we got here, everything is in order
     self.online = True
