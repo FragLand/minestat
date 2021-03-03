@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="MineStat" default="compile">
+  <target name="clean">
+    <delete dir="build" />
+  </target>
+  <target name="compile">
+    <mkdir dir="build" />
+    <javac includeantruntime="false" srcdir="." destdir="build">
+      <include name="me/dilley/MineStat.java" />
+      <include name="Example.java" />
+      <exclude name="Test" />
+    </javac>
+    <echo>Thank you for using MineStat!</echo>
+  </target>
+</project>
