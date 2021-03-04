@@ -24,12 +24,13 @@
 
 package me.dilley;
 
+import com.google.gson.*;
 import java.io.*;
 import java.net.*;
 
 public class MineStat
 {
-  public static final String VERSION = "1.5.0"; // MineStat version
+  public static final String VERSION = "2.0.0"; // MineStat version
   public static final byte NUM_FIELDS = 6;      // number of values expected from server
   public static final byte NUM_FIELDS_BETA = 3; // number of values expected from a 1.8b/1.3 server
   public static final int DEFAULT_TIMEOUT = 5;  // default TCP timeout in seconds
@@ -465,6 +466,67 @@ public class MineStat
   }
 
   /*
+   * Unpack an int from a varint
+   */
+  public int recvVarInt(DataInputStream dis)
+  {
+    try
+    {
+      int intData = 0, width = 0;
+      while(true)
+      {
+        int varInt = dis.readByte();
+        intData |= (varInt & 0x7F) << width++ * 7;
+        if(width > 5)
+          return Retval.UNKNOWN.getRetval(); // overflow
+        if((varInt & 0x80) != 128)           // Little Endian Base 128 (LEB128)
+          break;
+      }
+      return intData;
+    }
+    catch(IOException ioe)
+    {
+      return Retval.UNKNOWN.getRetval();
+    }
+  }
+
+  /*
+   * Pack a varint from an int
+   */
+  public Retval sendVarInt(DataOutputStream dos, int intData)
+  {
+    try
+    {
+      while(true)
+      {
+        if((intData & 0xFFFFFF80) == 0)
+        {
+          dos.writeByte(intData);
+          return Retval.SUCCESS;
+        }
+        dos.writeByte(intData & 0x7F | 0x80);
+        intData >>>= 7;
+      }
+    }
+    catch(IOException ioe)
+    {
+      return Retval.UNKNOWN;
+    }
+  }
+
+  /*
+   * Check if MineStat object data is present
+   */
+  public boolean isDataValid()
+  {
+    // Do not check for empty motd in case server has none
+    if(this.motd != null && this.version != null && !this.version.trim().isEmpty() && currentPlayers >= 0 && maximumPlayers >= 0)
+      return true;
+    else
+      return false;
+  }
+
+  /*
    * 1.7
    * 1.7 to current servers communicate as follows for a ping request:
    * 1. Client sends:
@@ -484,7 +546,65 @@ public class MineStat
    */
   public Retval jsonRequest(String address, int port, int timeout)
   {
-    setRequestType("SLP 1.7 (JSON)");
-    return Retval.UNKNOWN; // ToDo: Implement me!
+    try
+    {
+      String[] serverData = null;
+      byte[] rawServerData = null;
+      Socket clientSocket = new Socket();
+      long startTime = System.currentTimeMillis();
+      clientSocket.connect(new InetSocketAddress(getAddress(), getPort()), getTimeout());
+      setLatency(System.currentTimeMillis() - startTime);
+      ByteArrayOutputStream baos = new ByteArrayOutputStream();
+      DataOutputStream payload = new DataOutputStream(baos);
+      DataOutputStream dos = new DataOutputStream(clientSocket.getOutputStream());
+      DataInputStream dis = new DataInputStream(new BufferedInputStream(clientSocket.getInputStream()));
+      payload.writeByte(0x00);               // handshake packet
+      sendVarInt(payload, 0x00);             // protocol version
+      sendVarInt(payload, address.length()); // packed remote address length as varint
+      payload.writeBytes(address);           // remote address as string
+      payload.writeShort(port);              // remote port as short
+      sendVarInt(payload, 0x01);             // state packet
+      sendVarInt(dos, baos.size());          // payload size as varint
+      dos.write(baos.toByteArray());         // send payload
+      dos.writeByte(0x01);                   // size
+      dos.writeByte(0x00);                   // ping packet
+      int totalLength = recvVarInt(dis);     // total response size
+      int packetID = recvVarInt(dis);        // packet ID
+      int jsonLength = recvVarInt(dis);      // JSON response size
+      byte[] rawData = new byte[jsonLength]; // storage for JSON data
+      dis.read(rawData);                     // fill byte array with JSON data
+      // Populate object from JSON data
+      JsonObject jobj = new Gson().fromJson(new String(rawData), JsonObject.class);
+      setMotd(jobj.get("description").getAsJsonObject().get("text").getAsString());
+      setVersion(jobj.get("version").getAsJsonObject().get("name").getAsString());
+      setCurrentPlayers(jobj.get("players").getAsJsonObject().get("online").getAsInt());
+      setMaximumPlayers(jobj.get("players").getAsJsonObject().get("max").getAsInt());
+      serverUp = true;
+      setRequestType("SLP 1.7 (JSON)");
+      if(!isDataValid())
+        return Retval.UNKNOWN;
+    }
+    catch(ConnectException ce)
+    {
+      return Retval.CONNFAIL;
+    }
+    catch(SocketException se)
+    {
+      return Retval.CONNFAIL;
+    }
+    catch(SocketTimeoutException ste)
+    {
+      return Retval.TIMEOUT;
+    }
+    catch(IOException ioe)
+    {
+      return Retval.CONNFAIL;
+    }
+    catch(Exception e)
+    {
+      serverUp = false;
+      return Retval.UNKNOWN;
+    }
+    return Retval.SUCCESS;
   }
 }
