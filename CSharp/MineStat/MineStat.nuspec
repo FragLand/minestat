@@ -12,7 +12,6 @@
     <copyright>$copyright$</copyright>
     <tags>Minecraft status checker library</tags>
     <dependencies>
-      <group targetFramework=".NETFramework4.6" />
     </dependencies>
     <frameworkAssemblies>
       <frameworkAssembly assemblyName="System.Core" targetFramework="net46" />

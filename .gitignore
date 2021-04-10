@@ -6,10 +6,8 @@ bin/
 blib/
 build/
 dist/
-Example.exe
 Makefile
 Minecraft-ServerStatus-*.tar.gz
-MineStat.dll
 minestat.egg-info/
 MYMETA.json
 MYMETA.yml
@@ -20,3 +18,7 @@ tests/
 
 # Ignore Python virtual environments
 venv/
+
+# Ignore all compiled c# files
+*.exe
+*.dll
