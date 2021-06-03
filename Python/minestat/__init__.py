@@ -201,7 +201,7 @@ class MineStat:
     # Construct Handshake packet
     req_data = bytearray([0x00])
     # Add protocol version. If pinging to determine version, use `-1`
-    req_data += self._pack_varint(0)
+    req_data += bytearray([0xff, 0xff, 0xff, 0xff, 0x0f])
     # Add server address length
     req_data += self._pack_varint(len(self.address))
     # Server address. Encoded with UTF8
@@ -236,7 +236,8 @@ class MineStat:
     content_len = self._unpack_varint(sock)
 
     # Receive full payload and close socket
-    payload_raw = bytearray(sock.recv(content_len * 2))
+    payload_raw = self._recv_exact(sock, content_len)
+
     sock.close()
 
     # If we receive a packet with id 0x19, something went wrong.
@@ -268,7 +269,12 @@ class MineStat:
 
     # Now that we have the status object, set all fields
     self.version = payload_obj["version"]["name"]
-    self.motd = payload_obj["description"]["text"]
+
+    if type(payload_obj["description"]) is str:
+        self.motd = payload_obj["description"]
+    elif type(payload_obj["description"]) is dict and "text" in payload_obj["description"]:
+        self.motd = payload_obj["description"]["text"]
+
     self.max_players = payload_obj["players"]["max"]
     self.current_players = payload_obj["players"]["online"]
 
@@ -351,7 +357,7 @@ class MineStat:
 
     # Receive answer packet id (1 byte) and payload lengh (signed big-endian short; 2 byte)
     try:
-      raw_header = sock.recv(3)
+      raw_header = self._recv_exact(sock, 3)
     except socket.timeout:
       return ConnStatus.TIMEOUT
     except OSError:
@@ -365,7 +371,7 @@ class MineStat:
       return ConnStatus.UNKNOWN
 
     # Receive full payload and close socket
-    payload_raw = bytearray(sock.recv(content_len * 2))
+    payload_raw = self._recv_exact(sock, content_len * 2)
     sock.close()
 
     # Set protocol version
@@ -399,7 +405,7 @@ class MineStat:
 
     # Receive answer packet id (1 byte) and payload lengh (signed big-endian short; 2 byte)
     try:
-      raw_header = sock.recv(3)
+      raw_header = self._recv_exact(sock, 3)
     except socket.timeout:
       return ConnStatus.TIMEOUT
     except OSError:
@@ -413,7 +419,7 @@ class MineStat:
       return ConnStatus.UNKNOWN
 
     # Receive full payload and close socket
-    payload_raw = bytearray(sock.recv(content_len * 2))
+    payload_raw = bytearray(self._recv_exact(sock, content_len * 2))
     sock.close()
 
     # Set protocol version
@@ -484,7 +490,7 @@ class MineStat:
 
     # Receive answer packet id (1 byte) and payload lengh (signed big-endian short; 2 byte)
     try:
-      raw_header = sock.recv(3)
+      raw_header = self._recv_exact(sock, 3)
     except socket.timeout:
       return ConnStatus.TIMEOUT
     except OSError:
@@ -498,7 +504,7 @@ class MineStat:
       return ConnStatus.UNKNOWN
 
     # Receive full payload and close socket
-    payload_raw = bytearray(sock.recv(content_len * 2))
+    payload_raw = bytearray(self._recv_exact(sock, content_len * 2))
     sock.close()
 
     # Set protocol version
@@ -531,3 +537,19 @@ class MineStat:
     self.online = True
 
     return ConnStatus.SUCCESS
+
+  @staticmethod
+  def _recv_exact(sock: socket.socket, size: int) -> bytearray:
+    """
+    Helper function for receiving a specific amount of data. Works around the problems of `socket.recv`.
+
+    :param sock: Open socket to receive data from
+    :param size: Amount of bytes of data to receive
+    :return: bytearray with the received data
+    """
+    data = bytearray()
+
+    while len(data) < size:
+      data += bytearray(sock.recv(size - len(data)))
+
+    return data
