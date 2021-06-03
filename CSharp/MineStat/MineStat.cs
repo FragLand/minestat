@@ -205,8 +205,7 @@ namespace MineStatLib
       var responsePayloadLength = ReadLeb128Stream(stream);
       
       // Receive the full payload
-      var responsePayload = new byte[responsePayloadLength];
-      stream.Read(responsePayload, 0, responsePayloadLength);
+      var responsePayload = NetStreamReadExact(stream, responsePayloadLength);
 
       return ParseJsonProtocolPayload(responsePayload);
     }
@@ -321,14 +320,14 @@ namespace MineStatLib
       var stream = tcpclient.GetStream();
       stream.Write(extLegacyPingPacket.ToArray(), 0, extLegacyPingPacket.Count);
 
-      var responsePacketHeader = new byte[3];
+      byte[] responsePacketHeader;
       
       // Catch timeouts and other network race conditions
       // A timeout occurs if the server doesn't understand the ping packet
       // and tries to interpret it as something else
       try
       {
-        stream.Read(responsePacketHeader, 0, 3);
+        responsePacketHeader = NetStreamReadExact(stream, 3);
       }
       catch (Exception)
       {
@@ -350,8 +349,7 @@ namespace MineStatLib
       var payloadLength = BitConverter.ToUInt16(payloadLengthRaw.ToArray(), 0);
 
       // Receive payload
-      var payload = new byte[payloadLength * 2];
-      stream.Read(payload, 0, payloadLength*2);
+      var payload = NetStreamReadExact(stream, payloadLength*2);
 
       // Close socket
       tcpclient.Close();
@@ -388,13 +386,13 @@ namespace MineStatLib
       var legacyPingPacket = new byte[] { 0xFE, 0x01 };
       stream.Write(legacyPingPacket, 0, legacyPingPacket.Length);
 
-      var responsePacketHeader = new byte[3];
+      byte[] responsePacketHeader;
       
       // Catch timeouts or reset connections
       // This happens if the server doesn't understand the packet (unsupported protocol)
       try
       {
-        stream.Read(responsePacketHeader, 0, 3);
+        responsePacketHeader = NetStreamReadExact(stream, 3);
       }
       catch (Exception)
       {
@@ -414,8 +412,7 @@ namespace MineStatLib
       var payloadLength = BitConverter.ToUInt16(responsePacketHeader, 0);
 
       // Receive payload
-      var payload = new byte[payloadLength * 2];
-      stream.Read(payload, 0, payloadLength*2);
+      var payload = NetStreamReadExact(stream, payloadLength*2);
 
       // Close socket
       tcpclient.Close();
@@ -494,8 +491,7 @@ namespace MineStatLib
       var betaPingPacket = new byte[] { 0xFE };
       stream.Write(betaPingPacket, 0, betaPingPacket.Length);
 
-      var responsePacketHeader = new byte[3];
-      stream.Read(responsePacketHeader, 0, 3);
+      var responsePacketHeader = NetStreamReadExact(stream, 3);
 
       // Check for response packet id
       if (responsePacketHeader[0] != 0xFF)
@@ -510,8 +506,7 @@ namespace MineStatLib
       var payloadLength = BitConverter.ToUInt16(responsePacketHeader, 0);
 
       // Receive payload
-      var payload = new byte[payloadLength * 2];
-      stream.Read(payload, 0, payloadLength*2);
+      var payload = NetStreamReadExact(stream, payloadLength * 2);
 
       // Close socket
       tcpclient.Close();
@@ -587,6 +582,29 @@ namespace MineStatLib
       Latency = stopWatch.ElapsedMilliseconds;
 
       return tcpclient;
+    }
+
+    /// <summary>
+    /// Wrapper for NetworkStream.<see cref="NetworkStream.Read"/>, which blocks until the full `size` amount of bytes has been read.
+    /// </summary>
+    /// <param name="stream">The network stream to read `size` bytes from</param>
+    /// <param name="size">The number of bytes to receive.</param>
+    /// <returns>An array of type <see cref="Byte"/> that contains the received data.</returns>
+    private static byte[] NetStreamReadExact(NetworkStream stream, int size)
+    {
+      var totalReadBytes = 0;
+      var resultBuffer = new List<byte>();
+
+      do
+      {
+        var tempBuffer = new byte[size - totalReadBytes];
+        var readBytes = stream.Read(tempBuffer, 0, size - totalReadBytes);
+
+        resultBuffer.AddRange(tempBuffer.Take(readBytes));
+        totalReadBytes += readBytes;
+      } while (totalReadBytes < size);
+
+      return resultBuffer.ToArray();
     }
 
     #region Obsolete
