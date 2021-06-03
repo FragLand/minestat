@@ -232,13 +232,21 @@ namespace MineStatLib
         Version = root.XPathSelectElement("//version/name")?.Value;
         
         // the MOTD
-        Motd = root.XPathSelectElement("//description/text")?.Value;
+        var descriptionElement = root.XPathSelectElement("//description");
+        if (descriptionElement != null && descriptionElement.Attribute(XName.Get("type"))?.Value == "string")
+        {
+          Motd = descriptionElement.Value;
+        }
+        else if (root.XPathSelectElement("//description/text") != null)
+        {
+          Motd = root.XPathSelectElement("//description/text")?.Value;
+        }
         
         // the online player count
-        CurrentPlayersInt = Convert.ToInt16(root.XPathSelectElement("//players/online")?.Value);
+        CurrentPlayersInt = Convert.ToInt32(root.XPathSelectElement("//players/online")?.Value);
         
         // the max player count
-        MaximumPlayersInt = Convert.ToInt16(root.XPathSelectElement("//players/max")?.Value);
+        MaximumPlayersInt = Convert.ToInt32(root.XPathSelectElement("//players/max")?.Value);
       }
       catch (Exception)
       {
