@@ -542,6 +542,7 @@ class MineStat:
   def _recv_exact(sock: socket.socket, size: int) -> bytearray:
     """
     Helper function for receiving a specific amount of data. Works around the problems of `socket.recv`.
+    Throws a ConnectionAbortedError if the connection was closed while waiting for data.
 
     :param sock: Open socket to receive data from
     :param size: Amount of bytes of data to receive
@@ -550,6 +551,12 @@ class MineStat:
     data = bytearray()
 
     while len(data) < size:
-      data += bytearray(sock.recv(size - len(data)))
+      temp_data = bytearray(sock.recv(size - len(data)))
+
+      # If the connection was closed, `sock.recv` returns an empty string
+      if not temp_data:
+        raise ConnectionAbortedError
+
+      data += temp_data
 
     return data
