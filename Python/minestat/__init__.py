@@ -221,60 +221,41 @@ class MineStat:
     # varint len, 0x00
     sock.send(bytearray([0x01, 0x00]))
 
-    # Receive answer: full packet length as varint
+    # Do all the receiving in a try-catch, to reduce duplication of error handling
     try:
+      # Receive answer: full packet length as varint
       packet_len = self._unpack_varint(sock)
-    except socket.timeout:
-      return ConnStatus.TIMEOUT
-    except ConnectionResetError or ConnectionAbortedError:
-      return ConnStatus.UNKNOWN
-    except OSError:
-      return ConnStatus.CONNFAIL
 
-    # Check if full packet length seems acceptable
-    if packet_len < 3:
-      return ConnStatus.UNKNOWN
+      # Check if full packet length seems acceptable
+      if packet_len < 3:
+        return ConnStatus.UNKNOWN
 
-    # Receive actual packet id
-    try:
+      # Receive actual packet id
       packet_id = self._unpack_varint(sock)
-    except socket.timeout:
-      return ConnStatus.TIMEOUT
-    except ConnectionResetError or ConnectionAbortedError:
-      return ConnStatus.UNKNOWN
-    except OSError:
-      return ConnStatus.CONNFAIL
 
-    # If we receive a packet with id 0x19, something went wrong.
-    # Usually the payload is JSON text, telling us what exactly.
-    # We could stop here, and display something to the user, as this is not normal
-    # behaviour, maybe a bug somewhere here.
+      # If we receive a packet with id 0x19, something went wrong.
+      # Usually the payload is JSON text, telling us what exactly.
+      # We could stop here, and display something to the user, as this is not normal
+      # behaviour, maybe a bug somewhere here.
 
-    # Instead I am just going to check for the correct packet id: 0x00
-    if packet_id != 0:
-      return ConnStatus.UNKNOWN
+      # Instead I am just going to check for the correct packet id: 0x00
+      if packet_id != 0:
+        return ConnStatus.UNKNOWN
 
-    # Receive & unpack payload length
-    try:
+      # Receive & unpack payload length
       content_len = self._unpack_varint(sock)
-    except socket.timeout:
-      return ConnStatus.TIMEOUT
-    except ConnectionResetError or ConnectionAbortedError:
-      return ConnStatus.UNKNOWN
-    except OSError:
-      return ConnStatus.CONNFAIL
 
-    # Receive full payload and close socket
-    try:
+      # Receive full payload
       payload_raw = self._recv_exact(sock, content_len)
+
     except socket.timeout:
       return ConnStatus.TIMEOUT
     except ConnectionResetError or ConnectionAbortedError:
       return ConnStatus.UNKNOWN
     except OSError:
       return ConnStatus.CONNFAIL
-
-    sock.close()
+    finally:
+      sock.close()
 
     # Set protocol version
     self.slp_protocol = SlpProtocols.JSON
