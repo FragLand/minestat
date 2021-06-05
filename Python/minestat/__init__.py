@@ -250,7 +250,7 @@ class MineStat:
 
     except socket.timeout:
       return ConnStatus.TIMEOUT
-    except ConnectionResetError or ConnectionAbortedError:
+    except (ConnectionResetError, ConnectionAbortedError):
       return ConnStatus.UNKNOWN
     except OSError:
       return ConnStatus.CONNFAIL
@@ -368,6 +368,8 @@ class MineStat:
       raw_header = self._recv_exact(sock, 3)
     except socket.timeout:
       return ConnStatus.TIMEOUT
+    except (ConnectionResetError, ConnectionAbortedError):
+      return ConnStatus.UNKNOWN
     except OSError:
       return ConnStatus.CONNFAIL
 
@@ -416,6 +418,8 @@ class MineStat:
       raw_header = self._recv_exact(sock, 3)
     except socket.timeout:
       return ConnStatus.TIMEOUT
+    except (ConnectionAbortedError, ConnectionResetError):
+      return ConnStatus.UNKNOWN
     except OSError:
       return ConnStatus.CONNFAIL
 
@@ -501,6 +505,8 @@ class MineStat:
       raw_header = self._recv_exact(sock, 3)
     except socket.timeout:
       return ConnStatus.TIMEOUT
+    except (ConnectionResetError, ConnectionAbortedError):
+      return ConnStatus.UNKNOWN
     except OSError:
       return ConnStatus.CONNFAIL
 
