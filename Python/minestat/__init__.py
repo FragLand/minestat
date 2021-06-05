@@ -368,7 +368,7 @@ class MineStat:
       packet_id = self._recv_exact(sock, 1)
 
       # Check packet id (should be "kick packet 0xFF")
-      if packet_id != 0xFF:
+      if packet_id[0] != 0xFF:
         return ConnStatus.UNKNOWN
 
       # Receive payload lengh (signed big-endian short; 2 byte)
