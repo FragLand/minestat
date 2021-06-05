@@ -120,7 +120,7 @@ Contains possible SLP (Server List Ping) protocols.
   """
 
 class MineStat:
-  VERSION = "2.1.1"             # MineStat version
+  VERSION = "2.1.2"             # MineStat version
   DEFAULT_TIMEOUT = 5           # default TCP timeout in seconds
 
   def __init__(self, address, port, timeout = DEFAULT_TIMEOUT, query_protocol: SlpProtocols = None):
@@ -221,33 +221,41 @@ class MineStat:
     # varint len, 0x00
     sock.send(bytearray([0x01, 0x00]))
 
-    # Receive answer: full packet lenght as varint
+    # Do all the receiving in a try-catch, to reduce duplication of error handling
     try:
+      # Receive answer: full packet length as varint
       packet_len = self._unpack_varint(sock)
+
+      # Check if full packet length seems acceptable
+      if packet_len < 3:
+        return ConnStatus.UNKNOWN
+
+      # Receive actual packet id
+      packet_id = self._unpack_varint(sock)
+
+      # If we receive a packet with id 0x19, something went wrong.
+      # Usually the payload is JSON text, telling us what exactly.
+      # We could stop here, and display something to the user, as this is not normal
+      # behaviour, maybe a bug somewhere here.
+
+      # Instead I am just going to check for the correct packet id: 0x00
+      if packet_id != 0:
+        return ConnStatus.UNKNOWN
+
+      # Receive & unpack payload length
+      content_len = self._unpack_varint(sock)
+
+      # Receive full payload
+      payload_raw = self._recv_exact(sock, content_len)
+
     except socket.timeout:
       return ConnStatus.TIMEOUT
+    except (ConnectionResetError, ConnectionAbortedError):
+      return ConnStatus.UNKNOWN
     except OSError:
       return ConnStatus.CONNFAIL
-
-    # Receive actual packet id
-    packet_id = self._unpack_varint(sock)
-
-    # Receive & unpack payload length
-    content_len = self._unpack_varint(sock)
-
-    # Receive full payload and close socket
-    payload_raw = self._recv_exact(sock, content_len)
-
-    sock.close()
-
-    # If we receive a packet with id 0x19, something went wrong.
-    # Usually the payload is JSON text, telling us what exactly.
-    # We could stop here, and display something to the user, as this is not normal
-    # behaviour, maybe a bug somewhere here.
-
-    # Instead I am just going to check for the correct packet id: 0x00
-    if packet_id != 0:
-      return ConnStatus.UNKNOWN
+    finally:
+      sock.close()
 
     # Set protocol version
     self.slp_protocol = SlpProtocols.JSON
@@ -355,24 +363,36 @@ class MineStat:
     # Now send the contructed client requests
     sock.send(req_data)
 
-    # Receive answer packet id (1 byte) and payload lengh (signed big-endian short; 2 byte)
     try:
-      raw_header = self._recv_exact(sock, 3)
+      # Receive answer packet id (1 byte)
+      packet_id = self._recv_exact(sock, 1)
+
+      # Check packet id (should be "kick packet 0xFF")
+      if packet_id[0] != 0xFF:
+        return ConnStatus.UNKNOWN
+
+      # Receive payload lengh (signed big-endian short; 2 byte)
+      raw_payload_len = self._recv_exact(sock, 2)
+
+      # Extract payload length
+      # Might be empty, if the server keeps the connection open but doesn't send anything
+      content_len = struct.unpack(">h", raw_payload_len)[0]
+
+      # Check if payload length is acceptable
+      if content_len < 3:
+        return ConnStatus.UNKNOWN
+
+      # Receive full payload and close socket
+      payload_raw = self._recv_exact(sock, content_len * 2)
+
     except socket.timeout:
       return ConnStatus.TIMEOUT
+    except (ConnectionResetError, ConnectionAbortedError, struct.error):
+      return ConnStatus.UNKNOWN
     except OSError:
       return ConnStatus.CONNFAIL
-
-    # Extract payload length
-    # Might be empty, if the server keeps the connection open but doesn't send anything
-    try:
-      content_len = struct.unpack(">xh", raw_header)[0]
-    except struct.error:
-      return ConnStatus.UNKNOWN
-
-    # Receive full payload and close socket
-    payload_raw = self._recv_exact(sock, content_len * 2)
-    sock.close()
+    finally:
+      sock.close()
 
     # Set protocol version
     self.slp_protocol = SlpProtocols.EXTENDED_LEGACY
@@ -408,6 +428,8 @@ class MineStat:
       raw_header = self._recv_exact(sock, 3)
     except socket.timeout:
       return ConnStatus.TIMEOUT
+    except (ConnectionAbortedError, ConnectionResetError):
+      return ConnStatus.UNKNOWN
     except OSError:
       return ConnStatus.CONNFAIL
 
@@ -493,6 +515,8 @@ class MineStat:
       raw_header = self._recv_exact(sock, 3)
     except socket.timeout:
       return ConnStatus.TIMEOUT
+    except (ConnectionResetError, ConnectionAbortedError):
+      return ConnStatus.UNKNOWN
     except OSError:
       return ConnStatus.CONNFAIL
 
@@ -542,6 +566,7 @@ class MineStat:
   def _recv_exact(sock: socket.socket, size: int) -> bytearray:
     """
     Helper function for receiving a specific amount of data. Works around the problems of `socket.recv`.
+    Throws a ConnectionAbortedError if the connection was closed while waiting for data.
 
     :param sock: Open socket to receive data from
     :param size: Amount of bytes of data to receive
@@ -550,6 +575,12 @@ class MineStat:
     data = bytearray()
 
     while len(data) < size:
-      data += bytearray(sock.recv(size - len(data)))
+      temp_data = bytearray(sock.recv(size - len(data)))
+
+      # If the connection was closed, `sock.recv` returns an empty string
+      if not temp_data:
+        raise ConnectionAbortedError
+
+      data += temp_data
 
     return data
