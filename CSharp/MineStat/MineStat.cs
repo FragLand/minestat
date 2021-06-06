@@ -174,20 +174,27 @@ namespace MineStatLib
       var stream = tcpclient.GetStream();
       stream.Write(jsonPingHandshakePacket.ToArray(), 0, jsonPingHandshakePacket.Count);
 
-      // Send request packet (packet len as VarInt, empty packet with ID 0x00
+      // Send request packet (packet len as VarInt, empty packet with ID 0x00)
       WriteLeb128Stream(stream, 1);
       stream.WriteByte(0x00);
       
       // Receive response
       
-      // Catch timeouts and other network race conditions
+      // Catch timeouts and other network exceptions
       // A timeout occurs if the server doesn't understand the ping packet
       // and tries to interpret it as something else
+      int responseSize;
       try
       {
-        var responseSize = ReadLeb128Stream(stream);
+        responseSize = ReadLeb128Stream(stream);
       }
       catch (Exception)
+      {
+        return ConnStatus.Unknown;
+      }
+
+      // Check if full packet size is reasonable
+      if (responseSize < 3)
       {
         return ConnStatus.Unknown;
       }
@@ -499,7 +506,15 @@ namespace MineStatLib
       var betaPingPacket = new byte[] { 0xFE };
       stream.Write(betaPingPacket, 0, betaPingPacket.Length);
 
-      var responsePacketHeader = NetStreamReadExact(stream, 3);
+      byte[] responsePacketHeader;
+      try
+      {
+        responsePacketHeader = NetStreamReadExact(stream, 3);
+      }
+      catch (Exception)
+      {
+        return ConnStatus.Unknown;
+      }
 
       // Check for response packet id
       if (responsePacketHeader[0] != 0xFF)
