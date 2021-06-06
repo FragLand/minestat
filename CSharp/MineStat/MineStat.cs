@@ -608,6 +608,12 @@ namespace MineStatLib
         var tempBuffer = new byte[size - totalReadBytes];
         var readBytes = stream.Read(tempBuffer, 0, size - totalReadBytes);
 
+        // Socket is closed
+        if (readBytes == 0)
+        {
+          throw new IOException();
+        }
+
         resultBuffer.AddRange(tempBuffer.Take(readBytes));
         totalReadBytes += readBytes;
       } while (totalReadBytes < size);
