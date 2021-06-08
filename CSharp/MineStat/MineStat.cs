@@ -74,16 +74,16 @@ namespace MineStatLib
       switch (protocol)
       {
         case SlpProtocol.Beta:
-          RequestWithBetaProtocol();
+          RequestWrapper(RequestWithBetaProtocol);
           break;
         case SlpProtocol.Legacy:
-          RequestWithLegacyProtocol();
+          RequestWrapper(RequestWithLegacyProtocol);
           break;
         case SlpProtocol.ExtendedLegacy:
-          RequestWithExtendedLegacyProtocol();
+          RequestWrapper(RequestWithExtendedLegacyProtocol);
           break;
         case SlpProtocol.Json:
-          RequestWithJsonProtocol();
+          RequestWrapper(RequestWithJsonProtocol);
           break;
         case SlpProtocol.Automatic:
           break;
@@ -108,17 +108,17 @@ namespace MineStatLib
       // 3.: Extended Legacy (1.6)
       // 4.: JSON (1.7+)
       
-      var result = RequestWithLegacyProtocol();
+      var result = RequestWrapper(RequestWithLegacyProtocol);
       
       if (result != ConnStatus.Connfail && result != ConnStatus.Success)
       {
-        result = RequestWithBetaProtocol();
+        result = RequestWrapper(RequestWithBetaProtocol);
         
         if (result != ConnStatus.Connfail)
-          result = RequestWithExtendedLegacyProtocol();
+          result = RequestWrapper(RequestWithExtendedLegacyProtocol);
 
         if (result != ConnStatus.Connfail && result != ConnStatus.Success)
-          RequestWithJsonProtocol();
+          RequestWrapper(RequestWithJsonProtocol);
       }
     }
 
@@ -129,20 +129,8 @@ namespace MineStatLib
     /// </summary>
     /// <returns>ConnStatus - See <see cref="ConnStatus"/> for possible values</returns>
     /// <seealso cref="SlpProtocol.Json"/>
-    public ConnStatus RequestWithJsonProtocol()
+    public ConnStatus RequestWithJsonProtocol(NetworkStream stream)
     {
-      TcpClient tcpclient;
-      
-      try
-      {
-        tcpclient = TcpClientWrapper();
-      }
-      catch(Exception)
-      {
-        ServerUp = false;
-        return ConnStatus.Connfail;
-      }
-      
       // Construct handshake packet
       // - The packet length (packet id + data) as VarInt [prepended at the end]
       // - The packet id 0x00
@@ -171,23 +159,29 @@ namespace MineStatLib
       jsonPingHandshakePacket.InsertRange(0, WriteLeb128(jsonPingHandshakePacket.Count));
       
       // Send handshake packet
-      var stream = tcpclient.GetStream();
       stream.Write(jsonPingHandshakePacket.ToArray(), 0, jsonPingHandshakePacket.Count);
 
-      // Send request packet (packet len as VarInt, empty packet with ID 0x00
+      // Send request packet (packet len as VarInt, empty packet with ID 0x00)
       WriteLeb128Stream(stream, 1);
       stream.WriteByte(0x00);
       
       // Receive response
       
-      // Catch timeouts and other network race conditions
+      // Catch timeouts and other network exceptions
       // A timeout occurs if the server doesn't understand the ping packet
       // and tries to interpret it as something else
+      int responseSize;
       try
       {
-        var responseSize = ReadLeb128Stream(stream);
+        responseSize = ReadLeb128Stream(stream);
       }
       catch (Exception)
+      {
+        return ConnStatus.Unknown;
+      }
+
+      // Check if full packet size is reasonable
+      if (responseSize < 3)
       {
         return ConnStatus.Unknown;
       }
@@ -205,8 +199,7 @@ namespace MineStatLib
       var responsePayloadLength = ReadLeb128Stream(stream);
       
       // Receive the full payload
-      var responsePayload = new byte[responsePayloadLength];
-      stream.Read(responsePayload, 0, responsePayloadLength);
+      var responsePayload = NetStreamReadExact(stream, responsePayloadLength);
 
       return ParseJsonProtocolPayload(responsePayload);
     }
@@ -233,13 +226,21 @@ namespace MineStatLib
         Version = root.XPathSelectElement("//version/name")?.Value;
         
         // the MOTD
-        Motd = root.XPathSelectElement("//description/text")?.Value;
+        var descriptionElement = root.XPathSelectElement("//description");
+        if (descriptionElement != null && descriptionElement.Attribute(XName.Get("type"))?.Value == "string")
+        {
+          Motd = descriptionElement.Value;
+        }
+        else if (root.XPathSelectElement("//description/text") != null)
+        {
+          Motd = root.XPathSelectElement("//description/text")?.Value;
+        }
         
         // the online player count
-        CurrentPlayersInt = Convert.ToInt16(root.XPathSelectElement("//players/online")?.Value);
+        CurrentPlayersInt = Convert.ToInt32(root.XPathSelectElement("//players/online")?.Value);
         
         // the max player count
-        MaximumPlayersInt = Convert.ToInt16(root.XPathSelectElement("//players/max")?.Value);
+        MaximumPlayersInt = Convert.ToInt32(root.XPathSelectElement("//players/max")?.Value);
       }
       catch (Exception)
       {
@@ -267,20 +268,8 @@ namespace MineStatLib
     /// </summary>
     /// <returns>ConnStatus - See <see cref="ConnStatus"/> for possible values</returns>
     /// <seealso cref="SlpProtocol.ExtendedLegacy"/>
-    public ConnStatus RequestWithExtendedLegacyProtocol()
+    public ConnStatus RequestWithExtendedLegacyProtocol(NetworkStream stream)
     {
-      TcpClient tcpclient;
-      
-      try
-      {
-        tcpclient = TcpClientWrapper();
-      }
-      catch(Exception)
-      {
-        ServerUp = false;
-        return ConnStatus.Connfail;
-      }
-      
       // Send ping packet with id 0xFE, and ping data 0x01
       // Then 0xFA as packet id for a plugin message
       // Then 0x00 0x0B as strlen of the following (hardcoded) string
@@ -318,17 +307,16 @@ namespace MineStatLib
         Array.Reverse(port);
       extLegacyPingPacket.AddRange(port);
       
-      var stream = tcpclient.GetStream();
       stream.Write(extLegacyPingPacket.ToArray(), 0, extLegacyPingPacket.Count);
 
-      var responsePacketHeader = new byte[3];
+      byte[] responsePacketHeader;
       
       // Catch timeouts and other network race conditions
       // A timeout occurs if the server doesn't understand the ping packet
       // and tries to interpret it as something else
       try
       {
-        stream.Read(responsePacketHeader, 0, 3);
+        responsePacketHeader = NetStreamReadExact(stream, 3);
       }
       catch (Exception)
       {
@@ -350,12 +338,8 @@ namespace MineStatLib
       var payloadLength = BitConverter.ToUInt16(payloadLengthRaw.ToArray(), 0);
 
       // Receive payload
-      var payload = new byte[payloadLength * 2];
-      stream.Read(payload, 0, payloadLength*2);
+      var payload = NetStreamReadExact(stream, payloadLength*2);
 
-      // Close socket
-      tcpclient.Close();
-      
       return ParseLegacyProtocol(payload, SlpProtocol.ExtendedLegacy);
     }
 
@@ -369,32 +353,19 @@ namespace MineStatLib
     /// </summary>
     /// <returns>ConnStatus - See <see cref="ConnStatus"/> for possible values</returns>
     /// <seealso cref="SlpProtocol.Legacy"/>
-    public ConnStatus RequestWithLegacyProtocol()
+    public ConnStatus RequestWithLegacyProtocol(NetworkStream stream)
     {
-      TcpClient tcpclient;
-      
-      try
-      {
-        tcpclient = TcpClientWrapper();
-      }
-      catch(Exception)
-      {
-        ServerUp = false;
-        return ConnStatus.Connfail;
-      }
-      
       // Send ping packet with id 0xFE, and ping data 0x01
-      var stream = tcpclient.GetStream();
       var legacyPingPacket = new byte[] { 0xFE, 0x01 };
       stream.Write(legacyPingPacket, 0, legacyPingPacket.Length);
 
-      var responsePacketHeader = new byte[3];
+      byte[] responsePacketHeader;
       
       // Catch timeouts or reset connections
       // This happens if the server doesn't understand the packet (unsupported protocol)
       try
       {
-        stream.Read(responsePacketHeader, 0, 3);
+        responsePacketHeader = NetStreamReadExact(stream, 3);
       }
       catch (Exception)
       {
@@ -414,11 +385,7 @@ namespace MineStatLib
       var payloadLength = BitConverter.ToUInt16(responsePacketHeader, 0);
 
       // Receive payload
-      var payload = new byte[payloadLength * 2];
-      stream.Read(payload, 0, payloadLength*2);
-
-      // Close socket
-      tcpclient.Close();
+      var payload = NetStreamReadExact(stream, payloadLength*2);
 
       return ParseLegacyProtocol(payload, SlpProtocol.Legacy);
     }
@@ -475,27 +442,21 @@ namespace MineStatLib
     /// </summary>
     /// <returns>ConnStatus - See <see cref="ConnStatus"/> for possible values</returns>
     /// <seealso cref="SlpProtocol.Beta"/>
-    public ConnStatus RequestWithBetaProtocol()
+    public ConnStatus RequestWithBetaProtocol(NetworkStream stream)
     {
-      TcpClient tcpclient;
-      
-      try
-      {
-        tcpclient = TcpClientWrapper();
-      }
-      catch(Exception)
-      {
-        ServerUp = false;
-        return ConnStatus.Connfail;
-      }
-      
       // Send empty packet with id 0xFE
-      var stream = tcpclient.GetStream();
       var betaPingPacket = new byte[] { 0xFE };
       stream.Write(betaPingPacket, 0, betaPingPacket.Length);
 
-      var responsePacketHeader = new byte[3];
-      stream.Read(responsePacketHeader, 0, 3);
+      byte[] responsePacketHeader;
+      try
+      {
+        responsePacketHeader = NetStreamReadExact(stream, 3);
+      }
+      catch (Exception)
+      {
+        return ConnStatus.Unknown;
+      }
 
       // Check for response packet id
       if (responsePacketHeader[0] != 0xFF)
@@ -510,11 +471,7 @@ namespace MineStatLib
       var payloadLength = BitConverter.ToUInt16(responsePacketHeader, 0);
 
       // Receive payload
-      var payload = new byte[payloadLength * 2];
-      stream.Read(payload, 0, payloadLength*2);
-
-      // Close socket
-      tcpclient.Close();
+      var payload = NetStreamReadExact(stream, payloadLength * 2);
 
       return ParseBetaProtocol(payload);
     }
@@ -558,11 +515,13 @@ namespace MineStatLib
     }
 
     /// <summary>
-    /// Internal helper method for connecting to a remote host, including a workaround for not
-    /// existing "Connect timeout" in the synchronous TcpClient.Connect() method.
-    /// Otherwise, it would hang for >10 seconds before throwing an exception.
+    /// Internal helper method for connecting to a remote host and setting timeouts.
     /// </summary>
-    /// <returns>TcpClient object</returns>
+    /// <remarks>
+    /// Contains a workaround for not  existing "Connect timeout" in the synchronous <c>TcpClient.Connect()</c> method.
+    /// Otherwise, the method would hang for >10 seconds before throwing an exception.
+    /// </remarks>
+    /// <returns><see cref="TcpClient"/> object or <c>null</c> if the connection failed</returns>
     private TcpClient TcpClientWrapper()
     {
       var tcpclient = new TcpClient {ReceiveTimeout = Timeout * 1000, SendTimeout = Timeout * 1000};
@@ -573,20 +532,80 @@ namespace MineStatLib
       // Start async connection
       var result = tcpclient.BeginConnect(Address, Port, null, null);
       // wait "timeout" seconds
-      var success = result.AsyncWaitHandle.WaitOne(TimeSpan.FromSeconds(1));
-      // check if connection is established, error out if not
-      if (!success)
+      var isResponsive = result.AsyncWaitHandle.WaitOne(TimeSpan.FromSeconds(Timeout));
+      
+      // Check if connection attempt hung longer than `timeout` seconds, error out if not
+      // Note: Errors are a valid response and have to be caught later
+      if (!isResponsive)
       {
-        throw new Exception("Failed to connect.");
+        return null;
       }
 
-      // we have connected
-      tcpclient.EndConnect(result);
-      
+      // The connection attempt returned something (error or success)
+      try
+      {
+        tcpclient.EndConnect(result);
+      }
+      // "silence" only SocketExceptions, e.g. Host is down, port unreachable
+      // but let everything else throw
+      catch (SocketException)
+      {
+        return null;
+      }
+
       stopWatch.Stop();
       Latency = stopWatch.ElapsedMilliseconds;
 
       return tcpclient;
+    }
+
+    /// <summary>
+    /// Wrapper for NetworkStream.<see cref="NetworkStream.Read"/>, which blocks until the full `size` amount of bytes has been read.
+    /// </summary>
+    /// <param name="stream">The network stream to read `size` bytes from</param>
+    /// <param name="size">The number of bytes to receive.</param>
+    /// <returns>An array of type <see cref="Byte"/> that contains the received data.</returns>
+    private static byte[] NetStreamReadExact(NetworkStream stream, int size)
+    {
+      var totalReadBytes = 0;
+      var resultBuffer = new List<byte>();
+
+      do
+      {
+        var tempBuffer = new byte[size - totalReadBytes];
+        var readBytes = stream.Read(tempBuffer, 0, size - totalReadBytes);
+
+        // Socket is closed
+        if (readBytes == 0)
+        {
+          throw new IOException();
+        }
+
+        resultBuffer.AddRange(tempBuffer.Take(readBytes));
+        totalReadBytes += readBytes;
+      } while (totalReadBytes < size);
+
+      return resultBuffer.ToArray();
+    }
+    
+    /// <summary>
+    /// Wrapper for any `Request` method. Handles graceful socket closure.
+    /// </summary>
+    /// <param name="toExecute">Request method to execute, e.g. <see cref="RequestWithJsonProtocol"/></param>
+    /// <returns>The connection status returned by the method from `toExecute` or <see cref="ConnStatus.Connfail"/> on connection failure</returns>
+    private ConnStatus RequestWrapper(Func<NetworkStream, ConnStatus> toExecute)
+    {
+      using (var tcpClient = TcpClientWrapper())
+      {
+        if (tcpClient == null)
+        {
+          ServerUp = false;
+          return ConnStatus.Connfail;
+        }
+
+        var networkStream = tcpClient.GetStream();
+        return toExecute(networkStream);
+      }
     }
 
     #region Obsolete
