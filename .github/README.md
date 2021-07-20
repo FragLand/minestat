@@ -60,6 +60,9 @@ func main() {
 ```
 
 ### Java example
+
+[![Maven](https://img.shields.io/maven-central/v/io.github.fragland/MineStat?label=Maven%20package&style=plastic)](https://search.maven.org/search?q=a:MineStat)
+
 ```java
 import land.Frag.MineStat;
 
