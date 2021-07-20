@@ -33,7 +33,7 @@ namespace MineStatLib
 {
   public class MineStat
   {
-    public const string MineStatVersion = "2.0.0";
+    public const string MineStatVersion = "2.1.0";
     private const int DefaultTimeout = 5; // default TCP timeout in seconds
 
     public string Address { get; set; }
