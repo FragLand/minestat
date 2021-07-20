@@ -40,8 +40,8 @@ public class MineStatTest
 	public void checkNumberOfCurrentPlayers()
   {
 		MineStat ms = new MineStat("minecraft.frag.land", 25565);
-		ms.setCurrentPlayers("0");
-		assertEquals("0", ms.getCurrentPlayers());
+		ms.setCurrentPlayers(0);
+		assertEquals(0, ms.getCurrentPlayers());
 	}
 
 	@Test
@@ -49,8 +49,8 @@ public class MineStatTest
 	public void checkNumberOfMaximumPlayers()
   {
 		MineStat ms = new MineStat("minecraft.frag.land", 25565);
-		ms.setMaximumPlayers("32");
-		assertEquals("32", ms.getMaximumPlayers());
+		ms.setMaximumPlayers(32);
+		assertEquals(32, ms.getMaximumPlayers());
 	}
 
 	@Test
