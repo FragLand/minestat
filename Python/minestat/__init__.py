@@ -190,10 +190,10 @@ class MineStat:
     """
     stripped_motd = ""
 
-    if type(raw_motd) is str:
+    if isinstance(raw_motd, str):
       stripped_motd = re.sub(r"§.", "", raw_motd)
 
-    elif type(raw_motd) is dict:
+    elif isinstance(raw_motd, dict):
       stripped_motd = raw_motd.get("text", "")
 
       if raw_motd.get("extra"):
@@ -303,7 +303,7 @@ class MineStat:
     self.version = payload_obj["version"]["name"]
 
     # The motd might be a string directly, not a json object
-    if type(payload_obj["description"]) is str:
+    if isinstance(payload_obj["description"], str):
       self.motd = payload_obj["description"]
     else:
       self.motd = json.dumps(payload_obj["description"])
