@@ -18,6 +18,7 @@
 import json
 import socket
 import struct
+import re
 from time import perf_counter
 from enum import Enum
 from typing import Union
@@ -120,7 +121,7 @@ Contains possible SLP (Server List Ping) protocols.
   """
 
 class MineStat:
-  VERSION = "2.1.2"             # MineStat version
+  VERSION = "2.2.0"             # MineStat version
   DEFAULT_TIMEOUT = 5           # default TCP timeout in seconds
 
   def __init__(self, address, port, timeout = DEFAULT_TIMEOUT, query_protocol: SlpProtocols = None):
@@ -128,7 +129,8 @@ class MineStat:
     self.port = port
     self.online = None           # online or offline?
     self.version = None          # server version
-    self.motd = None             # message of the day
+    self.motd = None             # message of the day, unchanged server response (including formatting codes/JSON)
+    self.stripped_motd = None    # message of the day, stripped of all formatting ("human-readable")
     self.current_players = None  # current number of players online
     self.max_players = None      # maximum player capacity
     self.latency = None          # ping time to server in milliseconds
@@ -177,6 +179,28 @@ class MineStat:
     # Minecraft 1.7+ (JSON SLP)
     if result is not ConnStatus.CONNFAIL:
       self.json_query()
+
+  @staticmethod
+  def motd_strip_formatting(raw_motd: Union[str, dict]) -> str:
+    """
+    Function for stripping all formatting codes from a motd. Supports Json Chat components (as dict) and
+    the legacy formatting codes.
+
+    :param raw_motd: The raw MOTD, either as a string or dict (from "json.loads()")
+    """
+    stripped_motd = ""
+
+    if isinstance(raw_motd, str):
+      stripped_motd = re.sub(r"§.", "", raw_motd)
+
+    elif isinstance(raw_motd, dict):
+      stripped_motd = raw_motd.get("text", "")
+
+      if raw_motd.get("extra"):
+        for sub in raw_motd["extra"]:
+          stripped_motd += MineStat.motd_strip_formatting(sub)
+
+    return stripped_motd
 
   def json_query(self):
     """
@@ -278,10 +302,12 @@ class MineStat:
     # Now that we have the status object, set all fields
     self.version = payload_obj["version"]["name"]
 
-    if type(payload_obj["description"]) is str:
-        self.motd = payload_obj["description"]
-    elif type(payload_obj["description"]) is dict and "text" in payload_obj["description"]:
-        self.motd = payload_obj["description"]["text"]
+    # The motd might be a string directly, not a json object
+    if isinstance(payload_obj["description"], str):
+      self.motd = payload_obj["description"]
+    else:
+      self.motd = json.dumps(payload_obj["description"])
+    self.stripped_motd = self.motd_strip_formatting(payload_obj["description"])
 
     self.max_players = payload_obj["players"]["max"]
     self.current_players = payload_obj["players"]["online"]
@@ -478,6 +504,7 @@ class MineStat:
     self.version = payload_list[2]
     # - the MOTD
     self.motd = payload_list[3]
+    self.stripped_motd = self.motd_strip_formatting(payload_list[3])
     # - the online player count
     self.current_players = int(payload_list[4])
     # - the max player count
@@ -553,6 +580,7 @@ class MineStat:
     # The first value it the server MOTD
     # This could contain '§' itself, thats the reason for the join here
     self.motd = "§".join(payload_list[:-2])
+    self.stripped_motd = self.motd_strip_formatting("§".join(payload_list[:-2]))
 
     # Set general version, as the protocol doesn't contain the server version
     self.version = ">=1.8b/1.3"
