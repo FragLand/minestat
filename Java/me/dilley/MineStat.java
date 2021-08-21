@@ -128,41 +128,11 @@ public class MineStat
     setAddress(address);
     setPort(port);
     setTimeout(timeout);
-    switch(requestType)
-    {
-      case BETA:
-        betaRequest(address, port, getTimeout());
-        break;
-      case LEGACY:
-        legacyRequest(address, port, getTimeout());
-        break;
-      case EXTENDED:
-        extendedLegacyRequest(address, port, getTimeout());
-        break;
-      case JSON:
-        jsonRequest(address, port, getTimeout());
-        break;
-      default:
-        /*
-         * Attempt various SLP ping requests in a particular order. If the request
-         * succeeds or the connection fails, there is no reason to continue with
-         * subsequent requests. Attempts should continue in the event of a timeout
-         * however since it may be due to an issue during the handshake.
-         * Note: Newer server versions may still respond to older SLP requests.
-         * For example, 1.13.2 responds to 1.4/1.5 queries, but not 1.6 queries.
-         */
-        // SLP 1.4/1.5
-        Retval retval = legacyRequest(address, port, getTimeout());
-        // SLP 1.8b/1.3
-        if(retval != Retval.SUCCESS && retval != Retval.CONNFAIL)
-          retval = betaRequest(address, port, getTimeout());
-        // SLP 1.6
-        if(retval != Retval.SUCCESS && retval != Retval.CONNFAIL)
-          retval = extendedLegacyRequest(address, port, getTimeout());
-        // SLP 1.7
-        if(retval != Retval.SUCCESS && retval != Retval.CONNFAIL)
-          retval = jsonRequest(address, port, getTimeout());
-    }
+        if(jsonRequest(address, port, getTimeout()) != Retval.SUCCESS)
+            if (extendedLegacyRequest(address, port, getTimeout()) != Retval.SUCCESS)
+                if (legacyRequest(address, port, getTimeout()) != Retval.SUCCESS)
+                    if (legacyRequest(address, port, getTimeout()) != Retval.SUCCESS)
+                        betaRequest(address, port, getTimeout());
   }
 
   public String getAddress() { return address; }
