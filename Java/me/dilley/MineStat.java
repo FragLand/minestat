@@ -307,11 +307,12 @@ public class MineStat
       setLatency(System.currentTimeMillis() - startTime);
       DataOutputStream dos = new DataOutputStream(clientSocket.getOutputStream());
       DataInputStream dis = new DataInputStream(new BufferedInputStream(clientSocket.getInputStream()));
-      dos.writeBytes("\u00FE\u0001");
+      dos.writeShort(0xFE01);
       if(dis.readUnsignedByte() == 0xFF) // kick packet (255)
       {
         int dataLen = dis.readUnsignedShort();
         rawServerData = new byte[dataLen * 2];
+        // TODO: Implement full data retrieval (_recv_exact in Py)
         dis.read(rawServerData, 0, dataLen * 2);
         clientSocket.close();
       }
@@ -399,7 +400,8 @@ public class MineStat
       setLatency(System.currentTimeMillis() - startTime);
       DataOutputStream dos = new DataOutputStream(clientSocket.getOutputStream());
       DataInputStream dis = new DataInputStream(new BufferedInputStream(clientSocket.getInputStream()));
-      dos.writeBytes("\u00FE\u0001\u00FA");
+      dos.writeShort(0xFE01);
+      dos.writeBytes("\u00FA");
       dos.writeBytes("\u0000\u000B");    // 11 (length of "MC|PingHost")
       byte[] payload = "MC|PingHost".getBytes("UTF-16BE");
       dos.write(payload, 0, payload.length);
@@ -413,6 +415,7 @@ public class MineStat
       {
         int dataLen = dis.readUnsignedShort();
         rawServerData = new byte[dataLen * 2];
+        // TODO: Fully receive data
         dis.read(rawServerData, 0, dataLen * 2);
         clientSocket.close();
       }
@@ -573,6 +576,12 @@ public class MineStat
       int jsonLength = recvVarInt(dis);      // JSON response size
       byte[] rawData = new byte[jsonLength]; // storage for JSON data
       dis.read(rawData);                     // fill byte array with JSON data
+
+      // Close sockets
+      if (!clientSocket.isClosed()) {
+        clientSocket.close();
+      }
+
       // Populate object from JSON data
       JsonObject jobj = new Gson().fromJson(new String(rawData), JsonObject.class);
       setMotd(jobj.get("description").getAsJsonObject().get("text").getAsString());
