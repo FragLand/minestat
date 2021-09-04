@@ -277,7 +277,7 @@ public class MineStat
       {
         int dataLen = dis.readUnsignedShort();
         rawServerData = new byte[dataLen * 2];
-        dis.read(rawServerData, 0, dataLen * 2);
+        dis.readFully(rawServerData, 0, dataLen * 2);
         clientSocket.close();
       }
       else
@@ -359,8 +359,7 @@ public class MineStat
       {
         int dataLen = dis.readUnsignedShort();
         rawServerData = new byte[dataLen * 2];
-        // TODO: Implement full data retrieval (_recv_exact in Py)
-        dis.read(rawServerData, 0, dataLen * 2);
+        dis.readFully(rawServerData, 0, dataLen * 2);
         clientSocket.close();
       }
       else
@@ -462,8 +461,7 @@ public class MineStat
       {
         int dataLen = dis.readUnsignedShort();
         rawServerData = new byte[dataLen * 2];
-        // TODO: Fully receive data
-        dis.read(rawServerData, 0, dataLen * 2);
+        dis.readFully(rawServerData, 0, dataLen * 2);
         clientSocket.close();
       }
       else
@@ -623,8 +621,7 @@ public class MineStat
       int jsonLength = recvVarInt(dis);      // JSON response size
       byte[] rawData = new byte[jsonLength]; // storage for JSON data
 
-      // TODO: Fully receive data
-      dis.read(rawData);                     // fill byte array with JSON data
+      dis.readFully(rawData);                     // fill byte array with JSON data
 
       // Close sockets
       if (!clientSocket.isClosed()) {
