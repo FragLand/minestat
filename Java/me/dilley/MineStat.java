@@ -30,7 +30,7 @@ import java.net.*;
 
 public class MineStat
 {
-  public static final String VERSION = "2.0.0"; // MineStat version
+  public static final String VERSION = "2.1.0"; // MineStat version
   public static final byte NUM_FIELDS = 6;      // number of values expected from server
   public static final byte NUM_FIELDS_BETA = 3; // number of values expected from a 1.8b/1.3 server
   public static final int DEFAULT_TIMEOUT = 5;  // default TCP timeout in seconds
