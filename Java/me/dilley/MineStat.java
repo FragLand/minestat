@@ -27,6 +27,7 @@ package me.dilley;
 import com.google.gson.*;
 import java.io.*;
 import java.net.*;
+import java.nio.charset.StandardCharsets;
 
 public class MineStat
 {
@@ -242,7 +243,7 @@ public class MineStat
       if(rawServerData == null)
         return Retval.UNKNOWN;
 
-      serverData = new String(rawServerData, "UTF16").split("\u00A7"); // section symbol
+      serverData = new String(rawServerData, StandardCharsets.UTF_16).split("\u00A7"); // section symbol
       if(serverData.length >= NUM_FIELDS_BETA)
       {
         setVersion(">=1.8b/1.3"); // since server does not return version, set it
@@ -325,7 +326,7 @@ public class MineStat
       if(rawServerData == null)
         return Retval.UNKNOWN;
 
-      serverData = new String(rawServerData, "UTF16").split("\u0000"); // null
+      serverData = new String(rawServerData, StandardCharsets.UTF_16BE).split("\u0000"); // null
       if(serverData.length >= NUM_FIELDS)
       {
         // serverData[0] contains the section symbol and 1
@@ -403,12 +404,12 @@ public class MineStat
       dos.writeShort(0xFE01);
       dos.writeBytes("\u00FA");
       dos.writeBytes("\u0000\u000B");    // 11 (length of "MC|PingHost")
-      byte[] payload = "MC|PingHost".getBytes("UTF-16BE");
+      byte[] payload = "MC|PingHost".getBytes(StandardCharsets.UTF_16BE);
       dos.write(payload, 0, payload.length);
       dos.writeShort(7 + 2 * address.length());
       dos.writeBytes("\u004E");          // 78 (protocol version of 1.6.4)
       dos.writeShort(address.length());
-      payload = address.getBytes("UTF-16BE");
+      payload = address.getBytes(StandardCharsets.UTF_16BE);
       dos.write(payload, 0, payload.length);
       dos.writeInt(port);
       if(dis.readUnsignedByte() == 0xFF) // kick packet (255)
@@ -428,7 +429,7 @@ public class MineStat
       if(rawServerData == null)
         return Retval.UNKNOWN;
 
-      serverData = new String(rawServerData, "UTF16").split("\u0000"); // null
+      serverData = new String(rawServerData, StandardCharsets.UTF_16BE).split("\u0000"); // null
       if(serverData.length >= NUM_FIELDS)
       {
         // serverData[0] contains the section symbol and 1
@@ -575,6 +576,8 @@ public class MineStat
       int packetID = recvVarInt(dis);        // packet ID
       int jsonLength = recvVarInt(dis);      // JSON response size
       byte[] rawData = new byte[jsonLength]; // storage for JSON data
+
+      // TODO: Fully receive data
       dis.read(rawData);                     // fill byte array with JSON data
 
       // Close sockets
@@ -614,6 +617,7 @@ public class MineStat
       serverUp = false;
       return Retval.UNKNOWN;
     }
+
     return Retval.SUCCESS;
   }
 }
