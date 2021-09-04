@@ -85,6 +85,13 @@ public class MineStat
   private String motd;
 
   /**
+   * Message of the day from the server,
+   * without any formatting (human-readable)
+   * @since 2.1.0
+   */
+  private String strippedMotd;
+
+  /**
    * Minecraft version the server is running
    */
   private String version;
@@ -181,6 +188,45 @@ public class MineStat
   public String getMotd() { return motd; }
 
   public void setMotd(String motd) { this.motd = motd; }
+
+  public String getStrippedMotd() {
+    return strippedMotd;
+  }
+
+  public void setStrippedMotd(String strippedMotd) {
+    this.strippedMotd = strippedMotd;
+  }
+
+  /**
+   * Helper function for stripping any formatting from a motd.
+   * @param motd A motd with formatting codes
+   * @return A motd with all formatting codes removed
+   * @since 2.1.0
+   */
+  public String stripMotdFormatting(String motd) {
+    return motd.replaceAll("§.", "");
+  }
+
+  public String stripMotdFormatting(JsonObject motd) {
+    StringBuilder strippedMotd = new StringBuilder();
+
+    if (motd.isJsonPrimitive()) {
+      return motd.getAsString();
+    }
+
+    JsonObject motdObj = motd.getAsJsonObject();
+    if (motdObj.has("text")) {
+      strippedMotd.append(motdObj.get("text").getAsString());
+    }
+
+    if (motdObj.has("extra") && motdObj.get("extra").isJsonArray()) {
+      for (JsonElement extraElem : motdObj.get("extra").getAsJsonArray()) {
+        strippedMotd.append(stripMotdFormatting(extraElem.getAsJsonObject()));
+      }
+    }
+
+    return strippedMotd.toString();
+  }
 
   public String getVersion() { return version; }
 
@@ -587,7 +633,8 @@ public class MineStat
 
       // Populate object from JSON data
       JsonObject jobj = new Gson().fromJson(new String(rawData), JsonObject.class);
-      setMotd(jobj.get("description").getAsJsonObject().get("text").getAsString());
+      setMotd(jobj.get("description").toString());
+      setStrippedMotd(stripMotdFormatting(jobj.get("description").getAsJsonObject()));
       setVersion(jobj.get("version").getAsJsonObject().get("name").getAsString());
       setCurrentPlayers(jobj.get("players").getAsJsonObject().get("online").getAsInt());
       setMaximumPlayers(jobj.get("players").getAsJsonObject().get("max").getAsInt());
