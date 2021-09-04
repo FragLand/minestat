@@ -76,6 +76,7 @@ class Example
     {
      System.out.println("Server is online running version " + ms.getVersion() + " with " + ms.getCurrentPlayers() + " out of " + ms.getMaximumPlayers() + " players.");
      System.out.println("Message of the day: " + ms.getMotd());
+     System.out.println("Message of the day without formatting: " + ms.getStrippedMotd());
      System.out.println("Latency: " + ms.getLatency() + "ms");
      System.out.println("Connected using protocol: " + ms.getRequestType());
     }
