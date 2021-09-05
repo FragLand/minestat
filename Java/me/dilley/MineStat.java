@@ -27,10 +27,11 @@ package me.dilley;
 import com.google.gson.*;
 import java.io.*;
 import java.net.*;
+import java.nio.charset.StandardCharsets;
 
 public class MineStat
 {
-  public static final String VERSION = "2.0.0"; // MineStat version
+  public static final String VERSION = "2.1.0"; // MineStat version
   public static final byte NUM_FIELDS = 6;      // number of values expected from server
   public static final byte NUM_FIELDS_BETA = 3; // number of values expected from a 1.8b/1.3 server
   public static final int DEFAULT_TIMEOUT = 5;  // default TCP timeout in seconds
@@ -82,6 +83,13 @@ public class MineStat
    * Message of the day from the server
    */
   private String motd;
+
+  /**
+   * Message of the day from the server,
+   * without any formatting (human-readable)
+   * @since 2.1.0
+   */
+  private String strippedMotd;
 
   /**
    * Minecraft version the server is running
@@ -157,10 +165,10 @@ public class MineStat
         if(retval != Retval.SUCCESS && retval != Retval.CONNFAIL)
           retval = betaRequest(address, port, getTimeout());
         // SLP 1.6
-        if(retval != Retval.SUCCESS && retval != Retval.CONNFAIL)
+        if(retval != Retval.CONNFAIL)
           retval = extendedLegacyRequest(address, port, getTimeout());
         // SLP 1.7
-        if(retval != Retval.SUCCESS && retval != Retval.CONNFAIL)
+        if(retval != Retval.CONNFAIL)
           retval = jsonRequest(address, port, getTimeout());
     }
   }
@@ -180,6 +188,45 @@ public class MineStat
   public String getMotd() { return motd; }
 
   public void setMotd(String motd) { this.motd = motd; }
+
+  public String getStrippedMotd() {
+    return strippedMotd;
+  }
+
+  public void setStrippedMotd(String strippedMotd) {
+    this.strippedMotd = strippedMotd;
+  }
+
+  /**
+   * Helper function for stripping any formatting from a motd.
+   * @param motd A motd with formatting codes
+   * @return A motd with all formatting codes removed
+   * @since 2.1.0
+   */
+  public String stripMotdFormatting(String motd) {
+    return motd.replaceAll("§.", "");
+  }
+
+  public String stripMotdFormatting(JsonObject motd) {
+    StringBuilder strippedMotd = new StringBuilder();
+
+    if (motd.isJsonPrimitive()) {
+      return motd.getAsString();
+    }
+
+    JsonObject motdObj = motd.getAsJsonObject();
+    if (motdObj.has("text")) {
+      strippedMotd.append(motdObj.get("text").getAsString());
+    }
+
+    if (motdObj.has("extra") && motdObj.get("extra").isJsonArray()) {
+      for (JsonElement extraElem : motdObj.get("extra").getAsJsonArray()) {
+        strippedMotd.append(stripMotdFormatting(extraElem.getAsJsonObject()));
+      }
+    }
+
+    return strippedMotd.toString();
+  }
 
   public String getVersion() { return version; }
 
@@ -230,7 +277,7 @@ public class MineStat
       {
         int dataLen = dis.readUnsignedShort();
         rawServerData = new byte[dataLen * 2];
-        dis.read(rawServerData, 0, dataLen * 2);
+        dis.readFully(rawServerData, 0, dataLen * 2);
         clientSocket.close();
       }
       else
@@ -242,7 +289,7 @@ public class MineStat
       if(rawServerData == null)
         return Retval.UNKNOWN;
 
-      serverData = new String(rawServerData, "UTF16").split("\u00A7"); // section symbol
+      serverData = new String(rawServerData, StandardCharsets.UTF_16).split("\u00A7"); // section symbol
       if(serverData.length >= NUM_FIELDS_BETA)
       {
         setVersion(">=1.8b/1.3"); // since server does not return version, set it
@@ -307,12 +354,12 @@ public class MineStat
       setLatency(System.currentTimeMillis() - startTime);
       DataOutputStream dos = new DataOutputStream(clientSocket.getOutputStream());
       DataInputStream dis = new DataInputStream(new BufferedInputStream(clientSocket.getInputStream()));
-      dos.writeBytes("\u00FE\u0001");
+      dos.writeShort(0xFE01);
       if(dis.readUnsignedByte() == 0xFF) // kick packet (255)
       {
         int dataLen = dis.readUnsignedShort();
         rawServerData = new byte[dataLen * 2];
-        dis.read(rawServerData, 0, dataLen * 2);
+        dis.readFully(rawServerData, 0, dataLen * 2);
         clientSocket.close();
       }
       else
@@ -324,7 +371,7 @@ public class MineStat
       if(rawServerData == null)
         return Retval.UNKNOWN;
 
-      serverData = new String(rawServerData, "UTF16").split("\u0000"); // null
+      serverData = new String(rawServerData, StandardCharsets.UTF_16BE).split("\u0000"); // null
       if(serverData.length >= NUM_FIELDS)
       {
         // serverData[0] contains the section symbol and 1
@@ -399,21 +446,22 @@ public class MineStat
       setLatency(System.currentTimeMillis() - startTime);
       DataOutputStream dos = new DataOutputStream(clientSocket.getOutputStream());
       DataInputStream dis = new DataInputStream(new BufferedInputStream(clientSocket.getInputStream()));
-      dos.writeBytes("\u00FE\u0001\u00FA");
+      dos.writeShort(0xFE01);
+      dos.writeBytes("\u00FA");
       dos.writeBytes("\u0000\u000B");    // 11 (length of "MC|PingHost")
-      byte[] payload = "MC|PingHost".getBytes("UTF-16BE");
+      byte[] payload = "MC|PingHost".getBytes(StandardCharsets.UTF_16BE);
       dos.write(payload, 0, payload.length);
       dos.writeShort(7 + 2 * address.length());
       dos.writeBytes("\u004E");          // 78 (protocol version of 1.6.4)
       dos.writeShort(address.length());
-      payload = address.getBytes("UTF-16BE");
+      payload = address.getBytes(StandardCharsets.UTF_16BE);
       dos.write(payload, 0, payload.length);
       dos.writeInt(port);
       if(dis.readUnsignedByte() == 0xFF) // kick packet (255)
       {
         int dataLen = dis.readUnsignedShort();
         rawServerData = new byte[dataLen * 2];
-        dis.read(rawServerData, 0, dataLen * 2);
+        dis.readFully(rawServerData, 0, dataLen * 2);
         clientSocket.close();
       }
       else
@@ -425,7 +473,7 @@ public class MineStat
       if(rawServerData == null)
         return Retval.UNKNOWN;
 
-      serverData = new String(rawServerData, "UTF16").split("\u0000"); // null
+      serverData = new String(rawServerData, StandardCharsets.UTF_16BE).split("\u0000"); // null
       if(serverData.length >= NUM_FIELDS)
       {
         // serverData[0] contains the section symbol and 1
@@ -572,10 +620,18 @@ public class MineStat
       int packetID = recvVarInt(dis);        // packet ID
       int jsonLength = recvVarInt(dis);      // JSON response size
       byte[] rawData = new byte[jsonLength]; // storage for JSON data
-      dis.read(rawData);                     // fill byte array with JSON data
+
+      dis.readFully(rawData);                     // fill byte array with JSON data
+
+      // Close sockets
+      if (!clientSocket.isClosed()) {
+        clientSocket.close();
+      }
+
       // Populate object from JSON data
       JsonObject jobj = new Gson().fromJson(new String(rawData), JsonObject.class);
-      setMotd(jobj.get("description").getAsJsonObject().get("text").getAsString());
+      setMotd(jobj.get("description").toString());
+      setStrippedMotd(stripMotdFormatting(jobj.get("description").getAsJsonObject()));
       setVersion(jobj.get("version").getAsJsonObject().get("name").getAsString());
       setCurrentPlayers(jobj.get("players").getAsJsonObject().get("online").getAsInt());
       setMaximumPlayers(jobj.get("players").getAsJsonObject().get("max").getAsInt());
@@ -605,6 +661,7 @@ public class MineStat
       serverUp = false;
       return Retval.UNKNOWN;
     }
+
     return Retval.SUCCESS;
   }
 }
