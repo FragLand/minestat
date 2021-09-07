@@ -21,7 +21,7 @@ require 'socket'
 require 'timeout'
 
 class MineStat
-  VERSION = "2.0.0"    # MineStat version
+  VERSION = "2.1.0"    # MineStat version
   NUM_FIELDS = 6       # number of values expected from server
   NUM_FIELDS_BETA = 3  # number of values expected from a 1.8b/1.3 server
   MAX_VARINT_SIZE = 5  # maximum number of bytes a varint can be
