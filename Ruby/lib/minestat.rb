@@ -21,7 +21,7 @@ require 'socket'
 require 'timeout'
 
 class MineStat
-  VERSION = "2.0.0"    # MineStat version
+  VERSION = "2.1.0"    # MineStat version
   NUM_FIELDS = 6       # number of values expected from server
   NUM_FIELDS_BETA = 3  # number of values expected from a 1.8b/1.3 server
   MAX_VARINT_SIZE = 5  # maximum number of bytes a varint can be
@@ -49,6 +49,7 @@ class MineStat
     @online            # online or offline?
     @version           # server version
     @motd              # message of the day
+    @stripped_motd     # message of the day without formatting
     @current_players   # current number of players online
     @max_players       # maximum player capacity
     @protocol          # protocol level
@@ -81,15 +82,31 @@ class MineStat
           retval = beta_request()
         end
         # SLP 1.6
-        unless retval == Retval::SUCCESS || retval == Retval::CONNFAIL
+        unless retval == Retval::CONNFAIL
           retval = extended_legacy_request()
         end
         # SLP 1.7
-        unless retval == Retval::SUCCESS || retval == Retval::CONNFAIL
+        unless retval == Retval::CONNFAIL
           retval = json_request()
         end
     end
     @online = false unless retval == Retval::SUCCESS
+  end
+
+  # Strips message of the day formatting characters
+  def strip_motd(is_json = false)
+    unless is_json
+      @stripped_motd = @motd.gsub(/§./, "")
+    else
+      @stripped_motd = @motd['text']
+      json_data = @motd['extra']
+      unless json_data.nil? || json_data.empty?
+        json_data.each do |nested_hash|
+          @stripped_motd += nested_hash['text']
+        end
+      end
+      @stripped_motd = @stripped_motd.gsub(/§./, "")
+    end
   end
 
   # Connects to remote server
@@ -133,6 +150,7 @@ class MineStat
       if server_info != nil && server_info.length >= NUM_FIELDS_BETA
         @version = ">=1.8b/1.3" # since server does not return version, set it
         @motd = server_info[0]
+        strip_motd
         @current_players = server_info[1].to_i
         @max_players = server_info[2].to_i
         @online = true
@@ -145,6 +163,7 @@ class MineStat
         @protocol = server_info[1].to_i # contains the protocol version (51 for 1.9 or 78 for 1.6.4 for example)
         @version = server_info[2]
         @motd = server_info[3]
+        strip_motd
         @current_players = server_info[4].to_i
         @max_players = server_info[5].to_i
         @online = true
@@ -309,7 +328,8 @@ class MineStat
         @json_data = json_data
         @protocol = json_data['version']['protocol'].to_i
         @version = json_data['version']['name']
-        @motd = json_data['description']['text']
+        @motd = json_data['description']
+        strip_motd(true)
         @current_players = json_data['players']['online'].to_i
         @max_players = json_data['players']['max'].to_i
         if !@version.empty? && !@motd.empty? && !@current_players.nil? && !@max_players.nil?
@@ -361,5 +381,5 @@ class MineStat
     return vint
   end
 
-  attr_reader :address, :port, :online, :version, :motd, :current_players, :max_players, :protocol, :json_data, :latency, :request_type
+  attr_reader :address, :port, :online, :version, :motd, :stripped_motd, :current_players, :max_players, :protocol, :json_data, :latency, :request_type
 end
