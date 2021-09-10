@@ -75,9 +75,9 @@ class MineStat
         $retval = $this->legacy_request();            // SLP 1.4/1.5
         if($retval != MineStat::RETURN_SUCCESS && $retval != MineStat::RETURN_CONNFAIL)
           $retval = $this->beta_request();            // SLP 1.8b/1.3
-        if($retval != MineStat::RETURN_SUCCESS && $retval != MineStat::RETURN_CONNFAIL)
+        if($retval != MineStat::RETURN_CONNFAIL)
           $retval = $this->extended_legacy_request(); // SLP 1.6
-        if($retval != MineStat::RETURN_SUCCESS && $retval != MineStat::RETURN_CONNFAIL)
+        if($retval != MineStat::RETURN_CONNFAIL)
           $retval = $this->json_request();            // SLP 1.7
     }
   }
