@@ -41,6 +41,7 @@ class MineStat
   private $online;            // online or offline?
   private $version;           // Minecraft server version
   private $motd;              // message of the day
+  private $stripped_motd;     // message of the day without formatting
   private $current_players;   // current number of players online
   private $max_players;       // maximum player capacity
   private $protocol;          // protocol level
@@ -102,6 +103,8 @@ class MineStat
 
   public function get_motd() { return $this->motd; }
 
+  public function get_stripped_motd() { return $this->stripped_motd; }
+
   public function get_current_players() { return $this->current_players; }
 
   public function get_max_players() { return $this->max_players; }
@@ -113,6 +116,25 @@ class MineStat
   public function get_latency() { return $this->latency; }
 
   public function get_request_type() { return $this->request_type; }
+
+  /* Strips message of the day formatting characters */
+  private function strip_motd($is_json = false)
+  {
+    if(!$is_json)
+      $this->stripped_motd = preg_replace("/§./", "", $this->motd);
+    else
+    {
+      $this->stripped_motd = $this->motd['text'];
+      $json_data = $this->motd['extra'];
+      if(!empty($json_data))
+      {
+        foreach($json_data as &$nested_hash)
+          $this->stripped_motd .= $nested_hash['text'];
+      }
+      $this->motd = json_encode($this->motd);
+      $this->stripped_motd = preg_replace("/§./", "", $this->stripped_motd);
+    }
+  }
 
   /* Connects to remote server */
   private function connect()
@@ -174,6 +196,7 @@ class MineStat
         {
           $this->version = ">=1.8b/1.3"; // since server does not return version, set it
           $this->motd = $server_info[0];
+          $this->strip_motd();
           $this->current_players = (int)$server_info[1];
           $this->max_players = (int)$server_info[2];
           $this->online = true;
@@ -184,6 +207,7 @@ class MineStat
           $this->protocol = (int)$server_info[1]; // contains the protocol version (51 for 1.9 or 78 for 1.6.4 for example)
           $this->version = $server_info[2];
           $this->motd = $server_info[3];
+          $this->strip_motd();
           $this->current_players = (int)$server_info[4];
           $this->max_players = (int)$server_info[5];
           $this->online = true;
@@ -367,7 +391,8 @@ class MineStat
       //var_dump($json_data);
       $this->protocol = (int)@$json_data['version']['protocol'];
       $this->version = @$json_data['version']['name'];
-      $this->motd = @$json_data['description']['text'];
+      $this->motd = @$json_data['description'];
+      $this->strip_motd(true);
       $this->current_players = (int)@$json_data['players']['online'];
       $this->max_players = (int)@$json_data['players']['max'];
       if(isset($this->version) && isset($this->motd) && isset($this->current_players) && isset($this->max_players))
