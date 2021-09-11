@@ -124,14 +124,21 @@ class MineStat
       $this->stripped_motd = preg_replace("/§./", "", $this->motd);
     else
     {
-      $this->stripped_motd = $this->motd['text'];
-      $json_data = $this->motd['extra'];
-      if(!empty($json_data))
+      if(isset($this->motd['text']))
+        $this->stripped_motd = $this->motd['text'];
+      else
+        $this->stripped_motd = $this->motd;
+      if(isset($this->motd['extra']))
       {
-        foreach($json_data as &$nested_hash)
-          $this->stripped_motd .= $nested_hash['text'];
+        $json_data = $this->motd['extra'];
+        if(!empty($json_data))
+        {
+          foreach($json_data as &$nested_hash)
+            $this->stripped_motd .= $nested_hash['text'];
+        }
       }
-      $this->motd = json_encode($this->motd);
+      if(is_array($this->motd))
+        $this->motd = json_encode($this->motd);
       $this->stripped_motd = preg_replace("/§./", "", $this->stripped_motd);
     }
   }
