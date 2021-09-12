@@ -21,7 +21,7 @@
 
 class MineStat
 {
-  const VERSION = "2.2.0";     // MineStat version
+  const VERSION = "2.2.1";     // MineStat version
   const NUM_FIELDS = 6;        // number of values expected from server
   const NUM_FIELDS_BETA = 3;   // number of values expected from a 1.8b/1.3 server
   const MAX_VARINT_SIZE = 5;   // maximum number of bytes a varint can be
@@ -118,22 +118,24 @@ class MineStat
   public function get_request_type() { return $this->request_type; }
 
   /* Strips message of the day formatting characters */
-  private function strip_motd($is_json = false)
+  private function strip_motd()
   {
-    if(!$is_json)
-      $this->stripped_motd = preg_replace("/§./", "", $this->motd);
-    else
-    {
+    if(isset($this->motd['text']))
       $this->stripped_motd = $this->motd['text'];
+    else
+      $this->stripped_motd = $this->motd;
+    if(isset($this->motd['extra']))
+    {
       $json_data = $this->motd['extra'];
       if(!empty($json_data))
       {
         foreach($json_data as &$nested_hash)
           $this->stripped_motd .= $nested_hash['text'];
       }
-      $this->motd = json_encode($this->motd);
-      $this->stripped_motd = preg_replace("/§./", "", $this->stripped_motd);
     }
+    if(is_array($this->motd))
+      $this->motd = json_encode($this->motd);
+    $this->stripped_motd = preg_replace("/§./", "", $this->stripped_motd);
   }
 
   /* Connects to remote server */
@@ -392,7 +394,7 @@ class MineStat
       $this->protocol = (int)@$json_data['version']['protocol'];
       $this->version = @$json_data['version']['name'];
       $this->motd = @$json_data['description'];
-      $this->strip_motd(true);
+      $this->strip_motd();
       $this->current_players = (int)@$json_data['players']['online'];
       $this->max_players = (int)@$json_data['players']['max'];
       if(isset($this->version) && isset($this->motd) && isset($this->current_players) && isset($this->max_players))
