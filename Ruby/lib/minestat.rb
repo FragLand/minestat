@@ -20,29 +20,54 @@ require 'json'
 require 'socket'
 require 'timeout'
 
+##
+# Provides a ruby interface for polling Minecraft server status.
 class MineStat
-  VERSION = "2.1.0"    # MineStat version
-  NUM_FIELDS = 6       # number of values expected from server
-  NUM_FIELDS_BETA = 3  # number of values expected from a 1.8b/1.3 server
-  MAX_VARINT_SIZE = 5  # maximum number of bytes a varint can be
-  DEFAULT_PORT = 25565 # default TCP port
-  DEFAULT_TIMEOUT = 5  # default TCP timeout in seconds
+  # MineStat version
+  VERSION = "2.1.0"
+  # Number of values expected from server
+  NUM_FIELDS = 6
+  # Number of values expected from a 1.8b/1.3 server
+  NUM_FIELDS_BETA = 3
+  # Maximum number of bytes a varint can be
+  MAX_VARINT_SIZE = 5
+  # Default TCP port
+  DEFAULT_PORT = 25565
+  # Default TCP timeout in seconds
+  DEFAULT_TIMEOUT = 5
 
+  ##
+  # Stores constants that represent the results of a server ping
   module Retval
+    # The server ping completed successfully
     SUCCESS = 0
+    # The server ping failed due to a connection error
     CONNFAIL = -1
+    # The server ping failed due to a connection time out
     TIMEOUT = -2
+    # The server ping failed for an unknown reason
     UNKNOWN = -3
   end
 
+  ##
+  # Stores constants that represent the different kinds of server
+  # list pings/requests that a Minecraft server might expect when
+  # being polled for status information.
   module Request
+    # Try everything
     NONE = -1
+    # Server versions 1.8b to 1.3
     BETA = 0
+    # Server versions 1.4 to 1.5
     LEGACY = 1
+    # Server version 1.6
     EXTENDED = 2
+    # Server versions 1.7 to latest
     JSON = 3
   end
 
+  ##
+  # Instantiate an instance of MineStat and poll the specified server for information
   def initialize(address, port = DEFAULT_PORT, timeout = DEFAULT_TIMEOUT, request_type = Request::NONE)
     @address = address # address of server
     @port = port       # TCP port of server
@@ -109,7 +134,8 @@ class MineStat
     end
   end
 
-  # Connects to remote server
+  ##
+  # Establishes a connection to the Minecraft server
   def connect()
     begin
       start_time = Time.now
@@ -174,14 +200,17 @@ class MineStat
     return Retval::SUCCESS
   end
 
-  # 1.8b/1.3
+  ##
   # 1.8 beta through 1.3 servers communicate as follows for a ping request:
   # 1. Client sends \xFE (server list ping)
   # 2. Server responds with:
   #   2a. \xFF (kick packet)
   #   2b. data length
   #   2c. 3 fields delimited by \u00A7 (section symbol)
-  # The 3 fields, in order, are: message of the day, current players, and max players
+  # The 3 fields, in order, are:
+  # * message of the day
+  # * current players
+  # * max players
   def beta_request()
     retval = nil
     begin
@@ -202,7 +231,7 @@ class MineStat
     return retval
   end
 
-  # 1.4/1.5
+  ##
   # 1.4 and 1.5 servers communicate as follows for a ping request:
   # 1. Client sends:
   #   1a. \xFE (server list ping)
@@ -211,8 +240,14 @@ class MineStat
   #   2a. \xFF (kick packet)
   #   2b. data length
   #   2c. 6 fields delimited by \x00 (null)
-  # The 6 fields, in order, are: the section symbol and 1, protocol version,
-  # server version, message of the day, current players, and max players
+  # The 6 fields, in order, are:
+  # * the section symbol and 1
+  # * protocol version
+  # * server version
+  # * message of the day
+  # * current players
+  # * max players
+  #
   # The protocol version corresponds with the server version and can be the
   # same for different server versions.
   def legacy_request()
@@ -235,7 +270,7 @@ class MineStat
     return retval
   end
 
-  # 1.6
+  ##
   # 1.6 servers communicate as follows for a ping request:
   # 1. Client sends:
   #   1a. \xFE (server list ping)
@@ -252,8 +287,14 @@ class MineStat
   #   2a. \xFF (kick packet)
   #   2b. data length
   #   2c. 6 fields delimited by \x00 (null)
-  # The 6 fields, in order, are: the section symbol and 1, protocol version,
-  # server version, message of the day, current players, and max players
+  # The 6 fields, in order, are:
+  # * the section symbol and 1
+  # * protocol version
+  # * server version
+  # * message of the day
+  # * current players
+  # * max players
+  #
   # The protocol version corresponds with the server version and can be the
   # same for different server versions.
   def extended_legacy_request()
@@ -283,7 +324,7 @@ class MineStat
     return retval
   end
 
-  # 1.7
+  ##
   # 1.7 to current servers communicate as follows for a ping request:
   # 1. Client sends:
   #   1a. \x00 (handshake packet containing the fields specified below)
@@ -381,5 +422,46 @@ class MineStat
     return vint
   end
 
-  attr_reader :address, :port, :online, :version, :motd, :stripped_motd, :current_players, :max_players, :protocol, :json_data, :latency, :request_type
+  # Returns the Minecraft server IP
+  attr_reader :address
+
+  # Returns the Minecraft server TCP port
+  attr_reader :port
+
+  # Returns a boolean describing whether the server is online or offline
+  attr_reader :online
+
+  # Returns the Minecraft version that the server is running
+  attr_reader :version
+
+  # Returns the full version of the MOTD
+  #
+  # If you just want the MOTD text, use stripped_motd
+  attr_reader :motd
+
+  # Returns just the plain text contained within the MOTD
+  attr_reader :stripped_motd
+
+  # Returns the current player count
+  attr_reader :current_players
+
+  # Returns the maximum player count
+  attr_reader :max_players
+
+  # Returns the SLP (Server List Ping) protocol level
+  #
+  # This is arbitrary and varies by Minecraft version.
+  # However, multiple Minecraft versions can share the same
+  # protocol level
+  attr_reader :protocol
+
+  # Returns the complete JSON response data for queries to Minecraft
+  # servers with a version greater than or equal to 1.7
+  attr_reader :json_data
+
+  # Returns the ping time to the server in ms
+  attr_reader :latency
+
+  # Returns the SLP (Server List Ping) protocol version
+  attr_reader :request_type
 end
