@@ -134,6 +134,7 @@ class MineStat
     end
   end
 
+  ##
   # Establishes a connection to the Minecraft server
   def connect()
     begin
@@ -449,8 +450,8 @@ class MineStat
 
   # Returns the SLP (Server List Ping) protocol level
   #
-  # This is arbitrary and varies by Minecraft version,
-  # However multiple Minecraft versions can share the same
+  # This is arbitrary and varies by Minecraft version.
+  # However, multiple Minecraft versions can share the same
   # protocol level
   attr_reader :protocol
 
@@ -458,7 +459,7 @@ class MineStat
   # servers with a version greater than or equal to 1.7
   attr_reader :json_data
 
-  # The ping time to the server in ms
+  # Returns the ping time to the server in ms
   attr_reader :latency
 
   # Returns the SLP (Server List Ping) protocol version
