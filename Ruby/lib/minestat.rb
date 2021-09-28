@@ -24,7 +24,7 @@ require 'timeout'
 # Provides a ruby interface for polling Minecraft server status.
 class MineStat
   # MineStat version
-  VERSION = "2.1.0"
+  VERSION = "2.1.1"
   # Number of values expected from server
   NUM_FIELDS = 6
   # Number of values expected from a 1.8b/1.3 server
@@ -119,19 +119,21 @@ class MineStat
   end
 
   # Strips message of the day formatting characters
-  def strip_motd(is_json = false)
-    unless is_json
-      @stripped_motd = @motd.gsub(/§./, "")
-    else
+  def strip_motd()
+    unless @motd['text'] == nil
       @stripped_motd = @motd['text']
+    else
+      @stripped_motd = @motd
+    end
+    unless @motd['extra'] == nil
       json_data = @motd['extra']
       unless json_data.nil? || json_data.empty?
         json_data.each do |nested_hash|
           @stripped_motd += nested_hash['text']
         end
       end
-      @stripped_motd = @stripped_motd.gsub(/§./, "")
     end
+    @stripped_motd = @stripped_motd.gsub(/§./, "")
   end
 
   ##
@@ -163,7 +165,7 @@ class MineStat
         return Retval::UNKNOWN
       end
     rescue => exception
-      $stderr.puts exception
+      #$stderr.puts exception
       return Retval::UNKNOWN
     end
 
@@ -370,7 +372,7 @@ class MineStat
         @protocol = json_data['version']['protocol'].to_i
         @version = json_data['version']['name']
         @motd = json_data['description']
-        strip_motd(true)
+        strip_motd
         @current_players = json_data['players']['online'].to_i
         @max_players = json_data['players']['max'].to_i
         if !@version.empty? && !@motd.empty? && !@current_players.nil? && !@max_players.nil?
