@@ -94,12 +94,11 @@ class MineStat
       when Request::JSON
         retval = json_request()
       else
-        # Attempt various SLP ping requests in a particular order. If the request
-        # succeeds or the connection fails, there is no reason to continue with
-        # subsequent requests. Attempts should continue in the event of a timeout
+        # Attempt various SLP ping requests in a particular order. If the
+        # connection fails, there is no reason to continue with subsequent
+        # requests. Attempts should continue in the event of a timeout
         # however since it may be due to an issue during the handshake.
         # Note: Newer server versions may still respond to older SLP requests.
-        # For example, 1.13.2 responds to 1.4/1.5 queries, but not 1.6 queries.
         # SLP 1.4/1.5
         retval = legacy_request()
         # SLP 1.8b/1.3
