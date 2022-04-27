@@ -180,6 +180,7 @@ class MineStat
 
   # Populates object fields after connecting
   def parse_data(delimiter, is_beta = false)
+    @mode = nil
     data = nil
     begin
       if @request_type == "Bedrock/Pocket Edition"
