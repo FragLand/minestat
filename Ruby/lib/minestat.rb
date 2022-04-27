@@ -24,7 +24,7 @@ require 'timeout'
 # Provides a ruby interface for polling Minecraft server status.
 class MineStat
   # MineStat version
-  VERSION = "2.1.1"
+  VERSION = "2.2.0"
   # Number of values expected from server
   NUM_FIELDS = 6
   # Number of values expected from a 1.8b/1.3 server
@@ -33,8 +33,17 @@ class MineStat
   MAX_VARINT_SIZE = 5
   # Default TCP port
   DEFAULT_PORT = 25565
-  # Default TCP timeout in seconds
+  # Bedrock/Pocket Edition default UDP port
+  DEFAULT_BEDROCK_PORT = 19132
+  # Default TCP/UDP timeout in seconds
   DEFAULT_TIMEOUT = 5
+  # Bedrock/Pocket Edition packet offset in bytes (1 + 8 + 8 + 16 + 2)
+  # Unconnected pong (0x1C) = 1 byte
+  # Timestamp as a long = 8 bytes
+  # Server GUID as a long = 8 bytes
+  # Magic number = 16 bytes
+  # String ID length = 2 bytes
+  BEDROCK_PACKET_OFFSET = 35
 
   ##
   # Stores constants that represent the results of a server ping
@@ -64,15 +73,18 @@ class MineStat
     EXTENDED = 2
     # Server versions 1.7 to latest
     JSON = 3
+    # Bedrock/Pocket Edition
+    BEDROCK = 4
   end
 
   ##
   # Instantiate an instance of MineStat and poll the specified server for information
   def initialize(address, port = DEFAULT_PORT, timeout = DEFAULT_TIMEOUT, request_type = Request::NONE)
     @address = address # address of server
-    @port = port       # TCP port of server
+    @port = port       # TCP/UDP port of server
     @online            # online or offline?
     @version           # server version
+    @mode              # game mode (Bedrock/Pocket Edition only)
     @motd              # message of the day
     @stripped_motd     # message of the day without formatting
     @current_players   # current number of players online
@@ -80,9 +92,9 @@ class MineStat
     @protocol          # protocol level
     @json_data         # JSON data for 1.7 queries
     @latency           # ping time to server in milliseconds
-    @timeout = timeout # TCP timeout
+    @timeout = timeout # TCP/UDP timeout
     @server            # server socket
-    @request_type      # SLP protocol version
+    @request_type      # Protocol version
 
     case request_type
       when Request::BETA
@@ -93,6 +105,8 @@ class MineStat
         retval = extended_legacy_request()
       when Request::JSON
         retval = json_request()
+      when Request::BEDROCK
+        retval = bedrock_request()
       else
         # Attempt various SLP ping requests in a particular order. If the
         # connection fails, there is no reason to continue with subsequent
@@ -113,6 +127,10 @@ class MineStat
         unless retval == Retval::CONNFAIL
           retval = json_request()
         end
+        # Bedrock
+        unless retval == Retval::CONNFAIL
+          retval = bedrock_request()
+        end
     end
     @online = false unless retval == Retval::SUCCESS
   end
@@ -132,6 +150,7 @@ class MineStat
         end
       end
     end
+    @stripped_motd = @stripped_motd.force_encoding('UTF-8')
     @stripped_motd = @stripped_motd.gsub(/§./, "")
   end
 
@@ -139,9 +158,17 @@ class MineStat
   # Establishes a connection to the Minecraft server
   def connect()
     begin
-      start_time = Time.now
-      @server = TCPSocket.new(@address, @port)
-      @latency = ((Time.now - start_time) * 1000).round
+      if @request_type == Request::BEDROCK || @request_type == "Bedrock/Pocket Edition"
+        @port = DEFAULT_BEDROCK_PORT if @port == DEFAULT_PORT && @request_type == Request::NONE
+        start_time = Time.now
+        @server = UDPSocket.new
+        @server.connect(@address, @port)
+        @latency = ((Time.now - start_time) * 1000).round
+      else
+        start_time = Time.now
+        @server = TCPSocket.new(@address, @port)
+        @latency = ((Time.now - start_time) * 1000).round
+      end
     rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH
       return Retval::CONNFAIL
     rescue => exception
@@ -155,13 +182,24 @@ class MineStat
   def parse_data(delimiter, is_beta = false)
     data = nil
     begin
-      if @server.read(1).unpack('C').first == 0xFF # kick packet (255)
-        len = @server.read(2).unpack('n').first
-        data = @server.read(len * 2).force_encoding('UTF-16BE').encode('UTF-8')
-        @server.close
-      else
-        @server.close
-        return Retval::UNKNOWN
+      if @request_type == "Bedrock/Pocket Edition"
+        if @server.recv(1, Socket::MSG_PEEK).unpack('C').first == 0x1C # unconnected pong packet
+          server_id_len = @server.recv(BEDROCK_PACKET_OFFSET, Socket::MSG_PEEK)[-2..-1].unpack('n').first
+          data = @server.recv(BEDROCK_PACKET_OFFSET + server_id_len)[BEDROCK_PACKET_OFFSET..-1]
+          @server.close
+        else
+          @server.close
+          return Retval::UNKNOWN
+        end
+      else # SLP
+        if @server.read(1).unpack('C').first == 0xFF # kick packet (255)
+          len = @server.read(2).unpack('n').first
+          data = @server.read(len * 2).force_encoding('UTF-16BE').encode('UTF-8')
+          @server.close
+        else
+          @server.close
+          return Retval::UNKNOWN
+        end
       end
     rescue => exception
       #$stderr.puts exception
@@ -184,7 +222,20 @@ class MineStat
       else
         return Retval::UNKNOWN
       end
-    else
+    elsif @request_type == "Bedrock/Pocket Edition"
+      if server_info != nil
+        @protocol = server_info[2].to_i
+        @version = "#{server_info[3]} #{server_info[7]} (#{server_info[0]})"
+        @mode = server_info[8]
+        @motd = server_info[1]
+        strip_motd
+        @current_players = server_info[4].to_i
+        @max_players = server_info[5].to_i
+        @online = true
+      else
+        return Retval::UNKNOWN
+      end
+    else # SLP
       if server_info != nil && server_info.length >= NUM_FIELDS
         # server_info[0] contains the section symbol and 1
         @protocol = server_info[1].to_i # contains the protocol version (51 for 1.9 or 78 for 1.6.4 for example)
@@ -423,6 +474,57 @@ class MineStat
     return vint
   end
 
+  ##
+  # Bedrock/Pocket Edition servers communicate as follows for an unconnected ping request:
+  # 1. Client sends:
+  #   1a. \x01 (unconnected ping packet containing the fields specified below)
+  #   1b. current time as a long
+  #   1c. magic number
+  #   1d. client GUID as a long
+  # 2. Server responds with:
+  #   2a. \x1c (unconnected pong packet containing the follow fields)
+  #   2b. current time as a long
+  #   2c. server GUID as a long
+  #   2d. 16-bit magic number
+  #   2e. server ID as a string
+  # The fields from the pong response, in order, are:
+  # * edition
+  # * MotD line 1
+  # * protocol version
+  # * version name
+  # * current player count
+  # * maximum player count
+  # * unique server ID
+  # * MotD line 2
+  # * game mode as a string
+  # * game mode as a numeric
+  # * IPv4 port number
+  # * IPv6 port number
+  def bedrock_request()
+    retval = nil
+    begin
+      Timeout::timeout(@timeout) do
+        @request_type = "Bedrock/Pocket Edition"
+        retval = connect()
+        return retval unless retval == Retval::SUCCESS
+        # Perform handshake and acquire data
+        payload = "\x01".force_encoding('ASCII-8BIT')                       # unconnected ping
+        payload += [Time.now.to_i].pack('L!<').force_encoding('ASCII-8BIT') # current time as a long
+        payload += "\x00\xFF\xFF\x00\xFE\xFE\xFE\xFE\xFD\xFD\xFD\xFD\x12\x34\x56\x78".force_encoding('ASCII-8BIT') # magic number
+        payload += [2].pack('L!<').force_encoding('ASCII-8BIT')             # client GUID as a long
+        @server.write(payload)
+        @server.flush
+        retval = parse_data("\x3B") # semicolon
+      end
+    rescue Timeout::Error
+      return Retval::TIMEOUT
+    rescue => exception
+      $stderr.puts exception
+      return Retval::UNKNOWN
+    end
+    return retval
+  end
+
   # Returns the Minecraft server IP
   attr_reader :address
 
@@ -435,12 +537,15 @@ class MineStat
   # Returns the Minecraft version that the server is running
   attr_reader :version
 
-  # Returns the full version of the MOTD
+  # Returns the game mode (Bedrock/Pocket Edition only)
+  attr_reader :mode
+
+  # Returns the full version of the MotD
   #
-  # If you just want the MOTD text, use stripped_motd
+  # If you just want the MotD text, use stripped_motd
   attr_reader :motd
 
-  # Returns just the plain text contained within the MOTD
+  # Returns just the plain text contained within the MotD
   attr_reader :stripped_motd
 
   # Returns the current player count
