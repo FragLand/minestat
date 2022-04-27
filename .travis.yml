@@ -12,7 +12,7 @@ matrix:
         - cd Go && go build example.go
 
     - language: java
-      jdk: openjdk9
+      jdk: openjdk11
       script:
         #- cd Java && javac Example.java
         - cd Java && mvn
