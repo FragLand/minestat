@@ -163,12 +163,11 @@ class MineStat
         start_time = Time.now
         @server = UDPSocket.new
         @server.connect(@address, @port)
-        @latency = ((Time.now - start_time) * 1000).round
       else
         start_time = Time.now
         @server = TCPSocket.new(@address, @port)
-        @latency = ((Time.now - start_time) * 1000).round
       end
+      @latency = ((Time.now - start_time) * 1000).round
     rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH
       return Retval::CONNFAIL
     rescue => exception
@@ -201,7 +200,8 @@ class MineStat
           return Retval::UNKNOWN
         end
       end
-    rescue => exception
+    rescue
+    #rescue => exception
       #$stderr.puts exception
       return Retval::UNKNOWN
     end
