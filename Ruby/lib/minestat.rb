@@ -80,21 +80,21 @@ class MineStat
   ##
   # Instantiate an instance of MineStat and poll the specified server for information
   def initialize(address, port = DEFAULT_PORT, timeout = DEFAULT_TIMEOUT, request_type = Request::NONE)
-    @address = address # address of server
-    @port = port       # TCP/UDP port of server
-    @online            # online or offline?
-    @version           # server version
-    @mode              # game mode (Bedrock/Pocket Edition only)
-    @motd              # message of the day
-    @stripped_motd     # message of the day without formatting
-    @current_players   # current number of players online
-    @max_players       # maximum player capacity
-    @protocol          # protocol level
-    @json_data         # JSON data for 1.7 queries
-    @latency           # ping time to server in milliseconds
-    @timeout = timeout # TCP/UDP timeout
-    @server            # server socket
-    @request_type      # Protocol version
+    @address = address    # address of server
+    @port = port          # TCP/UDP port of server
+    @online               # online or offline?
+    @version              # server version
+    @mode = "Unspecified" # game mode (Bedrock/Pocket Edition only)
+    @motd                 # message of the day
+    @stripped_motd        # message of the day without formatting
+    @current_players      # current number of players online
+    @max_players          # maximum player capacity
+    @protocol             # protocol level
+    @json_data            # JSON data for 1.7 queries
+    @latency              # ping time to server in milliseconds
+    @timeout = timeout    # TCP/UDP timeout
+    @server               # server socket
+    @request_type         # Protocol version
 
     case request_type
       when Request::BETA
@@ -180,7 +180,6 @@ class MineStat
 
   # Populates object fields after connecting
   def parse_data(delimiter, is_beta = false)
-    @mode = nil
     data = nil
     begin
       if @request_type == "Bedrock/Pocket Edition"
