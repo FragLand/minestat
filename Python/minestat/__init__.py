@@ -15,11 +15,12 @@
 # You should have received a copy of the GNU General Public License along
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+import io
 import json
 import socket
 import struct
 import re
-from time import perf_counter
+from time import time, perf_counter
 from enum import Enum
 from typing import Union, Optional
 
@@ -49,9 +50,14 @@ Contains possible connection states.
   UNKNOWN = -3
   """The connection was established, but the server spoke an unknown/unsupported SLP protocol."""
 
+
 class SlpProtocols(Enum):
   """
 Contains possible SLP (Server List Ping) protocols.
+
+- `BEDROCK_RAKNET`: The Minecraft Bedrock/Education edition protocol.
+
+  *Available for all Minecraft Bedrock versions, not compatible with Java edition.*
 
 - `JSON`: The newest and currently supported SLP protocol.
 
@@ -81,6 +87,13 @@ Contains possible SLP (Server List Ping) protocols.
 
   def __str__(self) -> str:
     return str(self.name)
+
+  BEDROCK_RAKNET = 4
+  """
+  The Bedrock SLP-equivalent using the RakNet `Unconnected Ping` packet.
+
+  Currently experimental.
+  """
 
   JSON = 3
   """
@@ -167,21 +180,28 @@ class MineStat:
         self.extended_legacy_query()
       elif query_protocol is SlpProtocols.JSON:
         self.json_query()
+      elif query_protocol is SlpProtocols.BEDROCK_RAKNET:
+        self.bedrock_raknet_query()
 
       return
 
-    # Note: The order here is unfortunately important.
+    # Note: The order for Java edition here is unfortunately important.
     # Some older versions of MC don't accept packets for a few seconds
     # after receiving a not understood packet.
     # An example is MC 1.4: Nothing works directly after a json request.
     # A legacy query alone works fine.
 
+    # Minecraft Bedrock/Pocket/Education Edition (MCPE/MCEE)
+    result = self.bedrock_raknet_query()
+
+    if result in [ConnStatus.CONNFAIL, ConnStatus.SUCCESS]:
+      return
+
     # Minecraft 1.4 & 1.5 (legacy SLP)
     result = self.legacy_query()
 
     # Minecraft Beta 1.8 to Release 1.3 (beta SLP)
-    if result is not ConnStatus.CONNFAIL \
-        and result is not ConnStatus.SUCCESS:
+    if result not in [ConnStatus.CONNFAIL, ConnStatus.SUCCESS]:
       result = self.beta_query()
 
     # Minecraft 1.6 (extended legacy SLP)
@@ -214,7 +234,115 @@ class MineStat:
 
     return stripped_motd
 
-  def json_query(self):
+  def bedrock_raknet_query(self) -> ConnStatus:
+    """
+    Method for querying a Bedrock server (Minecraft PE, Windows 10 or Education Edition).
+    The protocol is based on the RakNet protocol.
+
+    See https://wiki.vg/Raknet_Protocol#Unconnected_Ping
+
+    Note: This method currently works as if the connection is handled via TCP (as if no packet loss might occur).
+    Packet loss handling should be implemented (resending).
+    """
+
+    RAKNET_MAGIC = bytearray([0x00, 0xff, 0xff, 0x00, 0xfe, 0xfe, 0xfe, 0xfe, 0xfd, 0xfd, 0xfd, 0xfd, 0x12, 0x34, 0x56, 0x78])
+
+    # Create socket with type DGRAM (for UDP)
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+    sock.settimeout(self.timeout)
+
+    try:
+      start_time = perf_counter()
+      sock.connect((self.address, self.port))
+      self.latency = round((perf_counter() - start_time) * 1000)
+    except socket.timeout:
+      return ConnStatus.TIMEOUT
+    except OSError:
+      return ConnStatus.CONNFAIL
+
+    # Construct the `Unconnected_Ping` packet
+    # Packet ID - 0x01
+    req_data = bytearray([0x01])
+    # current unix timestamp in ms as signed long (64-bit) LE-encoded
+    req_data += struct.pack("<q", int(time()*1000))
+    # RakNet MAGIC (0x00ffff00fefefefefdfdfdfd12345678)
+    req_data += RAKNET_MAGIC
+    # Client GUID - as signed long (64-bit) LE-encoded
+    req_data += struct.pack("<q", 0x02)
+
+    sock.send(req_data)
+
+    # Do all the receiving in a try-catch, to reduce duplication of error handling
+
+    # response packet:
+    # byte - 0x1C - Unconnected Pong
+    # long - timestamp
+    # long - server GUID
+    # 16 byte - magic
+    # short - Server ID string length
+    # string - Server ID string
+    try:
+      response_buffer, response_addr = sock.recvfrom(1024)
+      response_stream = io.BytesIO(response_buffer)
+
+      # Receive packet id
+      packet_id = response_stream.read(1)
+
+      # Response packet ID should always be 0x1c
+      if packet_id != b'\x1c':
+        return ConnStatus.UNKNOWN
+
+      # Receive (& ignore) response timestamp
+      response_timestamp = struct.unpack("<q", response_stream.read(8))
+
+      # Server GUID
+      response_server_guid = struct.unpack("<q", response_stream.read(8))
+
+      # Magic
+      response_magic = response_stream.read(16)
+      if response_magic != RAKNET_MAGIC:
+        return ConnStatus.UNKNOWN
+
+      # Server ID string length
+      response_id_string_length = struct.unpack(">h", response_stream.read(2))
+
+      # Receive server ID string
+      response_id_string = response_stream.read().decode("utf8")
+
+    except socket.timeout:
+      return ConnStatus.TIMEOUT
+    except (ConnectionResetError, ConnectionAbortedError):
+      return ConnStatus.UNKNOWN
+    except OSError:
+      return ConnStatus.CONNFAIL
+    finally:
+      sock.close()
+
+    # Set protocol version
+    self.slp_protocol = SlpProtocols.BEDROCK_RAKNET
+
+    # Parse and save to object attributes
+    return self.__parse_bedrock_payload(response_id_string)
+
+  def __parse_bedrock_payload(self, payload_str: str) -> ConnStatus:
+    motd_index = ["Edition", "MOTD line 1", "Protocol Version", "Version Name", "Player Count", "Max Player Count",
+                  "Server Unique ID", "MOTD line 2", "Game mode", "Game mode (numeric)", "Port (IPv4)", "Port (IPv6)"]
+    payload = {e: f for e, f in zip(motd_index, payload_str.split(";"))}
+
+    self.online = True
+
+    self.current_players = int(payload["Player Count"])
+    self.max_players = int(payload["Max Player Count"])
+    self.version = payload["Version Name"]
+
+    self.motd = payload["MOTD line 1"] + "\n" + payload["MOTD line 2"]
+    self.stripped_motd = self.motd_strip_formatting(self.motd)
+
+    self.extra_data = payload
+
+    return ConnStatus.SUCCESS
+
+  def json_query(self) -> ConnStatus:
     """
     Method for querying a modern (MC Java >= 1.7) server with the SLP protocol.
     This protocol is based on encoded JSON, see the documentation at wiki.vg below
