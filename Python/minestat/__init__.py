@@ -21,7 +21,8 @@ import struct
 import re
 from time import perf_counter
 from enum import Enum
-from typing import Union
+from typing import Union, Optional
+
 
 class ConnStatus(Enum):
   """
@@ -33,7 +34,7 @@ Contains possible connection states.
 - `UNKNOWN`: The connection was established, but the server spoke an unknown/unsupported SLP protocol.
   """
 
-  def __str__(self):
+  def __str__(self) -> str:
     return str(self.name)
 
   SUCCESS = 0
@@ -78,7 +79,7 @@ Contains possible SLP (Server List Ping) protocols.
   *Available since Minecraft Beta 1.8*
   """
 
-  def __str__(self):
+  def __str__(self) -> str:
     return str(self.name)
 
   JSON = 3
@@ -124,18 +125,29 @@ class MineStat:
   VERSION = "2.2.0"             # MineStat version
   DEFAULT_TIMEOUT = 5           # default TCP timeout in seconds
 
-  def __init__(self, address, port, timeout = DEFAULT_TIMEOUT, query_protocol: SlpProtocols = None):
-    self.address = address
-    self.port = port
-    self.online = None           # online or offline?
-    self.version = None          # server version
-    self.motd = None             # message of the day, unchanged server response (including formatting codes/JSON)
-    self.stripped_motd = None    # message of the day, stripped of all formatting ("human-readable")
-    self.current_players = None  # current number of players online
-    self.max_players = None      # maximum player capacity
-    self.latency = None          # ping time to server in milliseconds
-    self.timeout = timeout       # socket timeout
-    self.slp_protocol = None     # Server List Ping protocol
+  def __init__(self, address: str, port: int, timeout: int = DEFAULT_TIMEOUT, query_protocol: SlpProtocols = None) -> None:
+    self.address: str = address
+    self.port: int = port
+    self.online: bool = False
+    """online or offline?"""
+    self.version: Optional[str] = None
+    """server version"""
+    self.motd: Optional[str] = None
+    """message of the day, unchanged server response (including formatting codes/JSON)"""
+    self.stripped_motd: Optional[str] = None
+    """message of the day, stripped of all formatting ("human-readable")"""
+    self.current_players: Optional[int] = None
+    """current number of players online"""
+    self.max_players: Optional[int] = None
+    """maximum player capacity"""
+    self.latency: Optional[int] = None
+    """ping time to server in milliseconds"""
+    self.timeout: int = timeout
+    """socket timeout"""
+    self.slp_protocol: Optional[SlpProtocols] = None
+    """Server List Ping protocol"""
+    self.extra_data: Optional[dict] = None
+    """Extra data provided by a protocol not common to all request types (e.g. `json` vs `beta`)"""
 
     # Future improvement: IPv4/IPv6, multiple addresses
     # If a host has multiple IP addresses or a IPv4 and a IPv6 address,
@@ -316,7 +328,7 @@ class MineStat:
     self.online = True
     return ConnStatus.SUCCESS
 
-  def _unpack_varint(self, sock: socket.socket):
+  def _unpack_varint(self, sock: socket.socket) -> int:
     """ Small helper method for unpacking an int from an varint (streamed from socket). """
     data = 0
     for i in range(5):
@@ -333,7 +345,7 @@ class MineStat:
 
     return data
 
-  def _pack_varint(self, data):
+  def _pack_varint(self, data) -> bytes:
     """ Small helper method for packing a varint from an int. """
     ordinal = b''
 
@@ -347,7 +359,7 @@ class MineStat:
 
     return ordinal
 
-  def extended_legacy_query(self):
+  def extended_legacy_query(self) -> ConnStatus:
     """
     Minecraft 1.6 SLP query, extended legacy ping protocol.
     All modern servers are currently backwards compatible with this protocol.
@@ -426,7 +438,7 @@ class MineStat:
     # Parse and save to object attributes
     return self.__parse_legacy_payload(payload_raw)
 
-  def legacy_query(self):
+  def legacy_query(self) -> ConnStatus:
     """
     Minecraft 1.4-1.5 SLP query, server response contains more info than beta SLP
 
@@ -514,7 +526,7 @@ class MineStat:
     self.online = True
     return ConnStatus.SUCCESS
 
-  def beta_query(self):
+  def beta_query(self) -> ConnStatus:
     """
     Minecraft Beta 1.8 to Release 1.3 SLP protocol
     See https://wiki.vg/Server_List_Ping#Beta_1.8_to_1.3
