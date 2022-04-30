@@ -135,7 +135,7 @@ Contains possible SLP (Server List Ping) protocols.
   """
 
 class MineStat:
-  VERSION = "2.2.0"             # MineStat version
+  VERSION = "2.3.0"             # MineStat version
   DEFAULT_TIMEOUT = 5           # default TCP timeout in seconds
 
   def __init__(self, address: str, port: int, timeout: int = DEFAULT_TIMEOUT, query_protocol: SlpProtocols = None) -> None:
