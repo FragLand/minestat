@@ -1,7 +1,7 @@
 Gem::Specification.new do |s|
   s.name = "minestat"
   s.version = "2.2.0"
-  s.authors = ["Lloyd Dilley", "Stepan Melnikov"]
+  s.authors = ["Lloyd Dilley"]
   s.email = ["minecraft@frag.land"]
   s.summary = "Minecraft server status checker"
   s.homepage = "https://github.com/FragLand/minestat"
