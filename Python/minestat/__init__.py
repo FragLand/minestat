@@ -333,9 +333,9 @@ class MineStat:
 
     self.current_players = int(payload["Player Count"])
     self.max_players = int(payload["Max Player Count"])
-    self.version = payload["Version Name"]
+    self.version = payload["Version Name"] + " " + payload["MOTD line 2"] + "(" + payload["Edition"] + ")"
 
-    self.motd = payload["MOTD line 1"] + "\n" + payload["MOTD line 2"]
+    self.motd = payload["MOTD line 1"]
     self.stripped_motd = self.motd_strip_formatting(self.motd)
 
     self.extra_data = payload
