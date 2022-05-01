@@ -159,8 +159,8 @@ class MineStat:
     """socket timeout"""
     self.slp_protocol: Optional[SlpProtocols] = None
     """Server List Ping protocol"""
-    self.extra_data: Optional[dict] = None
-    """Extra data provided by a protocol not common to all request types (e.g. `json` vs `beta`)"""
+    self.gamemode: Optional[str] = None
+    """Bedrock specific: The current game mode (Creative/Survival/Adventure)"""
 
     # Future improvement: IPv4/IPv6, multiple addresses
     # If a host has multiple IP addresses or a IPv4 and a IPv6 address,
@@ -325,20 +325,20 @@ class MineStat:
     return self.__parse_bedrock_payload(response_id_string)
 
   def __parse_bedrock_payload(self, payload_str: str) -> ConnStatus:
-    motd_index = ["Edition", "MOTD line 1", "Protocol Version", "Version Name", "Player Count", "Max Player Count",
-                  "Server Unique ID", "MOTD line 2", "Game mode", "Game mode (numeric)", "Port (IPv4)", "Port (IPv6)"]
+    motd_index = ["edition", "motd_1", "protocol_version", "version", "current_players", "max_players",
+                  "server_uid", "motd_2", "gamemode", "gamemode_numeric", "port_ipv4", "port_ipv6"]
     payload = {e: f for e, f in zip(motd_index, payload_str.split(";"))}
 
     self.online = True
 
-    self.current_players = int(payload["Player Count"])
-    self.max_players = int(payload["Max Player Count"])
-    self.version = payload["Version Name"] + " " + payload["MOTD line 2"] + "(" + payload["Edition"] + ")"
+    self.current_players = int(payload["current_players"])
+    self.max_players = int(payload["max_players"])
+    self.version = payload["version"] + " " + payload["motd_2"] + "(" + payload["edition"] + ")"
 
-    self.motd = payload["MOTD line 1"]
+    self.motd = payload["motd_1"]
     self.stripped_motd = self.motd_strip_formatting(self.motd)
 
-    self.extra_data = payload
+    self.gamemode = payload["gamemode"]
 
     return ConnStatus.SUCCESS
 
