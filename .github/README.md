@@ -196,9 +196,14 @@ if ms.online:
   print('Message of the day without formatting: %s' % ms.stripped_motd)
   print('Latency: %sms' % ms.latency)
   print('Connected using protocol: %s' % ms.slp_protocol)
+  # Bedrock specific attribute:
+  if ms.slp_protocol is minestat.SlpProtocols.BEDROCK_RAKNET:
+    print('Game mode: %s' % ms.gamemode)
 else:
   print('Server is offline!')
 ```
+
+**See [the Python specific readme \(Python/README.md\)](../Python/README.md) for a full list of all supported attributes.**
 
 ### Ruby example
 
