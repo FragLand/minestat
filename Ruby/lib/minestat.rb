@@ -95,6 +95,9 @@ class MineStat
     @timeout = timeout    # TCP/UDP timeout
     @server               # server socket
     @request_type         # Protocol version
+    @try_all = false      # try all protocols?
+
+    @try_all = true if request_type == Request::NONE
 
     case request_type
       when Request::BETA
@@ -159,7 +162,7 @@ class MineStat
   def connect()
     begin
       if @request_type == Request::BEDROCK || @request_type == "Bedrock/Pocket Edition"
-        @port = DEFAULT_BEDROCK_PORT if @port == DEFAULT_PORT && @request_type == Request::NONE
+        @port = DEFAULT_BEDROCK_PORT if @port == DEFAULT_PORT && @try_all
         start_time = Time.now
         @server = UDPSocket.new
         @server.connect(@address, @port)
@@ -571,4 +574,7 @@ class MineStat
 
   # Returns the SLP (Server List Ping) protocol version
   attr_reader :request_type
+
+  # Returns whether or not all ping protocols should be attempted
+  attr_reader :try_all
 end
