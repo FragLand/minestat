@@ -40,6 +40,7 @@ class MineStat
   private $port;              // port number the Minecraft server accepts connections on
   private $online;            // online or offline?
   private $version;           // Minecraft server version
+  private $mode;              // game mode (Bedrock/Pocket Edition only)
   private $motd;              // message of the day
   private $stripped_motd;     // message of the day without formatting
   private $current_players;   // current number of players online
@@ -100,6 +101,8 @@ class MineStat
   public function is_online() { return $this->online; }
 
   public function get_version() { return $this->version; }
+
+  public function get_mode() { return $this->mode; }
 
   public function get_motd() { return $this->motd; }
 
