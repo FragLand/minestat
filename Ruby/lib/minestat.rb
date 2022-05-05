@@ -127,7 +127,7 @@ class MineStat
         unless retval == Retval::CONNFAIL
           retval = json_request()
         end
-        # Bedrock
+        # Bedrock/Pocket Edition
         unless retval == Retval::CONNFAIL
           retval = bedrock_request()
         end
@@ -260,9 +260,9 @@ class MineStat
   #   2b. data length
   #   2c. 3 fields delimited by \u00A7 (section symbol)
   # The 3 fields, in order, are:
-  # * message of the day
-  # * current players
-  # * max players
+  #   * message of the day
+  #   * current players
+  #   * max players
   def beta_request()
     retval = nil
     begin
@@ -293,12 +293,12 @@ class MineStat
   #   2b. data length
   #   2c. 6 fields delimited by \x00 (null)
   # The 6 fields, in order, are:
-  # * the section symbol and 1
-  # * protocol version
-  # * server version
-  # * message of the day
-  # * current players
-  # * max players
+  #   * the section symbol and 1
+  #   * protocol version
+  #   * server version
+  #   * message of the day
+  #   * current players
+  #   * max players
   #
   # The protocol version corresponds with the server version and can be the
   # same for different server versions.
@@ -340,12 +340,12 @@ class MineStat
   #   2b. data length
   #   2c. 6 fields delimited by \x00 (null)
   # The 6 fields, in order, are:
-  # * the section symbol and 1
-  # * protocol version
-  # * server version
-  # * message of the day
-  # * current players
-  # * max players
+  #   * the section symbol and 1
+  #   * protocol version
+  #   * server version
+  #   * message of the day
+  #   * current players
+  #   * max players
   #
   # The protocol version corresponds with the server version and can be the
   # same for different server versions.
@@ -486,20 +486,21 @@ class MineStat
   #   2b. current time as a long
   #   2c. server GUID as a long
   #   2d. 16-bit magic number
-  #   2e. server ID as a string
+  #   2e. server ID string length
+  #   2f. server ID as a string
   # The fields from the pong response, in order, are:
-  # * edition
-  # * MotD line 1
-  # * protocol version
-  # * version name
-  # * current player count
-  # * maximum player count
-  # * unique server ID
-  # * MotD line 2
-  # * game mode as a string
-  # * game mode as a numeric
-  # * IPv4 port number
-  # * IPv6 port number
+  #   * edition
+  #   * MotD line 1
+  #   * protocol version
+  #   * version name
+  #   * current player count
+  #   * maximum player count
+  #   * unique server ID
+  #   * MotD line 2
+  #   * game mode as a string
+  #   * game mode as a numeric
+  #   * IPv4 port number
+  #   * IPv6 port number
   def bedrock_request()
     retval = nil
     begin
