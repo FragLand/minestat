@@ -111,7 +111,7 @@ class MineStat
       when Request::BEDROCK
         retval = bedrock_request()
       else
-        # Attempt various SLP ping requests in a particular order. If the
+        # Attempt various ping requests in a particular order. If the
         # connection fails, there is no reason to continue with subsequent
         # requests. Attempts should continue in the event of a timeout
         # however since it may be due to an issue during the handshake.
@@ -558,7 +558,7 @@ class MineStat
   # Returns the maximum player count
   attr_reader :max_players
 
-  # Returns the SLP (Server List Ping) protocol level
+  # Returns the protocol level
   #
   # This is arbitrary and varies by Minecraft version.
   # However, multiple Minecraft versions can share the same
@@ -572,7 +572,7 @@ class MineStat
   # Returns the ping time to the server in ms
   attr_reader :latency
 
-  # Returns the SLP (Server List Ping) protocol version
+  # Returns the protocol version
   attr_reader :request_type
 
   # Returns whether or not all ping protocols should be attempted
