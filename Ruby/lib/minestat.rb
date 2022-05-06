@@ -24,7 +24,7 @@ require 'timeout'
 # Provides a ruby interface for polling Minecraft server status.
 class MineStat
   # MineStat version
-  VERSION = "2.2.0"
+  VERSION = "2.2.1"
   # Number of values expected from server
   NUM_FIELDS = 6
   # Number of values expected from a 1.8b/1.3 server
