@@ -32,7 +32,7 @@ class MineStat
   # Maximum number of bytes a varint can be
   MAX_VARINT_SIZE = 5
   # Default TCP port
-  DEFAULT_PORT = 25565
+  DEFAULT_TCP_PORT = 25565
   # Bedrock/Pocket Edition default UDP port
   DEFAULT_BEDROCK_PORT = 19132
   # Default TCP/UDP timeout in seconds
@@ -79,7 +79,7 @@ class MineStat
 
   ##
   # Instantiate an instance of MineStat and poll the specified server for information
-  def initialize(address, port = DEFAULT_PORT, timeout = DEFAULT_TIMEOUT, request_type = Request::NONE)
+  def initialize(address, port = DEFAULT_TCP_PORT, timeout = DEFAULT_TIMEOUT, request_type = Request::NONE)
     @address = address    # address of server
     @port = port          # TCP/UDP port of server
     @online               # online or offline?
@@ -162,7 +162,7 @@ class MineStat
   def connect()
     begin
       if @request_type == Request::BEDROCK || @request_type == "Bedrock/Pocket Edition"
-        @port = DEFAULT_BEDROCK_PORT if @port == DEFAULT_PORT && @try_all
+        @port = DEFAULT_BEDROCK_PORT if @port == DEFAULT_TCP_PORT && @try_all
         start_time = Time.now
         @server = UDPSocket.new
         @server.connect(@address, @port)
