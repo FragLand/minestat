@@ -21,42 +21,62 @@
 
 class MineStat
 {
-  const VERSION = "2.2.1";     // MineStat version
-  const NUM_FIELDS = 6;        // number of values expected from server
-  const NUM_FIELDS_BETA = 3;   // number of values expected from a 1.8b/1.3 server
-  const MAX_VARINT_SIZE = 5;   // maximum number of bytes a varint can be
-  // No enums or class nesting in PHP, so this is our workaround for return values
-  const RETURN_SUCCESS = 0;
-  const RETURN_CONNFAIL = -1;
-  const RETURN_TIMEOUT = -2;
-  const RETURN_UNKNOWN = -3;
-  // Request types
-  const REQUEST_NONE = -1;
-  const REQUEST_BETA = 0;
-  const REQUEST_LEGACY = 1;
-  const REQUEST_EXTENDED = 2;
-  const REQUEST_JSON = 3;
-  private $address;           // hostname or IP address of the Minecraft server
-  private $port;              // port number the Minecraft server accepts connections on
-  private $online;            // online or offline?
-  private $version;           // Minecraft server version
-  private $motd;              // message of the day
-  private $stripped_motd;     // message of the day without formatting
-  private $current_players;   // current number of players online
-  private $max_players;       // maximum player capacity
-  private $protocol;          // protocol level
-  private $json_data;         // JSON data for 1.7 queries
-  private $latency;           // ping time to server in milliseconds
-  private $timeout;           // timeout in seconds
-  private $socket;            // network socket
-  private $request_type;      // SLP protocol version
+  const VERSION = "2.3.0";            // MineStat version
+  const NUM_FIELDS = 6;               // number of values expected from server
+  const NUM_FIELDS_BETA = 3;          // number of values expected from a 1.8b/1.3 server
+  const MAX_VARINT_SIZE = 5;          // maximum number of bytes a varint can be
+  const DEFAULT_TCP_PORT = 25565;     // default TCP port
+  const DEFAULT_BEDROCK_PORT = 19132; // Bedrock/Pocket Edition default UDP port
+  const DEFAULT_TIMEOUT = 5;          // default TCP/UDP timeout in seconds
+  /*
+   * Bedrock/Pocket Edition packet offset in bytes (1 + 8 + 8 + 16 + 2)
+   * Unconnected pong (0x1C) = 1 byte
+   * Timestamp as a long = 8 bytes
+   * Server GUID as a long = 8 bytes
+   * Magic number = 16 bytes
+   * String ID length = 2 bytes
+   */
+  const BEDROCK_PACKET_OFFSET = 35;
 
-  public function __construct($address, $port = 25565, $timeout = 5, $request_type = MineStat::REQUEST_NONE)
+  // No enums or class nesting in PHP, so this is our workaround for return values
+  const RETURN_SUCCESS = 0;           // the server ping completed successfully
+  const RETURN_CONNFAIL = -1;         // the server ping failed due to a connection error
+  const RETURN_TIMEOUT = -2;          // the server ping failed due to a time out
+  const RETURN_UNKNOWN = -3;          // the server ping failed for an unknown reason
+
+  // Request types
+  const REQUEST_NONE = -1;            // try everything
+  const REQUEST_BETA = 0;             // server versions 1.8b to 1.3
+  const REQUEST_LEGACY = 1;           // server version 1.4 to 1.5
+  const REQUEST_EXTENDED = 2;         // server version 1.6
+  const REQUEST_JSON = 3;             // server version 1.7 to latest
+  const REQUEST_BEDROCK = 4;          // Bedrock/Pocket Edition
+
+  private $address;                   // hostname or IP address of the Minecraft server
+  private $port;                      // port number the Minecraft server accepts connections on
+  private $online;                    // online or offline?
+  private $version;                   // Minecraft server version
+  private $mode;                      // game mode (Bedrock/Pocket Edition only)
+  private $motd;                      // message of the day
+  private $stripped_motd;             // message of the day without formatting
+  private $current_players;           // current number of players online
+  private $max_players;               // maximum player capacity
+  private $protocol;                  // protocol level
+  private $json_data;                 // JSON data for 1.7 queries
+  private $latency;                   // ping time to server in milliseconds
+  private $timeout;                   // timeout in seconds
+  private $socket;                    // network socket
+  private $request_type;              // protocol version
+  private $try_all;                   // try all protocols?
+
+  public function __construct($address, $port = MineStat::DEFAULT_TCP_PORT, $timeout = MineStat::DEFAULT_TIMEOUT, $request_type = MineStat::REQUEST_NONE)
   {
     $this->address = $address;
     $this->port = $port;
     $this->timeout = $timeout;
     $this->online = false;
+    if($request_type == MineStat::REQUEST_NONE)
+      $this->try_all = true;
 
     switch($request_type)
     {
@@ -72,6 +92,9 @@ class MineStat
       case MineStat::REQUEST_JSON:
         $this->json_request();
         break;
+      case MineStat::REQUEST_BEDROCK:
+        $this->bedrock_request();
+        break;
       default:
         $retval = $this->legacy_request();            // SLP 1.4/1.5
         if($retval != MineStat::RETURN_SUCCESS && $retval != MineStat::RETURN_CONNFAIL)
@@ -80,6 +103,8 @@ class MineStat
           $retval = $this->extended_legacy_request(); // SLP 1.6
         if($retval != MineStat::RETURN_CONNFAIL)
           $retval = $this->json_request();            // SLP 1.7
+        if($retval != MineStat::RETURN_CONNFAIL)
+          $retval = $this->bedrock_request();         // Bedrock/Pocket Edition
     }
   }
 
@@ -100,6 +125,8 @@ class MineStat
   public function is_online() { return $this->online; }
 
   public function get_version() { return $this->version; }
+
+  public function get_mode() { return $this->mode; }
 
   public function get_motd() { return $this->motd; }
 
@@ -141,7 +168,16 @@ class MineStat
   /* Connects to remote server */
   private function connect()
   {
-    $this->socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
+    if($this->request_type == MineStat::REQUEST_BEDROCK || $this->request_type == "Bedrock/Pocket Edition")
+    {
+      if($this->port == MineStat::DEFAULT_TCP_PORT && $this->try_all)
+        $this->port = MineStat::DEFAULT_BEDROCK_PORT;
+      $this->socket = socket_create(AF_INET, SOCK_DGRAM, 0);
+    }
+    else
+    {
+      $this->socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
+    }
     socket_set_option($this->socket, SOL_SOCKET, SO_RCVTIMEO, array('sec' => $this->timeout, 'usec' => 0));
     if($this->socket === false)
       return MineStat::RETURN_CONNFAIL;
@@ -171,9 +207,24 @@ class MineStat
   /* Populates object fields after connecting */
   private function parse_data($delimiter, $is_beta = false)
   {
-    $response = @unpack('C', socket_read($this->socket, 1));
-    //socket_recv($this->socket, $response, 2, MSG_PEEK);
-    if(!empty($response) && $response[1] == 0xFF) // kick packet (255)
+    if($this->request_type == "Bedrock/Pocket Edition")
+    {
+      socket_recv($this->socket, $response, 1, MSG_PEEK);
+      $response = @unpack('C', $response);
+    }
+    else // SLP
+    {
+      $response = @unpack('C', socket_read($this->socket, 1));
+    }
+
+    if($this->request_type == "Bedrock/Pocket Edition" && !empty($response) && $response[1] == 0x1C) // unconnected pong packet
+    {
+      socket_recv($this->socket, $server_id_len, MineStat::BEDROCK_PACKET_OFFSET, MSG_PEEK);
+      $server_id_len = unpack('n', substr($server_id_len, -2))[1];
+      $raw_data = substr(socket_read($this->socket, MineStat::BEDROCK_PACKET_OFFSET + $server_id_len), MineStat::BEDROCK_PACKET_OFFSET);
+      socket_close($this->socket);
+    }
+    elseif(!empty($response) && $response[1] == 0xFF) // kick packet (255)
     {
       $len = unpack('n', socket_read($this->socket, 2))[1];
       $raw_data = mb_convert_encoding(socket_read($this->socket, ($len * 2)), "UTF-8", "UTF-16BE");
@@ -201,6 +252,17 @@ class MineStat
           $this->strip_motd();
           $this->current_players = (int)$server_info[1];
           $this->max_players = (int)$server_info[2];
+          $this->online = true;
+        }
+        elseif($this->request_type == "Bedrock/Pocket Edition")
+        {
+          $this->protocol = (int)$server_info[2];
+          $this->version = sprintf("%s %s (%s)", $server_info[3], $server_info[7], $server_info[0]);
+          $this->mode = $server_info[8];
+          $this->motd = $server_info[1];
+          $this->strip_motd();
+          $this->current_players = (int)$server_info[4];
+          $this->max_players = (int)$server_info[5];
           $this->online = true;
         }
         else
@@ -424,6 +486,57 @@ class MineStat
         break;
     }
     return $vint;
+  }
+
+  /*
+   * Bedrock/Pocket Edition servers communicate as follows for an unconnected ping request:
+   * 1. Client sends:
+   *   1a. \x01 (unconnected ping packet containing the fields specified below)
+   *   1b. current time as a long
+   *   1c. magic number
+   *   1d. client GUID as a long
+   * 2. Server responds with:
+   *   2a. \x1c (unconnected pong packet containing the follow fields)
+   *   2b. current time as a long
+   *   2c. server GUID as a long
+   *   2d. 16-bit magic number
+   *   2e. server ID string length
+   *   2f. server ID as a string
+   * The fields from the pong response, in order, are:
+   *   - edition
+   *   - MotD line 1
+   *   - protocol version
+   *   - version name
+   *   - current player count
+   *   - maximum player count
+   *   - unique server ID
+   *   - MotD line 2
+   *   - game mode as a string
+   *   - game mode as a numeric
+   *   - IPv4 port number
+   *   - IPv6 port number
+   */
+  public function bedrock_request()
+  {
+    try
+    {
+      $this->request_type = "Bedrock/Pocket Edition";
+      $retval = $this->connect();
+      if($retval != MineStat::RETURN_SUCCESS)
+        return $retval;
+      // Perform handshake and acquire data
+      $payload = "\x01";                                                              // unconnected ping
+      $payload .= pack('P', time());                                                  // current time
+      $payload .= "\x00\xFF\xFF\x00\xFE\xFE\xFE\xFE\xFD\xFD\xFD\xFD\x12\x34\x56\x78"; // magic number
+      $payload .= pack('P', 2);                                                       // client GUID
+      socket_write($this->socket, $payload);
+      $retval = $this->parse_data("\x3B"); // semicolon
+    }
+    catch(Exception $e)
+    {
+      return MineStat::RETURN_UNKNOWN;
+    }
+    return $retval;
   }
 }
 ?>

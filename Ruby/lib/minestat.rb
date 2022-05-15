@@ -24,7 +24,7 @@ require 'timeout'
 # Provides a ruby interface for polling Minecraft server status.
 class MineStat
   # MineStat version
-  VERSION = "2.2.0"
+  VERSION = "2.2.1"
   # Number of values expected from server
   NUM_FIELDS = 6
   # Number of values expected from a 1.8b/1.3 server
@@ -32,7 +32,7 @@ class MineStat
   # Maximum number of bytes a varint can be
   MAX_VARINT_SIZE = 5
   # Default TCP port
-  DEFAULT_PORT = 25565
+  DEFAULT_TCP_PORT = 25565
   # Bedrock/Pocket Edition default UDP port
   DEFAULT_BEDROCK_PORT = 19132
   # Default TCP/UDP timeout in seconds
@@ -79,7 +79,7 @@ class MineStat
 
   ##
   # Instantiate an instance of MineStat and poll the specified server for information
-  def initialize(address, port = DEFAULT_PORT, timeout = DEFAULT_TIMEOUT, request_type = Request::NONE)
+  def initialize(address, port = DEFAULT_TCP_PORT, timeout = DEFAULT_TIMEOUT, request_type = Request::NONE)
     @address = address    # address of server
     @port = port          # TCP/UDP port of server
     @online               # online or offline?
@@ -95,6 +95,9 @@ class MineStat
     @timeout = timeout    # TCP/UDP timeout
     @server               # server socket
     @request_type         # Protocol version
+    @try_all = false      # try all protocols?
+
+    @try_all = true if request_type == Request::NONE
 
     case request_type
       when Request::BETA
@@ -108,7 +111,7 @@ class MineStat
       when Request::BEDROCK
         retval = bedrock_request()
       else
-        # Attempt various SLP ping requests in a particular order. If the
+        # Attempt various ping requests in a particular order. If the
         # connection fails, there is no reason to continue with subsequent
         # requests. Attempts should continue in the event of a timeout
         # however since it may be due to an issue during the handshake.
@@ -127,7 +130,7 @@ class MineStat
         unless retval == Retval::CONNFAIL
           retval = json_request()
         end
-        # Bedrock
+        # Bedrock/Pocket Edition
         unless retval == Retval::CONNFAIL
           retval = bedrock_request()
         end
@@ -159,7 +162,7 @@ class MineStat
   def connect()
     begin
       if @request_type == Request::BEDROCK || @request_type == "Bedrock/Pocket Edition"
-        @port = DEFAULT_BEDROCK_PORT if @port == DEFAULT_PORT && @request_type == Request::NONE
+        @port = DEFAULT_BEDROCK_PORT if @port == DEFAULT_TCP_PORT && @try_all
         start_time = Time.now
         @server = UDPSocket.new
         @server.connect(@address, @port)
@@ -260,9 +263,9 @@ class MineStat
   #   2b. data length
   #   2c. 3 fields delimited by \u00A7 (section symbol)
   # The 3 fields, in order, are:
-  # * message of the day
-  # * current players
-  # * max players
+  #   * message of the day
+  #   * current players
+  #   * max players
   def beta_request()
     retval = nil
     begin
@@ -293,12 +296,12 @@ class MineStat
   #   2b. data length
   #   2c. 6 fields delimited by \x00 (null)
   # The 6 fields, in order, are:
-  # * the section symbol and 1
-  # * protocol version
-  # * server version
-  # * message of the day
-  # * current players
-  # * max players
+  #   * the section symbol and 1
+  #   * protocol version
+  #   * server version
+  #   * message of the day
+  #   * current players
+  #   * max players
   #
   # The protocol version corresponds with the server version and can be the
   # same for different server versions.
@@ -340,12 +343,12 @@ class MineStat
   #   2b. data length
   #   2c. 6 fields delimited by \x00 (null)
   # The 6 fields, in order, are:
-  # * the section symbol and 1
-  # * protocol version
-  # * server version
-  # * message of the day
-  # * current players
-  # * max players
+  #   * the section symbol and 1
+  #   * protocol version
+  #   * server version
+  #   * message of the day
+  #   * current players
+  #   * max players
   #
   # The protocol version corresponds with the server version and can be the
   # same for different server versions.
@@ -486,20 +489,21 @@ class MineStat
   #   2b. current time as a long
   #   2c. server GUID as a long
   #   2d. 16-bit magic number
-  #   2e. server ID as a string
+  #   2e. server ID string length
+  #   2f. server ID as a string
   # The fields from the pong response, in order, are:
-  # * edition
-  # * MotD line 1
-  # * protocol version
-  # * version name
-  # * current player count
-  # * maximum player count
-  # * unique server ID
-  # * MotD line 2
-  # * game mode as a string
-  # * game mode as a numeric
-  # * IPv4 port number
-  # * IPv6 port number
+  #   * edition
+  #   * MotD line 1
+  #   * protocol version
+  #   * version name
+  #   * current player count
+  #   * maximum player count
+  #   * unique server ID
+  #   * MotD line 2
+  #   * game mode as a string
+  #   * game mode as a numeric
+  #   * IPv4 port number
+  #   * IPv6 port number
   def bedrock_request()
     retval = nil
     begin
@@ -554,7 +558,7 @@ class MineStat
   # Returns the maximum player count
   attr_reader :max_players
 
-  # Returns the SLP (Server List Ping) protocol level
+  # Returns the protocol level
   #
   # This is arbitrary and varies by Minecraft version.
   # However, multiple Minecraft versions can share the same
@@ -568,6 +572,9 @@ class MineStat
   # Returns the ping time to the server in ms
   attr_reader :latency
 
-  # Returns the SLP (Server List Ping) protocol version
+  # Returns the protocol version
   attr_reader :request_type
+
+  # Returns whether or not all ping protocols should be attempted
+  attr_reader :try_all
 end
