@@ -31,30 +31,98 @@ using System.Xml.XPath;
 
 namespace MineStatLib
 {
+  /// <summary>
+  /// MineStat is a Minecraft server status checker.<br/>
+  /// After object creation, the appropriate SLP (server list ping) protocol will be automatically chosen based on the
+  /// server version and all fields will be populated.
+  /// </summary>
   public class MineStat
   {
+    /// <summary>
+    /// The MineStat library version.
+    /// </summary>
     public const string MineStatVersion = "2.1.0";
-    private const int DefaultTimeout = 5; // default TCP timeout in seconds
-
-    public string Address { get; set; }
-    public ushort Port { get; set; }
-    public int Timeout { get; set; }
-    public string Motd { get; set; }
-    public string Version { get; set; }
-    public string CurrentPlayers => Convert.ToString(CurrentPlayersInt);
-    public int CurrentPlayersInt { get; set; }
-    public string MaximumPlayers => Convert.ToString(MaximumPlayersInt);
-    public int MaximumPlayersInt { get; set; }
-    public string[] PlayerList { get; set; }
-    public bool ServerUp { get; set; }
-    public long Latency { get; set; }
-    public SlpProtocol Protocol { get; set; }
+    
+    /// <summary>
+    /// Default TCP timeout in seconds.
+    /// </summary>
+    private const int DefaultTimeout = 5;
 
     /// <summary>
-    /// MineStat is a Minecraft server status checker.<br/>
-    /// After object creation, the appropriate SLP (server list ping) protocol will be automatically chosen based on the
-    /// server version and all fields will be populated.
+    /// The address of the Minecraft server to connect to.
     /// </summary>
+    public string Address { get; set; }
+    /// <summary>
+    /// The port of the Minecraft server to connect to.
+    /// </summary>
+    public ushort Port { get; set; }
+    /// <summary>
+    /// The time in seconds, after which a connection is timed out. Defaults to <see cref="DefaultTimeout"/>.
+    /// </summary>
+    public int Timeout { get; set; }
+    /// <summary>
+    /// The message of the day, as returned by the server. May contain legacy formatting codes (§) or JSON chat components.
+    /// </summary>
+    /// <example>
+    /// Legacy formatting codes:
+    /// <code>§6~~§r §3§lM§7§lA§2§lG§9§lI§4§lC§r1.16 v3§6~~§r</code>
+    /// JSON chat components:
+    /// <code>
+    /// {"extra": [{"color": "gold", "text": "Test"}, {"text": " "}, {"bold": true, "color": "dark_aqua", "text": "text"}], "text": ""}
+    /// </code>
+    /// </example>
+    public string Motd { get; set; }
+    /// <summary>
+    /// The version, as provided by the server. May contain freetext.
+    /// </summary>
+    /// <example>
+    /// PaperMC 1.19 server:
+    /// <code>Paper 1.18.2</code>
+    /// PocketMine-MP Bedrock server:
+    /// <code>1.18.30 PocketMine-MP(MCPE)</code>
+    /// </example>
+    public string Version { get; set; }
+    /// <summary>
+    /// The current online player count as string.
+    /// For the integer representation use <see cref="CurrentPlayersInt"/>.
+    /// </summary>
+    public string CurrentPlayers => Convert.ToString(CurrentPlayersInt);
+    /// <summary>
+    /// The current online player count as integer.
+    /// For the string representation use <see cref="CurrentPlayers"/>.
+    /// </summary>
+    public int CurrentPlayersInt { get; set; }
+    /// <summary>
+    /// The maximum online player count as string, as reported by the server.
+    /// May be inaccurate (Server networks, BungeeCord/Velocity/Waterfall).<br/>
+    /// For the integer representation use <see cref="MaximumPlayersInt"/>.
+    /// </summary>
+    public string MaximumPlayers => Convert.ToString(MaximumPlayersInt);
+    /// <summary>
+    /// The maximum online player count as int, as reported by the server.
+    /// May be inaccurate (Server networks, BungeeCord/Velocity/Waterfall).<br/>
+    /// For the string representation use <see cref="MaximumPlayers"/>.
+    /// </summary>
+    public int MaximumPlayersInt { get; set; }
+    /// <summary>
+    /// The sample list of online players.<br/>
+    /// Only provided by modern servers (>=1.7), may contain freetext and formatting codes.
+    /// </summary>
+    public string[] PlayerList { get; set; }
+    /// <summary>
+    /// Whether the server is online and could be reached. True if online.
+    /// </summary>
+    public bool ServerUp { get; set; }
+    /// <summary>
+    /// The time it took the server to respond with the server information in milliseconds.
+    /// </summary>
+    public long Latency { get; set; }
+    /// <summary>
+    /// The protocol used to connect to the server. See <see cref="SlpProtocol"/> for all available protocols.
+    /// </summary>
+    public SlpProtocol Protocol { get; set; }
+
+    /// <inheritdoc cref="MineStat"/>
     /// <example>
     /// <code>
     /// MineStat ms = new MineStat("minecraft.frag.land", 25565);
@@ -618,102 +686,114 @@ namespace MineStatLib
       }
     }
 
+    // "Missing XML comment for publicly visible type or member" - Deprecated methods, no use for documentation.
+    #pragma warning disable CS1591
+    
     #region Obsolete
 
-    [Obsolete]
+    [Obsolete("This method is deprecated and will be removed soon. Use MineStat.Address instead.")]
     public string GetAddress()
     {
       return Address;
     }
 
-    [Obsolete]
+    [Obsolete("This method is deprecated and will be removed soon. Use MineStat.Address instead.")]
     public void SetAddress(string address)
     {
       Address = address;
     }
 
-    [Obsolete]
+    [Obsolete("This method is deprecated and will be removed soon. Use MineStat.Port instead.")]
     public ushort GetPort()
     {
       return Port;
     }
 
-    [Obsolete]
+    [Obsolete("This method is deprecated and will be removed soon. Use MineStat.Port instead.")]
     public void SetPort(ushort port)
     {
       Port = port;
     }
 
-    [Obsolete]
+    [Obsolete("This method is deprecated and will be removed soon. Use MineStat.Motd instead.")]
     public string GetMotd()
     {
       return Motd;
     }
 
-    [Obsolete]
+    [Obsolete("This method is deprecated and will be removed soon. Use MineStat.Motd instead.")]
     public void SetMotd(string motd)
     {
       Motd = motd;
     }
 
-    [Obsolete]
+    [Obsolete("This method is deprecated and will be removed soon. Use MineStat.Version instead.")]
     public string GetVersion()
     {
       return Version;
     }
 
-    [Obsolete]
+    [Obsolete("This method is deprecated and will be removed soon. Use MineStat.Version instead.")]
     public void SetVersion(string version)
     {
       Version = version;
     }
 
-    [Obsolete]
+    [Obsolete("This method is deprecated and will be removed soon. Use MineStat.CurrentPlayers/.CurrentPlayersInt instead.")]
     public string GetCurrentPlayers()
     {
       return CurrentPlayers;
     }
 
-    [Obsolete]
+    [Obsolete("This method is deprecated and will be removed soon. Use MineStat.CurrentPlayers/.CurrentPlayersInt instead.")]
     public void SetCurrentPlayers(string currentPlayers)
     {
       CurrentPlayersInt = Convert.ToInt32(currentPlayers);
     }
 
-    [Obsolete]
+    [Obsolete("This method is deprecated and will be removed soon. Use MineStat.MaximumPlayers/.MaximumPlayersInt instead.")]
     public string GetMaximumPlayers()
     {
       return MaximumPlayers;
     }
 
-    [Obsolete]
+    [Obsolete("This method is deprecated and will be removed soon. Use MineStat.MaximumPlayersInt instead.")]
     public void SetMaximumPlayers(string maximumPlayers)
     {
       MaximumPlayersInt = Convert.ToInt32(maximumPlayers);
     }
 
-    [Obsolete]
+    [Obsolete("This method is deprecated and will be removed soon. Use MineStat.Latency instead.")]
     public long GetLatency()
     {
       return Latency;
     }
 
-    [Obsolete]
+    [Obsolete("This method is deprecated and will be removed soon. Use MineStat.Latency instead.")]
     public void SetLatency(long latency)
     {
       Latency = latency;
     }
 
-    [Obsolete]
+    /// <inheritdoc cref="ServerUp"/>
+    /// <seealso cref="ServerUp"/>
+    [Obsolete("This method is deprecated and will be removed soon. Use MineStat.ServerUp instead.")]
     public bool IsServerUp()
     {
       return ServerUp;
     }
 
     #endregion
+    
+    #pragma warning restore CS1591
 
     #region LEB128_Utilities
 
+    /// <summary>
+    /// Creates a LEB128 byte-array for sending over network from an integer.
+    /// </summary>
+    /// <param name="value">Value to convert</param>
+    /// <returns>A LEB128 representation of the value as byte array</returns>
     public static byte[] WriteLeb128(int value)
     {
       var byteList = new List<byte>();
@@ -737,6 +817,11 @@ namespace MineStatLib
       return byteList.ToArray();
     }
     
+    /// <summary>
+    /// Writes an integer as LEB128-encoded number to a (network-)stream.
+    /// </summary>
+    /// <param name="stream"></param>
+    /// <param name="value"></param>
     public static void WriteLeb128Stream(Stream stream, int value)
     {
       // Converting int to uint is necessary to preserve the sign bit
@@ -756,6 +841,13 @@ namespace MineStatLib
       } while (actual != 0);
     }
 
+    /// <summary>
+    /// Reads an LEB128-encoded integer from a (network-) stream and converts it to a normal int. 
+    /// </summary>
+    /// <param name="stream">Stream to read the data from</param>
+    /// <returns>The integer representation of the read LEB128 number</returns>
+    /// <exception cref="FormatException"></exception>
+    /// <exception cref="InvalidOperationException"></exception>
     private static int ReadLeb128Stream (Stream stream) {
       int numRead = 0;
       int result = 0;
