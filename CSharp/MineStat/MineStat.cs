@@ -45,6 +45,7 @@ namespace MineStatLib
     public int CurrentPlayersInt { get; set; }
     public string MaximumPlayers => Convert.ToString(MaximumPlayersInt);
     public int MaximumPlayersInt { get; set; }
+    public string[] PlayerList { get; set; }
     public bool ServerUp { get; set; }
     public long Latency { get; set; }
     public SlpProtocol Protocol { get; set; }
@@ -241,6 +242,15 @@ namespace MineStatLib
         
         // the max player count
         MaximumPlayersInt = Convert.ToInt32(root.XPathSelectElement("//players/max")?.Value);
+        
+        // the online player list, if provided by the server
+        // inspired by https://github.com/lunalunaaaa
+        var playerSampleElement = root.XPathSelectElement("//players/sample");
+        if (playerSampleElement != null && playerSampleElement.Attribute(XName.Get("type"))?.Value == "array")
+        {
+          var playerSampleNameElements = root.XPathSelectElements("//players/sample/item/name");
+          PlayerList = playerSampleNameElements.Select(playerNameElement => playerNameElement.Value).ToArray();
+        }
       }
       catch (Exception)
       {
