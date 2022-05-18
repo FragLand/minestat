@@ -9,7 +9,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Frag Land")]
 [assembly: AssemblyProduct("MineStat")]
-[assembly: AssemblyCopyright("Copyright © 2016-2021 Lloyd Dilley")]
+[assembly: AssemblyCopyright("Copyright © 2014-2022 Lloyd Dilley, 2021-2022 Felix Ern (MindSolve)")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

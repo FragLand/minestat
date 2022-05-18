@@ -1,6 +1,6 @@
 /*
  * MineStat.cs - A Minecraft server status checker
- * Copyright (C) 2014-2021 Lloyd Dilley, 2021 Felix Ern (MindSolve)
+ * Copyright (C) 2014-2022 Lloyd Dilley, 2021-2022 Felix Ern (MindSolve)
  * http://www.dilley.me/
  *
  * This program is free software; you can redistribute it and/or modify
