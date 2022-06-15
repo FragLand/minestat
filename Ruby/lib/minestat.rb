@@ -123,15 +123,15 @@ class MineStat
           retval = beta_request()
         end
         # SLP 1.6
-        unless retval == Retval::CONNFAIL
+        unless retval == Retval::SUCCESS || retval == Retval::CONNFAIL
           retval = extended_legacy_request()
         end
         # SLP 1.7
-        unless retval == Retval::CONNFAIL
+        unless retval == Retval::SUCCESS || retval == Retval::CONNFAIL
           retval = json_request()
         end
         # Bedrock/Pocket Edition
-        unless retval == Retval::CONNFAIL
+        unless retval == Retval::SUCCESS || retval == Retval::CONNFAIL
           retval = bedrock_request()
         end
     end
