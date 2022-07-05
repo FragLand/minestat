@@ -1,12 +1,11 @@
-. .\ServerStatus.ps1
+$ms = ./ServerStatus.ps1 -Address "minecraft.frag.land" -port 25565
+"Minecraft server status of '{0}' on port {1}:" -f $ms.Address, $ms.Port
 
-$ms = ServerStatus -Address "minecraft.frag.land" -port 25565
-"Minecraft server status of {0} on port {1}:" -f $ms.address, $ms.port
-
-if ($ms.online) {
-  "Server is online running with {0} out of {1} players." -f $ms.current_players, $ms.max_players
-  "Message of the day: {0}" -f $ms.motd
-  "Latency: {0}ms" -f $ms.latency
+if ($ms.Online) {
+  "Server is online running version {0} with {1} out of {2} players." -f $ms.Version, $ms.Current_Players, $ms.Max_Players
+  "Message of the day: {0}" -f $ms.Stripped_Motd
+  "Latency: {0}ms" -f $ms.Latency
+  "Connected using SLP protocol '{0}'" -f $ms.Slp_Protocol
 }else {
   "Server is offline!"
 }
