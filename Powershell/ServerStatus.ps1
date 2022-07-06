@@ -122,7 +122,7 @@ class ServerStatus {
       # Function for stripping all formatting codes from a motd.
       $stripped_motd = ""
       if ($rawmotd.gettype().name -eq "string") {
-        $stripped_motd = $rawmotd -split "§+[a-zA-Z0-9]" -join ""
+        $stripped_motd = $rawmotd -split "$([char]0x00A7)+[a-zA-Z0-9]" -join ""
       }
       else {
         $stripped_motd = $rawmotd.text
@@ -131,38 +131,39 @@ class ServerStatus {
             $stripped_motd += strip_motd($sub)
           }
         }
-        if ($stripped_motd -match "§") {
-          $stripped_motd = strip_motd($stripped_motd)
-        }
+        
+      }
+      if ($stripped_motd -match "$([char]0x00A7)") {
+        $stripped_motd = strip_motd($stripped_motd)
       }
       return $stripped_motd
     }
     function format_motd($rawmotd) {
       # Function for formating all formatting codes as escaped unicode characters from motd.
       $formatcodes = @{
-        "§0" = "$([char]27)[0;30m" # Black
-        "§1" = "$([char]27)[0;34m" # DarkBlue
-        "§2" = "$([char]27)[0;32m" # DarkGreen
-        "§3" = "$([char]27)[0;36m" # DarkCyan (Dark aqua)
-        "§4" = "$([char]27)[0;31m" # DarkRed
-        "§5" = "$([char]27)[0;35m" # DarkMagenta (Dark purple)
-        "§6" = "$([char]27)[0;33m" # DarkYellow (Gold)
-        "§7" = "$([char]27)[0;37m" # Gray
-        "§8" = "$([char]27)[0;90m" # DarkGray
-        "§9" = "$([char]27)[0;94m" # Blue
-        "§a" = "$([char]27)[0;92m" # Green
-        "§b" = "$([char]27)[0;96m" # Cyan (Aqua)
-        "§c" = "$([char]27)[0;91m" # Red
-        "§d" = "$([char]27)[0;95m" # Magenta (Light purple)
-        "§e" = "$([char]27)[0;93m" # Yellow
-        "§f" = "$([char]27)[0;97m" # White
-        "§g" = "$([char]27)[0;93m" # Yellow (Minecoin Gold)
-        "§k" = "$([char]27)[8m"    # obfuscated
-        "§l" = "$([char]27)[1m"    # bold
-        "§m" = "$([char]27)[9m"    # strikethrough
-        "§n" = "$([char]27)[4m"    # underline
-        "§o" = "$([char]27)[3m"    # italic
-        "§r" = "$([char]27)[0m"    # reset formating
+        "$([char]0x00A7)0" = "$([char]27)[0;30m" # Black
+        "$([char]0x00A7)1" = "$([char]27)[0;34m" # DarkBlue
+        "$([char]0x00A7)2" = "$([char]27)[0;32m" # DarkGreen
+        "$([char]0x00A7)3" = "$([char]27)[0;36m" # DarkCyan (Dark aqua)
+        "$([char]0x00A7)4" = "$([char]27)[0;31m" # DarkRed
+        "$([char]0x00A7)5" = "$([char]27)[0;35m" # DarkMagenta (Dark purple)
+        "$([char]0x00A7)6" = "$([char]27)[0;33m" # DarkYellow (Gold)
+        "$([char]0x00A7)7" = "$([char]27)[0;37m" # Gray
+        "$([char]0x00A7)8" = "$([char]27)[0;90m" # DarkGray
+        "$([char]0x00A7)9" = "$([char]27)[0;94m" # Blue
+        "$([char]0x00A7)a" = "$([char]27)[0;92m" # Green
+        "$([char]0x00A7)b" = "$([char]27)[0;96m" # Cyan (Aqua)
+        "$([char]0x00A7)c" = "$([char]27)[0;91m" # Red
+        "$([char]0x00A7)d" = "$([char]27)[0;95m" # Magenta (Light purple)
+        "$([char]0x00A7)e" = "$([char]27)[0;93m" # Yellow
+        "$([char]0x00A7)f" = "$([char]27)[0;97m" # White
+        "$([char]0x00A7)g" = "$([char]27)[0;93m" # Yellow (Minecoin Gold)
+        "$([char]0x00A7)k" = "$([char]27)[8m"    # obfuscated
+        "$([char]0x00A7)l" = "$([char]27)[1m"    # bold
+        "$([char]0x00A7)m" = "$([char]27)[9m"    # strikethrough
+        "$([char]0x00A7)n" = "$([char]27)[4m"    # underline
+        "$([char]0x00A7)o" = "$([char]27)[3m"    # italic
+        "$([char]0x00A7)r" = "$([char]27)[0m"    # reset formating
       }
       $formats = @{
         "obfuscated"    = "$([char]27)[8m"
@@ -193,18 +194,18 @@ class ServerStatus {
       }
       $formatted_motd = ""
       if ($rawmotd.gettype().name -eq "string") {
-        foreach ($format in ($rawmotd -split "(§+[a-zA-Z0-9])")) {
+        foreach ($format in ($rawmotd -split "($([char]0x00A7)+[a-zA-Z0-9])")) {
           if ($format -in $formatcodes.Keys) {
             $formatted_motd += $formatcodes.$format
           }
-          if ($format -match "§") {
+          if ($format -match "$([char]0x00A7)") {
             continue
           }
           else {
             $formatted_motd += $format
           }
         }
-        return $formatted_motd
+        return $formatted_motd += $formats.reset
       }
       else {
         foreach ($entry in $rawmotd) {
@@ -224,7 +225,7 @@ class ServerStatus {
             format_motd($entry.extra)
           }
         }
-        if ($formatted_motd -match "§") {
+        if ($formatted_motd -match [char]0x00A7) {
           $formatted_motd = format_motd($formatted_motd)
         }
         return $formatted_motd
@@ -233,6 +234,7 @@ class ServerStatus {
     }
     $this.stripped_motd = strip_motd($rawmotd)
     $this.formatted_motd = format_motd($rawmotd)
+
   }
   [ConnStatus] RequestWithRaknetProtocol() {
     <# 
@@ -482,8 +484,54 @@ class ServerStatus {
     return $this.ParseJsonProtocolPayload($responsePayload)
   }
   hidden [ConnStatus] ParseJsonProtocolPayload([byte[]]$rawPayload) {
+
+    # Adds support for powershell version 5 since it dosn't support -Ashashtable tag on convertfrom-json
+    # Thanks to Adam Bertram
+    # https://4sysops.com/archives/convert-json-to-a-powershell-hash-table/
+    function ConvertTo-Hashtable {
+      [CmdletBinding()]
+      [OutputType('hashtable')]
+      param (
+        [Parameter(ValueFromPipeline)]
+        $InputObject
+      )
+      process {
+        ## Return null if the input is null. This can happen when calling the function
+        ## recursively and a property is null
+        if ($null -eq $InputObject) {
+          return $null
+        }
+        ## Check if the input is an array or collection. If so, we also need to convert
+        ## those types into hash tables as well. This function will convert all child
+        ## objects into hash tables (if applicable)
+        if ($InputObject -is [System.Collections.IEnumerable] -and $InputObject -isnot [string]) {
+          $collection = @(
+            foreach ($object in $InputObject) {
+              ConvertTo-Hashtable -InputObject $object
+            }
+          )
+          ## Return the array but don't enumerate it because the object may be pretty complex
+          Write-Output -NoEnumerate $collection
+        }
+        elseif ($InputObject -is [psobject]) {
+          ## If the object has properties that need enumeration
+          ## Convert it to its own hash table and return it
+          $hash = @{}
+          foreach ($property in $InputObject.PSObject.Properties) {
+            $hash[$property.Name] = ConvertTo-Hashtable -InputObject $property.Value
+          }
+          $hash
+        }
+        else {
+          ## If the object isn't an array, collection, or other object, it's already a hash table
+          ## So just return it.
+          $InputObject
+        }
+      }
+    }
+
     try {
-      $payload_obj = ConvertFrom-Json ([System.Text.Encoding]::UTF8.GetString($rawPayload)) -AsHashtable
+      $payload_obj = ConvertFrom-Json ([System.Text.Encoding]::UTF8.GetString($rawPayload)) | ConvertTo-Hashtable
     }
     catch {
       return [ConnStatus]::InvalidResponse
@@ -724,7 +772,7 @@ class ServerStatus {
   hidden [ConnStatus] ParseBetaProtocol([byte[]]$rawPayload) {
       
     $payloadString = [System.Text.Encoding]::BigEndianUnicode.GetString($rawPayload, 0, $rawPayload.Length)
-    $payloadArray = $payloadString.Split('§')
+    $payloadArray = $payloadString.Split([char]0x00A7)
     if ($payloadArray.Length -lt 3) {
       return [ConnStatus]::InvalidResponse
     }
@@ -732,7 +780,7 @@ class ServerStatus {
     $this.Version = "<= 1.3";
     $this.max_players = $payloadArray[$payloadArray.Length - 1];
     $this.current_players = $payloadArray[$payloadArray.Length - 2];
-    $this.motd = $payloadArray[0..($payloadArray.Length - 3)] -join "§"
+    $this.motd = $payloadArray[0..($payloadArray.Length - 3)] -join [char]0x00A7
     $this.generateMotds($this.motd)
     $this.Slp_Protocol = "Beta";
     $this.Online = $true
