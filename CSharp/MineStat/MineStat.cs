@@ -207,7 +207,6 @@ namespace MineStatLib
 
       if (result != ConnStatus.Connfail /* && result != ConnStatus.Success */)
         RequestWrapper(RequestWithJsonProtocol);
-      
     }
     
     /// <summary>
