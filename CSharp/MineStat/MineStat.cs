@@ -22,12 +22,10 @@ using System;
 using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Text;
+using System.Text.Json;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Runtime.Serialization.Json;
-using System.Xml.Linq;
-using System.Xml.XPath;
 
 namespace MineStatLib
 {
@@ -72,6 +70,14 @@ namespace MineStatLib
     /// </code>
     /// </example>
     public string Motd { get; set; }
+    /// <summary>
+    /// The message of the day, with all formatting removed ("human readable").
+    /// </summary>
+    /// <example>
+    /// The above motd with all formatting removed:
+    /// <code>~~ MAGIC1.16 v3~~</code>
+    /// </example>
+    public string Stripped_Motd { get; set; }
     /// <summary>
     /// The version, as provided by the server. May contain freetext.
     /// </summary>
@@ -190,7 +196,26 @@ namespace MineStatLib
           RequestWrapper(RequestWithJsonProtocol);
       }
     }
-
+    
+    /// <summary>
+    /// Function for stripping all formatting codes from a motd.
+    /// </summary>
+    /// <returns>string with the stripped motd</returns>
+    static private string strip_motd_formatting(string? rawmotd)
+    {
+      return Regex.Replace(rawmotd, @"[^\u0000-\u007F]+[a-zA-Z0-9]", string.Empty);
+    }
+    static private string strip_motd_formatting(JsonElement rawmotd)
+    {
+      var stripped_motd = rawmotd.GetProperty("text").ToString();
+      if (rawmotd.TryGetProperty("extra", out _))
+      {
+        var json_data = rawmotd.GetProperty("extra").EnumerateArray();
+        foreach (var item in json_data)
+          stripped_motd += item.GetProperty("text").ToString();
+      }
+      return strip_motd_formatting(stripped_motd);
+    }
     /// <summary>
     /// Requests the server data with the Minecraft 1.7+ SLP protocol. In use by all modern Minecraft clients.
     /// Complicated to construct.<br/>
@@ -283,41 +308,36 @@ namespace MineStatLib
     {
       try
       {
-        var jsonReader = JsonReaderWriterFactory.CreateJsonReader(rawPayload, new System.Xml.XmlDictionaryReaderQuotas());
-      
-        var root = XElement.Load(jsonReader);
+        var payload = JsonDocument.Parse(Encoding.UTF8.GetString(rawPayload)).RootElement;
 
         // This payload contains a json string like this:
         // {"description":{"text":"A Minecraft Server"},"players":{"max":20,"online":0},"version":{"name":"1.16.5","protocol":754}}
         // {"description":{"text":"This is MC \"1.16\" §9§oT§4E§r§lS§6§o§nT"},"players":{"max":20,"online":0},"version":{"name":"1.16.5","protocol":754"}}
       
         // Extract version
-        Version = root.XPathSelectElement("//version/name")?.Value;
+        Version = payload.GetProperty("version").GetProperty("name").ToString();
         
         // the MOTD
-        var descriptionElement = root.XPathSelectElement("//description");
-        if (descriptionElement != null && descriptionElement.Attribute(XName.Get("type"))?.Value == "string")
-        {
-          Motd = descriptionElement.Value;
-        }
-        else if (root.XPathSelectElement("//description/text") != null)
-        {
-          Motd = root.XPathSelectElement("//description/text")?.Value;
-        }
+        Motd = JsonSerializer.Serialize(payload.GetProperty("description"));
+        if (payload.GetProperty("description").ValueKind == JsonValueKind.String)
+          Stripped_Motd = strip_motd_formatting(payload.GetProperty("description").GetString());
+        else
+          Stripped_Motd = strip_motd_formatting(payload.GetProperty("description"));
         
         // the online player count
-        CurrentPlayersInt = Convert.ToInt32(root.XPathSelectElement("//players/online")?.Value);
+        CurrentPlayersInt = payload.GetProperty("players").GetProperty("online").GetInt32();
         
         // the max player count
-        MaximumPlayersInt = Convert.ToInt32(root.XPathSelectElement("//players/max")?.Value);
+        MaximumPlayersInt = payload.GetProperty("players").GetProperty("max").GetInt32();
         
         // the online player list, if provided by the server
         // inspired by https://github.com/lunalunaaaa
-        var playerSampleElement = root.XPathSelectElement("//players/sample");
-        if (playerSampleElement != null && playerSampleElement.Attribute(XName.Get("type"))?.Value == "array")
+        JsonElement playerSampleElement;
+        if (payload.GetProperty("players").TryGetProperty("sample", out playerSampleElement) && playerSampleElement.ValueKind == JsonValueKind.Array)
         {
-          var playerSampleNameElements = root.XPathSelectElements("//players/sample/item/name");
-          PlayerList = playerSampleNameElements.Select(playerNameElement => playerNameElement.Value).ToArray();
+          var playerSampleNameElements = playerSampleElement.EnumerateArray();
+          if (playerSampleNameElements.Count() > 0)
+            PlayerList = playerSampleNameElements.Select(playerNameElement => playerNameElement.GetProperty("name").ToString()).ToArray();
         }
       }
       catch (Exception)
@@ -499,6 +519,7 @@ namespace MineStatLib
       
       // - the MOTD
       Motd = payloadArray[3];
+      Stripped_Motd = strip_motd_formatting(Motd);
       
       // - the online player count
       CurrentPlayersInt = Convert.ToInt32(payloadArray[4]);
@@ -581,6 +602,7 @@ namespace MineStatLib
         
       // Motd is first element, but may contain 'section sign' (the delimiter)
       Motd = String.Join("§", payloadArray.Take(payloadArray.Length - 2).ToArray());
+      Stripped_Motd = strip_motd_formatting(Motd);
       
       // If we got here, everything is in order
       ServerUp = true;
