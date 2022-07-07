@@ -23,6 +23,7 @@ using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -39,8 +40,8 @@ namespace MineStatLib
     /// <summary>
     /// The MineStat library version.
     /// </summary>
-    public const string MineStatVersion = "2.1.1";
-    
+    public const string MineStatVersion = "2.1.2";
+
     /// <summary>
     /// Default TCP timeout in seconds.
     /// </summary>
@@ -127,6 +128,10 @@ namespace MineStatLib
     /// The protocol used to connect to the server. See <see cref="SlpProtocol"/> for all available protocols.
     /// </summary>
     public SlpProtocol Protocol { get; set; }
+    /// <summary>
+    /// Bedrock specific: The current gamemode (Creative/Survival/Adventure)
+    /// </summary>
+    public string Gamemode { get; set; }
 
     /// <inheritdoc cref="MineStat"/>
     /// <example>
@@ -160,41 +165,49 @@ namespace MineStatLib
         case SlpProtocol.Json:
           RequestWrapper(RequestWithJsonProtocol);
           break;
+        case SlpProtocol.Bedrock_Raknet:
+          RequestWithRaknetProtocol();
+          break;
         case SlpProtocol.Automatic:
           break;
         default:
           throw new ArgumentOutOfRangeException(nameof(protocol), "Invalid SLP protocol specified for parameter 'protocol'");
       }
-      
+
       // If a protocol was chosen manually, return
       if (protocol != SlpProtocol.Automatic)
       {
         return;
       }
-      
+
       // The order of protocols here is (sadly) important.
       // Some server versions (1.3, 1.4) seem to have trouble with newer protocols and stop responding for a few seconds.
       // If, for example, the ext.-legacy protocol triggers this problem, the following connections are dropped/reset
       // even if they would have worked individually/normally.
       // For more information, see https://github.com/FragLand/minestat/issues/70
       //
-      // 1.: Legacy (1.4, 1.5)
-      // 2.: Beta (b1.8-rel1.3)
-      // 3.: Extended Legacy (1.6)
-      // 4.: JSON (1.7+)
-      
-      var result = RequestWrapper(RequestWithLegacyProtocol);
-      
+      // 1.: Raknet (Bedrock)
+      // 2.: Legacy (1.4, 1.5)
+      // 3.: Beta (b1.8-rel1.3)
+      // 4.: Extended Legacy (1.6)
+      // 5.: JSON (1.7+)
+
+      var result = RequestWithRaknetProtocol();
+      if (result == ConnStatus.Connfail || result == ConnStatus.Success)
+        return;
+
+      result = RequestWrapper(RequestWithLegacyProtocol);
+
       if (result != ConnStatus.Connfail && result != ConnStatus.Success)
       {
         result = RequestWrapper(RequestWithBetaProtocol);
-        
-        if (result != ConnStatus.Connfail)
-          result = RequestWrapper(RequestWithExtendedLegacyProtocol);
-
-        if (result != ConnStatus.Connfail && result != ConnStatus.Success)
-          RequestWrapper(RequestWithJsonProtocol);
       }
+      if (result != ConnStatus.Connfail)
+        result = RequestWrapper(RequestWithExtendedLegacyProtocol);
+
+      if (result != ConnStatus.Connfail /* && result != ConnStatus.Success */)
+        RequestWrapper(RequestWithJsonProtocol);
+      
     }
     
     /// <summary>
@@ -216,6 +229,122 @@ namespace MineStatLib
       }
       return strip_motd_formatting(stripped_motd);
     }
+
+    /// <summary>
+    /// Method for querying a Bedrock server (Minecraft PE, Windows 10 or Education Edition).
+    /// The protocol is based on the RakNet protocol.<br/>
+    /// See https://wiki.vg/Raknet_Protocol#Unconnected_Ping<br/>
+    /// Note: This method currently works as if the connection is handled via TCP (as if no packet loss might occur).
+    /// Packet loss handling should be implemented (resending).
+    /// </summary>
+    /// <returns>ConnStatus - See <see cref="ConnStatus"/> for possible values</returns>
+    /// <seealso cref="SlpProtocol.Bedrock_Raknet"/>
+    public ConnStatus RequestWithRaknetProtocol()
+    {
+      byte[] readbytestream(Queue<byte> que, int count)
+      {
+        var resultBuffer = new List<byte>();
+        for (var i = 0; i < count; i++)
+        {
+          resultBuffer.Add(que.Dequeue());
+        }
+        return resultBuffer.ToArray();
+      }
+
+      string responsePayload;
+      var sock = new UdpClient();
+      sock.Client.ReceiveTimeout = Timeout * 1000;
+      sock.Client.SendTimeout = Timeout * 1000;
+
+      var stopWatch = new Stopwatch();
+      stopWatch.Start();
+
+      try
+      {
+        sock.Connect(Address, Port);
+      }
+      catch (SocketException)
+      {
+        return ConnStatus.Connfail;
+      }
+      stopWatch.Stop();
+      Latency = stopWatch.ElapsedMilliseconds;
+
+      var raknetMagic = new byte[] { 0x00, 0xFF, 0xFF, 0x00, 0xFE, 0xFE, 0xFE, 0xFE, 0xFD, 0xFD, 0xFD, 0xFD, 0x12, 0x34, 0x56, 0x78 };
+
+      var raknetPingHandshakePacket = new List<byte>() { 0x01 };
+
+      var unixtime = BitConverter.GetBytes(DateTimeOffset.Now.ToUnixTimeMilliseconds());
+
+      Int64 temp = 0x02;
+      raknetPingHandshakePacket.AddRange(unixtime);
+      raknetPingHandshakePacket.AddRange(raknetMagic);
+      raknetPingHandshakePacket.AddRange(BitConverter.GetBytes(temp));
+
+      var sendlen = sock.Send(raknetPingHandshakePacket.ToArray(), raknetPingHandshakePacket.Count());
+
+      if (sendlen != raknetPingHandshakePacket.Count())
+      {
+        return ConnStatus.Unknown;
+      }
+      try
+      {
+        var endpoint = new System.Net.IPEndPoint(System.Net.IPAddress.Any, Port);
+        var response = new Queue<byte>(sock.Receive(ref endpoint));
+
+        if (response.Dequeue() != 0x1c)
+          return ConnStatus.Unknown;
+
+        // responseTimeStamp
+        var responseTimeStamp = BitConverter.ToInt64(readbytestream(response, 8), 0);
+        // responseServerGUID
+        var responseServerGUID = BitConverter.ToInt64(readbytestream(response, 8), 0);
+
+        var responseMagic = readbytestream(response, 16);
+        if (raknetMagic.SequenceEqual(responseMagic) == false)
+          return ConnStatus.Unknown;
+
+        //responsePayloadLength
+        var responsePayloadLength = BitConverter.ToUInt16(readbytestream(response, 2), 0);
+
+        responsePayload = Encoding.UTF8.GetString(readbytestream(response, response.Count));
+      }
+      catch
+      {
+        stopWatch.Stop();
+        return ConnStatus.Timeout;
+      }
+      finally
+      {
+        sock.Close();
+      }
+
+      return ParseRaknetProtocolPayload(responsePayload);
+    }
+    /// <summary>
+    /// Helper method for parsing the payload of the `bedrock_raknet` SLP protocol
+    /// </summary>
+    /// <param name="payload">The string payload</param>
+    /// <returns>ConnStatus - See <see cref="ConnStatus"/> for possible values</returns>
+    /// <seealso cref="SlpProtocol.Bedrock_Raknet"/>
+    private ConnStatus ParseRaknetProtocolPayload(string payload)
+    {
+      var keys = new string[] {"edition", "motd_1", "protocol_version", "version", "current_players", "max_players",
+      "server_uid", "motd_2", "gamemode", "gamemode_numeric", "port_ipv4", "port_ipv6"};
+
+      var dic = keys.Zip(payload.Split(";"), (k, v) => new { k, v })
+              .ToDictionary(x => x.k, x => x.v);
+      
+      Protocol = SlpProtocol.Bedrock_Raknet;
+      ServerUp = true;
+      CurrentPlayersInt = Convert.ToInt32(dic["current_players"]);
+      MaximumPlayersInt = Convert.ToInt32(dic["max_players"]);
+      Version = dic["version"] + " " + dic["motd_2"] + " (" + dic["edition"] + ")";
+      Motd = dic["motd_1"];
+      Stripped_Motd = strip_motd_formatting(Motd);
+      Gamemode = dic["gamemode"];
+      return ConnStatus.Success;
+    }
     /// <summary>
     /// Requests the server data with the Minecraft 1.7+ SLP protocol. In use by all modern Minecraft clients.
     /// Complicated to construct.<br/>
@@ -229,15 +358,15 @@ namespace MineStatLib
       // - The packet length (packet id + data) as VarInt [prepended at the end]
       // - The packet id 0x00
       var jsonPingHandshakePacket = new List<byte> { 0x00 };
-      
+
       // - The protocol version of the client (by convention -1 if used to request the server version); as VarInt
       jsonPingHandshakePacket.AddRange(WriteLeb128(-1));
-      
+
       // - The server address (after SRV redirect) as UTF8 string; prefixed by the byte count
       var serverAddr = Encoding.UTF8.GetBytes(Address);
       jsonPingHandshakePacket.AddRange(WriteLeb128(serverAddr.Length));
       jsonPingHandshakePacket.AddRange(serverAddr);
-      
+
       // - The server port; as unsigned 16-bit integer (short)
       var serverPort = BitConverter.GetBytes(Port);
       // Convert to Big-Endian
@@ -245,28 +374,28 @@ namespace MineStatLib
         Array.Reverse(serverPort);
       // Append to packet
       jsonPingHandshakePacket.AddRange(serverPort);
-      
+
       // - Next state: 1 (status/ping); as VarInt
       jsonPingHandshakePacket.AddRange(WriteLeb128(1));
-      
+
       // - Prepend the packet length (packet id + data) as VarInt
       jsonPingHandshakePacket.InsertRange(0, WriteLeb128(jsonPingHandshakePacket.Count));
-      
-      // Send handshake packet
-      stream.Write(jsonPingHandshakePacket.ToArray(), 0, jsonPingHandshakePacket.Count);
-
-      // Send request packet (packet len as VarInt, empty packet with ID 0x00)
-      WriteLeb128Stream(stream, 1);
-      stream.WriteByte(0x00);
-      
-      // Receive response
-      
-      // Catch timeouts and other network exceptions
-      // A timeout occurs if the server doesn't understand the ping packet
-      // and tries to interpret it as something else
       int responseSize;
       try
       {
+        // Send handshake packet
+        stream.Write(jsonPingHandshakePacket.ToArray(), 0, jsonPingHandshakePacket.Count);
+
+        // Send request packet (packet len as VarInt, empty packet with ID 0x00)
+        WriteLeb128Stream(stream, 1);
+        stream.WriteByte(0x00);
+
+        // Receive response
+
+        // Catch timeouts and other network exceptions
+        // A timeout occurs if the server doesn't understand the ping packet
+        // and tries to interpret it as something else
+
         responseSize = ReadLeb128Stream(stream);
       }
       catch (Exception)
@@ -288,10 +417,10 @@ namespace MineStatLib
       {
         return ConnStatus.Unknown;
       }
-      
+
       // Receive payload-strings byte length as VarInt
       var responsePayloadLength = ReadLeb128Stream(stream);
-      
+
       // Receive the full payload
       var responsePayload = NetStreamReadExact(stream, responsePayloadLength);
 
@@ -313,23 +442,23 @@ namespace MineStatLib
         // This payload contains a json string like this:
         // {"description":{"text":"A Minecraft Server"},"players":{"max":20,"online":0},"version":{"name":"1.16.5","protocol":754}}
         // {"description":{"text":"This is MC \"1.16\" §9§oT§4E§r§lS§6§o§nT"},"players":{"max":20,"online":0},"version":{"name":"1.16.5","protocol":754"}}
-      
+
         // Extract version
         Version = payload.GetProperty("version").GetProperty("name").ToString();
-        
+
         // the MOTD
         Motd = JsonSerializer.Serialize(payload.GetProperty("description"));
         if (payload.GetProperty("description").ValueKind == JsonValueKind.String)
           Stripped_Motd = strip_motd_formatting(payload.GetProperty("description").GetString());
         else
           Stripped_Motd = strip_motd_formatting(payload.GetProperty("description"));
-        
+
         // the online player count
         CurrentPlayersInt = payload.GetProperty("players").GetProperty("online").GetInt32();
-        
+
         // the max player count
         MaximumPlayersInt = payload.GetProperty("players").GetProperty("max").GetInt32();
-        
+
         // the online player list, if provided by the server
         // inspired by https://github.com/lunalunaaaa
         JsonElement playerSampleElement;
@@ -350,7 +479,7 @@ namespace MineStatLib
       {
         return ConnStatus.Unknown;
       }
-      
+
       // If we got here, everything is in order
       ServerUp = true;
       Protocol = SlpProtocol.Json;
@@ -371,23 +500,23 @@ namespace MineStatLib
       // Send ping packet with id 0xFE, and ping data 0x01
       // Then 0xFA as packet id for a plugin message
       // Then 0x00 0x0B as strlen of the following (hardcoded) string
-      
+
       var extLegacyPingPacket = new List<byte> { 0xFE, 0x01, 0xFA, 0x00, 0x0B };
-      
+
       // the string 'MC|PingHost' as UTF-16BE encoded string
       extLegacyPingPacket.AddRange(Encoding.BigEndianUnicode.GetBytes("MC|PingHost"));
-      
+
       // 0xXX 0xXX byte count of rest of data, 7+len(Address), as short
       var reqByteLen = BitConverter.GetBytes(Convert.ToInt16(7 + (Address.Length * 2)));
       // Convert to Big-Endian
       if (BitConverter.IsLittleEndian)
         Array.Reverse(reqByteLen);
       extLegacyPingPacket.AddRange(reqByteLen);
-      
+
       // 0xXX [legacy] protocol version (before netty rewrite)
       // Used here: 74 (MC 1.6.2)
       extLegacyPingPacket.Add(0x4A);
-      
+
       // strlen of Address (big-endian short)
       var addressLen = BitConverter.GetBytes(Convert.ToInt16(Address.Length));
       // Convert to Bit-Endian      
@@ -397,18 +526,18 @@ namespace MineStatLib
 
       // the hostname of the server (encoded as UTF16-BE)
       extLegacyPingPacket.AddRange(Encoding.BigEndianUnicode.GetBytes(Address));
-      
+
       // port of the server, as int (4 byte)
       var port = BitConverter.GetBytes(Convert.ToUInt32(Port));
       // Convert to Bit-Endian      
       if (BitConverter.IsLittleEndian)
         Array.Reverse(port);
       extLegacyPingPacket.AddRange(port);
-      
+
       stream.Write(extLegacyPingPacket.ToArray(), 0, extLegacyPingPacket.Count);
 
       byte[] responsePacketHeader;
-      
+
       // Catch timeouts and other network race conditions
       // A timeout occurs if the server doesn't understand the ping packet
       // and tries to interpret it as something else
@@ -428,7 +557,7 @@ namespace MineStatLib
       }
 
       var payloadLengthRaw = responsePacketHeader.Skip(1);
-      
+
       // Received data is Big-Endian, convert to local endianness, if needed
       if (BitConverter.IsLittleEndian)
         payloadLengthRaw = payloadLengthRaw.Reverse();
@@ -436,7 +565,7 @@ namespace MineStatLib
       var payloadLength = BitConverter.ToUInt16(payloadLengthRaw.ToArray(), 0);
 
       // Receive payload
-      var payload = NetStreamReadExact(stream, payloadLength*2);
+      var payload = NetStreamReadExact(stream, payloadLength * 2);
 
       return ParseLegacyProtocol(payload, SlpProtocol.ExtendedLegacy);
     }
@@ -458,7 +587,7 @@ namespace MineStatLib
       stream.Write(legacyPingPacket, 0, legacyPingPacket.Length);
 
       byte[] responsePacketHeader;
-      
+
       // Catch timeouts or reset connections
       // This happens if the server doesn't understand the packet (unsupported protocol)
       try
@@ -469,7 +598,7 @@ namespace MineStatLib
       {
         return ConnStatus.Unknown;
       }
-      
+
       // Check for response packet id
       if (responsePacketHeader[0] != 0xFF)
       {
@@ -483,7 +612,7 @@ namespace MineStatLib
       var payloadLength = BitConverter.ToUInt16(responsePacketHeader, 0);
 
       // Receive payload
-      var payload = NetStreamReadExact(stream, payloadLength*2);
+      var payload = NetStreamReadExact(stream, payloadLength * 2);
 
       return ParseLegacyProtocol(payload, SlpProtocol.Legacy);
     }
@@ -504,7 +633,7 @@ namespace MineStatLib
 
       // This "payload" contains six fields delimited by a NUL character, see below
       var payloadArray = payloadString.Split('\0');
-      
+
       // Check if we got the right amount of parts, expected is 6 for this protocol version
       if (payloadArray.Length != 6)
       {
@@ -516,17 +645,17 @@ namespace MineStatLib
       // - the protocol version (ignored)
       // - the server version
       Version = payloadArray[2];
-      
+
       // - the MOTD
       Motd = payloadArray[3];
       Stripped_Motd = strip_motd_formatting(Motd);
-      
+
       // - the online player count
       CurrentPlayersInt = Convert.ToInt32(payloadArray[4]);
-      
+
       // - the max player count
       MaximumPlayersInt = Convert.ToInt32(payloadArray[5]);
-      
+
       // If we got here, everything is in order
       ServerUp = true;
       Protocol = protocol;
@@ -593,24 +722,24 @@ namespace MineStatLib
       {
         return ConnStatus.Unknown;
       }
-        
+
       // Max player count is the last element
-      MaximumPlayersInt = Convert.ToInt32(payloadArray[payloadArray.Length-1]);
-        
+      MaximumPlayersInt = Convert.ToInt32(payloadArray[payloadArray.Length - 1]);
+
       // Current player count is second-to-last element
-      CurrentPlayersInt = Convert.ToInt32(payloadArray[payloadArray.Length-2]);
-        
+      CurrentPlayersInt = Convert.ToInt32(payloadArray[payloadArray.Length - 2]);
+
       // Motd is first element, but may contain 'section sign' (the delimiter)
       Motd = String.Join("§", payloadArray.Take(payloadArray.Length - 2).ToArray());
       Stripped_Motd = strip_motd_formatting(Motd);
-      
+
       // If we got here, everything is in order
       ServerUp = true;
       Protocol = SlpProtocol.Beta;
-      
+
       // This protocol does not provide the server version.
       Version = "<= 1.3";
-      
+
       return ConnStatus.Success;
     }
 
@@ -624,16 +753,16 @@ namespace MineStatLib
     /// <returns><see cref="TcpClient"/> object or <c>null</c> if the connection failed</returns>
     private TcpClient TcpClientWrapper()
     {
-      var tcpclient = new TcpClient {ReceiveTimeout = Timeout * 1000, SendTimeout = Timeout * 1000};
-      
+      var tcpclient = new TcpClient { ReceiveTimeout = Timeout * 1000, SendTimeout = Timeout * 1000 };
+
       var stopWatch = new Stopwatch();
       stopWatch.Start();
-      
+
       // Start async connection
       var result = tcpclient.BeginConnect(Address, Port, null, null);
       // wait "timeout" seconds
       var isResponsive = result.AsyncWaitHandle.WaitOne(TimeSpan.FromSeconds(Timeout));
-      
+
       // Check if connection attempt hung longer than `timeout` seconds, error out if not
       // Note: Errors are a valid response and have to be caught later
       if (!isResponsive)
@@ -687,7 +816,7 @@ namespace MineStatLib
 
       return resultBuffer.ToArray();
     }
-    
+
     /// <summary>
     /// Wrapper for any `Request` method. Handles graceful socket closure.
     /// </summary>
@@ -709,8 +838,8 @@ namespace MineStatLib
     }
 
     // "Missing XML comment for publicly visible type or member" - Deprecated methods, no use for documentation.
-    #pragma warning disable CS1591
-    
+#pragma warning disable CS1591
+
     #region Obsolete
 
     [Obsolete("This method is deprecated and will be removed soon. Use MineStat.Address instead.")]
@@ -806,8 +935,8 @@ namespace MineStatLib
     }
 
     #endregion
-    
-    #pragma warning restore CS1591
+
+#pragma warning restore CS1591
 
     #region LEB128_Utilities
 
@@ -819,7 +948,7 @@ namespace MineStatLib
     public static byte[] WriteLeb128(int value)
     {
       var byteList = new List<byte>();
-      
+
       // Converting int to uint is necessary to preserve the sign bit
       // when performing bit shifting
       uint actual = (uint)value;
@@ -838,7 +967,7 @@ namespace MineStatLib
 
       return byteList.ToArray();
     }
-    
+
     /// <summary>
     /// Writes an integer as LEB128-encoded number to a (network-)stream.
     /// </summary>
@@ -870,7 +999,8 @@ namespace MineStatLib
     /// <returns>The integer representation of the read LEB128 number</returns>
     /// <exception cref="FormatException"></exception>
     /// <exception cref="InvalidOperationException"></exception>
-    private static int ReadLeb128Stream (Stream stream) {
+    private static int ReadLeb128Stream(Stream stream)
+    {
       int numRead = 0;
       int result = 0;
       byte read;
@@ -930,17 +1060,17 @@ namespace MineStatLib
     /// The specified SLP connection succeeded (Request and response parsing OK)
     /// </summary>
     Success,
-    
+
     /// <summary>
     /// The socket to the server could not be established. (Server offline, wrong hostname or port?)
     /// </summary>
     Connfail,
-    
+
     /// <summary>
     /// The connection timed out. (Server under too much load? Firewall rules OK?)
     /// </summary>
     Timeout,
-    
+
     /// <summary>
     /// The connection was established, but the server spoke an unknown/unsupported SLP protocol.
     /// </summary>
@@ -953,13 +1083,19 @@ namespace MineStatLib
   public enum SlpProtocol
   {
     /// <summary>
+    /// The Bedrock SLP-equivalent using the RakNet `Unconnected Ping` packet.
+    /// Currently experimental.
+    /// </summary>
+    Bedrock_Raknet,
+
+    /// <summary>
     /// The newest and currently supported SLP protocol.<br/>
     /// Uses (wrapped) JSON as payload. Complex request, see above <see cref="MineStat.RequestWithJsonProtocol"/>
     /// for the protocol implementation. <br/>
     /// <i>Available since Minecraft 1.7.</i>
     /// </summary>
     Json,
-    
+
     /// <summary>
     /// The previous SLP protocol.<br/>
     /// Used by Minecraft 1.6, it is still supported by all newer server versions.
@@ -968,7 +1104,7 @@ namespace MineStatLib
     /// <i>Available since Minecraft 1.6</i>
     /// </summary>
     ExtendedLegacy,
-    
+
     /// <summary>
     /// The legacy SLP protocol.<br/>
     /// Used by Minecraft 1.4 and 1.5, it is the first protocol to contain the server version number.
@@ -977,7 +1113,7 @@ namespace MineStatLib
     /// <i>Available since Minecraft 1.4</i>
     /// </summary>
     Legacy,
-    
+
     /// <summary>
     /// The first SLP protocol.<br/>
     /// Used by Minecraft Beta 1.8 till Release 1.3, it is the first SLP protocol.
@@ -985,7 +1121,7 @@ namespace MineStatLib
     /// <i>Available since Minecraft Beta 1.8</i>
     /// </summary>
     Beta,
-    
+
     /// <summary>
     /// Not a protocol. Used for setting the default, automatic protocol detection.
     /// </summary>
