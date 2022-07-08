@@ -215,7 +215,7 @@ namespace MineStatLib
     /// <returns>string with the stripped motd</returns>
     static private string strip_motd_formatting(string? rawmotd)
     {
-      return Regex.Replace(rawmotd, @"[^\u0000-\u007F]+[a-zA-Z0-9]", string.Empty);
+      return Regex.Replace(rawmotd, @"\u00A7+[a-zA-Z0-9]", string.Empty);
     }
     static private string strip_motd_formatting(JsonElement rawmotd)
     {
