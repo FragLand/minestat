@@ -164,7 +164,8 @@ else
 
 ### PowerShell example
 ```powershell
-$ms = ./ServerStatus.ps1 -Address "minecraft.frag.land" -port 25565
+Import-Module MineStat
+$ms = MineStat -Address "minecraft.frag.land" -port 25565
 "Minecraft server status of '{0}' on port {1}:" -f $ms.Address, $ms.Port
 
 if ($ms.Online) {
