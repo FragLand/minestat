@@ -36,8 +36,6 @@
       Tags = @('Minecraft')
       ProjectUri = 'https://github.com/FragLand/minestat'
       ReleaseNotes = @'
-    }
-  }
 ## 2.0.1
 - Convert script to module.
 
