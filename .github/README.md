@@ -163,6 +163,11 @@ else
 ```
 
 ### PowerShell example
+
+[![Gallery](https://img.shields.io/powershellgallery/v/MineStat?color=blue&label=PowerShell%20module&style=plastic)](https://www.powershellgallery.com/packages/MineStat/)
+
+To install the module: `Install-Module -Name MineStat`
+
 ```powershell
 Import-Module MineStat
 $ms = MineStat -Address "minecraft.frag.land" -port 25565
