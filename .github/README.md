@@ -164,8 +164,14 @@ else
 ```
 
 ### PowerShell example
+
+[![Gallery](https://img.shields.io/powershellgallery/v/MineStat?color=blue&label=PowerShell%20module&style=plastic)](https://www.powershellgallery.com/packages/MineStat/)
+
+To install the module: `Install-Module -Name MineStat`
+
 ```powershell
-$ms = ./ServerStatus.ps1 -Address "minecraft.frag.land" -port 25565
+Import-Module MineStat
+$ms = MineStat -Address "minecraft.frag.land" -port 25565
 "Minecraft server status of '{0}' on port {1}:" -f $ms.Address, $ms.Port
 
 if ($ms.Online) {

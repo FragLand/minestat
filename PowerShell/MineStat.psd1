@@ -53,7 +53,6 @@
 - Add Bedrock, JSON, legacy, and extended legacy support.
 - Add support for MotD stripping.
 - Add $formatted_motd to display MotD with escaped unicode character in console.
-- Add support for address array input
 
 ## 1.0.0
 - Initial release
