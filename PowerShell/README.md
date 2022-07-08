@@ -2,7 +2,12 @@
 
 MineStat is a Minecraft server status checker.
 
-### Powershell example
+### PowerShell example
+
+To install the module:
+```powershell
+Install-Module -Name MineStat
+```
 
 ```powershell
 Import-Module MineStat
