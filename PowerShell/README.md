@@ -2,10 +2,15 @@
 
 MineStat is a Minecraft server status checker.
 
-### Powershell example
+### PowerShell example
+
+[![Gallery](https://img.shields.io/powershellgallery/v/MineStat?color=blue&label=PowerShell%20module&style=plastic)](https://www.powershellgallery.com/packages/MineStat/)
+
+To install the module: `Install-Module -Name MineStat`
 
 ```powershell
-$ms = ./ServerStatus.ps1 -Address "minecraft.frag.land" -port 25565
+Import-Module MineStat
+$ms = MineStat -Address "minecraft.frag.land" -port 25565
 "Minecraft server status of '{0}' on port {1}:" -f $ms.Address, $ms.Port
 
 if ($ms.Online) {
@@ -21,7 +26,7 @@ if ($ms.Online) {
 ### Commandline Example
 
 ```powershell
-PS C:\> ./ServerStatus.ps1 -Address "localhost","mc.hypixel.net" -Port 25565 -Protocol Beta,Extendedlegacy,Json -Timeout 2 -verbose
+PS C:\> MineStat -Address "localhost","mc.hypixel.net" -Port 25565 -Protocol Beta,Extendedlegacy,Json -Timeout 2 -verbose
 VERBOSE: Beta, ExtendedLegacy, Json
 VERBOSE: Beta - Success
 VERBOSE: ExtendedLegacy - Success
@@ -52,7 +57,7 @@ formatted_motd  :                 Hypixel Network [1.8-1.19]
                     SUMMER EVENT - LEVEL UP, NEW COSMETICS
 slp_protocol    : Json
 
-PS C:\> ./ServerStatus.ps1 "mc.advancius.net" 19132 BedrockRaknet
+PS C:\> MineStat "mc.advancius.net" 19132 BedrockRaknet
 
 address         : mc.advancius.net
 port            : 19132
