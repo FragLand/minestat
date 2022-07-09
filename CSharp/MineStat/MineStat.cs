@@ -1,6 +1,6 @@
 /*
  * MineStat.cs - A Minecraft server status checker
- * Copyright (C) 2014-2022 Lloyd Dilley, 2021-2022 Felix Ern (MindSolve)
+ * Copyright (C) 2014-2022 Lloyd Dilley, 2021-2022 Felix Ern (MindSolve), Ajoro 2022
  * http://www.dilley.me/
  *
  * This program is free software; you can redistribute it and/or modify
@@ -43,7 +43,7 @@ namespace MineStatLib
     /// <summary>
     /// The MineStat library version.
     /// </summary>
-    public const string MineStatVersion = "2.1.2";
+    public const string MineStatVersion = "3.0.1";
     /// <summary>
     /// Default TCP timeout in seconds.
     /// </summary>
