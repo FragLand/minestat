@@ -22,11 +22,14 @@ using System;
 using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Text;
-using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.Serialization.Json;
+using System.Xml;
+using System.Xml.Linq;
+using System.Xml.XPath;
 
 namespace MineStatLib
 {
@@ -217,14 +220,16 @@ namespace MineStatLib
     {
       return Regex.Replace(rawmotd, @"\u00A7+[a-zA-Z0-9]", string.Empty);
     }
-    static private string strip_motd_formatting(JsonElement rawmotd)
+    static private string strip_motd_formatting(XElement rawmotd)
     {
-      var stripped_motd = rawmotd.GetProperty("text").ToString();
-      if (rawmotd.TryGetProperty("extra", out _))
+      if (rawmotd.FirstAttribute.Value == "string")
+        return strip_motd_formatting(rawmotd.FirstNode.ToString());
+      var stripped_motd = rawmotd.Element("text")?.Value;
+      if (rawmotd.Elements("extra").Any())
       {
-        var json_data = rawmotd.GetProperty("extra").EnumerateArray();
+        var json_data = rawmotd.Element("extra").Elements();
         foreach (var item in json_data)
-          stripped_motd += item.GetProperty("text").ToString();
+          stripped_motd += item.Element("text")?.Value;
       }
       return strip_motd_formatting(stripped_motd);
     }
@@ -436,36 +441,41 @@ namespace MineStatLib
     {
       try
       {
-        var payload = JsonDocument.Parse(Encoding.UTF8.GetString(rawPayload)).RootElement;
+        var jsonReader = JsonReaderWriterFactory.CreateJsonReader(rawPayload, new System.Xml.XmlDictionaryReaderQuotas());
+        var root = XElement.Load(jsonReader);
 
         // This payload contains a json string like this:
         // {"description":{"text":"A Minecraft Server"},"players":{"max":20,"online":0},"version":{"name":"1.16.5","protocol":754}}
         // {"description":{"text":"This is MC \"1.16\" §9§oT§4E§r§lS§6§o§nT"},"players":{"max":20,"online":0},"version":{"name":"1.16.5","protocol":754"}}
 
         // Extract version
-        Version = payload.GetProperty("version").GetProperty("name").ToString();
+        Version = root.XPathSelectElement("//version/name")?.Value;
 
         // the MOTD
-        Motd = JsonSerializer.Serialize(payload.GetProperty("description"));
-        if (payload.GetProperty("description").ValueKind == JsonValueKind.String)
-          Stripped_Motd = strip_motd_formatting(payload.GetProperty("description").GetString());
-        else
-          Stripped_Motd = strip_motd_formatting(payload.GetProperty("description"));
+        var descriptionElement = root.XPathSelectElement("//description");
+        // JsonWriter needs a XmlDocument with the root element "root"
+        XmlDocument motdJsonDocument = new XmlDocument();
+        descriptionElement.Name = "root";
+        motdJsonDocument.LoadXml(descriptionElement.ToString());
+        MemoryStream tempMotdJsonStream = new MemoryStream();
+        using (XmlWriter jsonWriter = JsonReaderWriterFactory.CreateJsonWriter(tempMotdJsonStream))
+          motdJsonDocument.WriteTo(jsonWriter);
+        Motd = Encoding.UTF8.GetString(tempMotdJsonStream.ToArray());
+        Stripped_Motd = strip_motd_formatting(descriptionElement);
 
         // the online player count
-        CurrentPlayersInt = payload.GetProperty("players").GetProperty("online").GetInt32();
+        CurrentPlayersInt = Convert.ToInt32(root.XPathSelectElement("//players/online")?.Value);
 
         // the max player count
-        MaximumPlayersInt = payload.GetProperty("players").GetProperty("max").GetInt32();
+        MaximumPlayersInt = Convert.ToInt32(root.XPathSelectElement("//players/max")?.Value);
 
         // the online player list, if provided by the server
         // inspired by https://github.com/lunalunaaaa
-        JsonElement playerSampleElement;
-        if (payload.GetProperty("players").TryGetProperty("sample", out playerSampleElement) && playerSampleElement.ValueKind == JsonValueKind.Array)
+        var playerSampleElement = root.XPathSelectElement("//players/sample");
+        if (playerSampleElement != null && playerSampleElement.Attribute(XName.Get("type"))?.Value == "array")
         {
-          var playerSampleNameElements = playerSampleElement.EnumerateArray();
-          if (playerSampleNameElements.Count() > 0)
-            PlayerList = playerSampleNameElements.Select(playerNameElement => playerNameElement.GetProperty("name").ToString()).ToArray();
+          var playerSampleNameElements = root.XPathSelectElements("//players/sample/item/name");
+          PlayerList = playerSampleNameElements.Select(playerNameElement => playerNameElement.Value).ToArray();
         }
       }
       catch (Exception)
