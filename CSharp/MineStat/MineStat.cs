@@ -44,12 +44,10 @@ namespace MineStatLib
     /// The MineStat library version.
     /// </summary>
     public const string MineStatVersion = "2.1.2";
-
     /// <summary>
     /// Default TCP timeout in seconds.
     /// </summary>
     private const int DefaultTimeout = 5;
-
     /// <summary>
     /// The address of the Minecraft server to connect to.
     /// </summary>
@@ -135,7 +133,6 @@ namespace MineStatLib
     /// Bedrock specific: The current gamemode (Creative/Survival/Adventure)
     /// </summary>
     public string Gamemode { get; set; }
-
     /// <inheritdoc cref="MineStat"/>
     /// <example>
     /// <code>
@@ -216,7 +213,7 @@ namespace MineStatLib
     /// Function for stripping all formatting codes from a motd.
     /// </summary>
     /// <returns>string with the stripped motd</returns>
-    static private string strip_motd_formatting(string? rawmotd)
+    static private string strip_motd_formatting(string rawmotd)
     {
       return Regex.Replace(rawmotd, @"\u00A7+[a-zA-Z0-9]", string.Empty);
     }
@@ -299,16 +296,15 @@ namespace MineStatLib
         if (response.Dequeue() != 0x1c)
           return ConnStatus.Unknown;
 
-        // responseTimeStamp
+        // responseTimeStamp & responseServerGUID discarded
         var responseTimeStamp = BitConverter.ToInt64(readbytestream(response, 8), 0);
-        // responseServerGUID
         var responseServerGUID = BitConverter.ToInt64(readbytestream(response, 8), 0);
 
         var responseMagic = readbytestream(response, 16);
         if (raknetMagic.SequenceEqual(responseMagic) == false)
           return ConnStatus.Unknown;
 
-        //responsePayloadLength
+        //responsePayloadLength also discarded
         var responsePayloadLength = BitConverter.ToUInt16(readbytestream(response, 2), 0);
 
         responsePayload = Encoding.UTF8.GetString(readbytestream(response, response.Count));
@@ -336,7 +332,7 @@ namespace MineStatLib
       var keys = new string[] {"edition", "motd_1", "protocol_version", "version", "current_players", "max_players",
       "server_uid", "motd_2", "gamemode", "gamemode_numeric", "port_ipv4", "port_ipv6"};
 
-      var dic = keys.Zip(payload.Split(";"), (k, v) => new { k, v })
+      var dic = keys.Zip(payload.Split((char)59), (k, v) => new { k, v })
               .ToDictionary(x => x.k, x => x.v);
       
       Protocol = SlpProtocol.Bedrock_Raknet;
