@@ -23,7 +23,7 @@
   CompanyName = "Frag Land"
   Copyright = "(C) 2020-2022 Ajoro and MineStat contributors"
   HelpInfoUri = "https://github.com/FragLand/minestat/tree/master/PowerShell"
-  ModuleVersion = "2.0.2"
+  ModuleVersion = "2.0.3"
   PowerShellVersion = "5.0"
   RootModule = "MineStat.psm1"
   Description = "MineStat is a Minecraft server connection status checker."
@@ -37,6 +37,10 @@
       ProjectUri = "https://github.com/FragLand/minestat"
       LicenseUri = "https://www.gnu.org/licenses/gpl-3.0.txt"
       ReleaseNotes = @'
+## 2.0.3
+- Fix bug parsing "§" on powershell version 5
+- Add support for spliting "Address:Port" in address input
+
 ## 2.0.2
 - Fix release notes.
 - Add link to license.

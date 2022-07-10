@@ -57,7 +57,7 @@ formatted_motd  :                 Hypixel Network [1.8-1.19]
                     SUMMER EVENT - LEVEL UP, NEW COSMETICS
 slp_protocol    : Json
 
-PS C:\> MineStat "mc.advancius.net" 19132 BedrockRaknet
+PS C:\> MineStat "mc.advancius.net:19132" -Protocol BedrockRaknet
 
 address         : mc.advancius.net
 port            : 19132
@@ -72,11 +72,12 @@ slp_protocol    : BedrockRaknet
 #### Inputs
 
 - `Address`: str[] / str
-  - Addresss (domain or IP-address) of the server to connect to.
+  - Address (domain or IP-address) of the server to connect to. 
+  - Can take array input and also take `address:port` as input.
 - `Port`: uint
   - Port of the server to connect to.
 - `Protocol`: int / str / array
-  - SlpProtocol to use. 
+  - SlpProtocol to use. Dosn't use bedrock by default.
 - `Timeout`: int
   - Time in seconds before timeout (for each SlpProtocol)
 
