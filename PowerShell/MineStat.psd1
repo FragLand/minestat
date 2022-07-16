@@ -40,6 +40,7 @@
 ## 2.0.3
 - Fix bug parsing "§" on powershell version 5
 - Add support for spliting "Address:Port" in address input
+- Add formating/color reset in formatted_motd
 
 ## 2.0.2
 - Fix release notes.
