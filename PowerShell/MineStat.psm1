@@ -244,7 +244,7 @@ function MineStat {
               $formatted_motd += $format
             }
           }
-          return $formatted_motd
+          return $formatted_motd + $formats.reset
         }
         else {
           foreach ($entry in $rawmotd) {
@@ -267,7 +267,7 @@ function MineStat {
           if ($formatted_motd -match [char]0x00A7) {
             $formatted_motd = format_motd($formatted_motd)
           }
-          return $formatted_motd
+          return $formatted_motd + $formats.reset
         }
       }
       $this.stripped_motd = strip_motd($rawmotd)
