@@ -39,20 +39,21 @@
       ReleaseNotes = @'
 ## 2.0.3
 - Fix bug parsing "§" on powershell version 5
-- Add support for spliting "Address:Port" in address input
+- Add support for splitting "Address:Port" in address input
+- Add formatting/color reset in formatted_motd
 
 ## 2.0.2
-- Fix release notes.
-- Add link to license.
-- Add more tags.
+- Fix release notes
+- Add link to license
+- Add more tags
 
 ## 2.0.1
-- Convert script to module.
+- Convert script to module
 
 ## 2.0.0
-- Add Bedrock, JSON, legacy, and extended legacy support.
-- Add support for MotD stripping.
-- Add $formatted_motd to display MotD with escaped unicode character in console.
+- Add Bedrock, JSON, legacy, and extended legacy support
+- Add support for MotD stripping
+- Add $formatted_motd to display MotD with escaped unicode character in console
 
 ## 1.0.0
 - Initial release
