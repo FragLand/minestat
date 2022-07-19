@@ -2,13 +2,7 @@ name: "CodeQL"
 
 on:
   push:
-    paths:
-      - 'CSharp/**'
-      - 'Go/**'
-      - 'Java/**'
-      - 'JavaScript/**'
-      - 'Python/**'
-      - 'Ruby/**'
+    branches: [ "master" ]
       
   pull_request:
     branches: [ "master" ]
