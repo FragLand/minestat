@@ -1,8 +1,10 @@
-name: publish to nuget
+name: Publish Nuget Package
+
 on:
   workflow_dispatch:
+  
 jobs:
-  publish:
+  publish-nuget:
     name: build, pack & publish
     runs-on: ubuntu-latest
     steps:
