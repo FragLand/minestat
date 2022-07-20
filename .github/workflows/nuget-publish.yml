@@ -1,6 +1,6 @@
 name: publish to nuget
 on:
-  workflow_call:
+  workflow_dispatch:
 jobs:
   publish:
     name: build, pack & publish
