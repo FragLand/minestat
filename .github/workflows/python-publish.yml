@@ -9,8 +9,9 @@
 name: Upload Python Package
 
 on:
-  release:
-    types: [published]
+  workflow_call:
+  #release:
+    #types: [published]
 
 permissions:
   contents: read
