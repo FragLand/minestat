@@ -1,6 +1,6 @@
 name: "CodeQL"
 
-on:
+#on:
   push:
     branches: [ "master" ]
       
