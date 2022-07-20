@@ -6,7 +6,7 @@
 # separate terms of service, privacy policy, and support
 # documentation.
 
-name: Upload Python Package
+name: Publish Python Package
 
 on:
   workflow_dispatch:
@@ -17,10 +17,11 @@ permissions:
   contents: read
 
 jobs:
-  deploy:
-
+  publish-pypi:
     runs-on: ubuntu-latest
-
+    defaults:
+      run:
+        working-directory: Python/
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python
