@@ -9,34 +9,30 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: JavaScript/
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
           node-version: 16
-          working-directory: JavaScript/
-      - run: ls
-      - run: ls
-        working-directory: JavaScript/
-      - run: npm ci
-        working-directory: JavaScript/
+      - run: npm install
       - run: npm test
-        working-directory: JavaScript/
-      - run: ls
-        working-directory: JavaScript/
-      
 
   publish-npm:
     needs: build
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: JavaScript/
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
           node-version: 16
           registry-url: https://registry.npmjs.org/
-          working-directory: JavaScript/
-      - run: npm ci
+      - run: npm install
       - run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{secrets.npm_token}}
