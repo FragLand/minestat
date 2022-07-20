@@ -13,12 +13,11 @@ on:
   #release:
     #types: [published]
 
-permissions:
-  contents: read
-
 jobs:
   publish-pypi:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: Python/
