@@ -16,7 +16,11 @@ jobs:
           node-version: 16
           working-directory: JavaScript/
       - run: npm ci
+        working-directory: JavaScript/
       - run: npm test
+        working-directory: JavaScript/
+      - run: ls
+        working-directory: JavaScript/
       
 
   publish-npm:
