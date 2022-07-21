@@ -10,8 +10,6 @@ name: Publish Python Package
 
 on:
   workflow_dispatch:
-  #release:
-    #types: [published]
 
 jobs:
   publish-pypi:
