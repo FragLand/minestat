@@ -30,6 +30,6 @@ jobs:
       run: mvn -B package -DskipTests --file pom.xml 
     - name: Publish to GitHub Packages Apache Maven
       run: ls
-    - run: mvn deploy -s $GITHUB_WORKSPACE/settings.xml -DskipTests
+    - run: mvn deploy -s $GITHUB_WORKSPACE/settings.xml -DskipTests -X -e
       env:
         GITHUB_TOKEN: ${{ github.token }}
