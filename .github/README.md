@@ -2,7 +2,7 @@ MineStat
 ========
 
 [![AppVeyor build status](https://img.shields.io/appveyor/ci/ldilley/minestat?label=AppVeyor%20build%20status)](https://ci.appveyor.com/project/ldilley/minestat)
-[![CodeQL](https://github.com/FragLand/minestat/actions/workflows/codeql.yml/badge.svg?branch=master)](https://github.com/FragLand/minestat/actions/workflows/codeql.yml)
+[![CodeQL build status](https://github.com/FragLand/minestat/actions/workflows/codeql.yml/badge.svg?branch=master)](https://github.com/FragLand/minestat/actions/workflows/codeql.yml)
 [![CodeFactor grade](https://img.shields.io/codefactor/grade/github/FragLand/minestat?label=CodeFactor%20quality)](https://www.codefactor.io/repository/github/fragland/minestat)
 
 MineStat is a Minecraft server status checker.
