@@ -1,4 +1,0 @@
-runs:
-    using: 'node16'
-    main: './build/index.js'
-    
