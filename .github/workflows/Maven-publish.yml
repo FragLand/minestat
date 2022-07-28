@@ -21,3 +21,4 @@ jobs:
         with:
           nexus_username: ${{ secrets.MAVEN_USER }}
           nexus_password: ${{ secrets.MAVEN_TOKEN }}
+          directory: Java/
