@@ -23,3 +23,4 @@ jobs:
           nexus_password: ${{ secrets.MAVEN_TOKEN }}
           directory: Java/
           maven_args: "-DskipTests"
+          maven_profiles: build
