@@ -2,7 +2,7 @@ name: Publish Maven Package
 
 on:
   workflow_dispatch:
-  
+
 jobs:
   publish-maven:
     runs-on: ubuntu-latest
