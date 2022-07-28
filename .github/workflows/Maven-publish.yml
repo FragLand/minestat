@@ -22,4 +22,4 @@ jobs:
           nexus_username: ${{ secrets.MAVEN_USER }}
           nexus_password: ${{ secrets.MAVEN_TOKEN }}
           directory: Java/
-          maven_args: "-DskipTests"
+          maven_args: "-DskipTests -X -e"
