@@ -1,0 +1,25 @@
+name: Publish Maven Package
+
+on:
+  workflow_dispatch:
+  
+jobs:
+  publish-maven:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Java/
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v2
+      - name: Install Java and Maven
+        uses: actions/setup-java@v1
+        with:
+          java-version: 11
+      - name: Publish Maven package
+        uses: samuelmeuli/action-maven-publish@v1
+        with:
+          nexus_username: ${{ secrets.MAVEN_USER }}
+          nexus_password: ${{ secrets.MAVEN_TOKEN }}
+          directory: Java/
+          maven_args: "-DskipTests"
