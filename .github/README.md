@@ -40,6 +40,9 @@ class Example
 ```
 
 ### Go example
+
+[![Go Reference](https://pkg.go.dev/badge/github.com/FragLand/minestat/Go/minestat.svg)](https://pkg.go.dev/github.com/FragLand/minestat/Go/minestat)
+
 ```go
 package main
 
