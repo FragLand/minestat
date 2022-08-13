@@ -8,13 +8,18 @@
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <license type="expression">GPL-3.0-or-later</license>
     <projectUrl>https://github.com/FragLand/minestat</projectUrl>
+    <readme>ReadMe.md</readme>
+    <repository type="git" url="https://github.com/FragLand/minestat.git" />
     <description>$description$</description>
     <copyright>$copyright$</copyright>
-    <tags>Minecraft status checker library</tags>
+    <tags>Minecraft Bedrock SLP status checker poller query library</tags>
     <dependencies>
     </dependencies>
     <frameworkAssemblies>
       <frameworkAssembly assemblyName="System.Core" targetFramework="net46" />
     </frameworkAssemblies>
   </metadata>
+  <files>
+    <file src="ReadMe.md" target="" />
+  </files>
 </package>
