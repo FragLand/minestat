@@ -4,6 +4,22 @@ on:
   workflow_dispatch:
 
 jobs:
+  sup:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v1
+    
+    - name: Setup NuGet
+      uses: NuGet/setup-nuget@v1.0.5
+    
+    - name: Restore NuGet packages
+      run: nuget restore CSharp/MineStat.sln
+    
+    - name: Build the Solution
+      run: msbuild CSharp/MineStat.sln /p:Configuration=Release
   publish-nuget:
     name: build, pack & publish
     runs-on: ubuntu-latest
@@ -14,6 +30,7 @@ jobs:
         uses: actions/setup-dotnet@v2
         with:
           dotnet-version: '3.1.x'
+          
 
       # Publish
       - name: publish on version change
