@@ -135,25 +135,25 @@ public class MineStat
 
   public MineStat(String address)
   {
-    this(address, DEFAULT_SLP_PORT, DEFAULT_TIMEOUT, Request.NONE);
+    this(address, DEFAULT_SLP_PORT, DEFAULT_TIMEOUT, Request.NONE, false);
   }
 
   public MineStat(String address, int port)
   {
-    this(address, port, DEFAULT_TIMEOUT, Request.NONE);
+    this(address, port, DEFAULT_TIMEOUT, Request.NONE, true);
   }
 
   public MineStat(String address, int port, int timeout)
   {
-    this(address, port, timeout, Request.NONE);
+    this(address, port, timeout, Request.NONE, true);
   }
 
   public MineStat(String address, int port, Request requestType)
   {
-    this(address, port, DEFAULT_TIMEOUT, requestType);
+    this(address, port, DEFAULT_TIMEOUT, requestType, true);
   }
 
-  public MineStat(String address, int port, int timeout, Request requestType)
+  public MineStat(String address, int port, int timeout, Request requestType, boolean isPortDefined)
   {
     setAddress(address);
     setPort(port);
@@ -196,7 +196,11 @@ public class MineStat
           retval = jsonRequest(address, port, getTimeout());
         // Bedrock/Pocket Edition
         if(retval != Retval.CONNFAIL)
+        {
+          if(!isPortDefined)
+            setPort(DEFAULT_BEDROCK_PORT);
           retval = bedrockRequest(address, port, getTimeout());
+        }
     }
   }
 
