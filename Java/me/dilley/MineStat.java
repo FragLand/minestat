@@ -115,7 +115,14 @@ public class MineStat
   private long latency;
 
   /**
-   * SLP protocol version
+   * Protocol level
+   * Note: Multiple Minecraft versions can share the same protocol level
+   * @since 3.0.0
+   */
+  private int protocol;
+
+  /**
+   * Protocol version
    */
   private String requestType;
 
@@ -252,6 +259,10 @@ public class MineStat
 
   public void setLatency(long latency) { this.latency = latency; }
 
+  public int getProtocol() { return protocol; }
+
+  public void setProtocol(int protocol) { this.protocol = protocol; }
+
   public boolean isServerUp() { return serverUp; }
 
   public String getRequestType() { return requestType; }
@@ -305,6 +316,7 @@ public class MineStat
         setStrippedMotd(stripMotdFormatting(serverData[0]));
         setCurrentPlayers(Integer.parseInt(serverData[1]));
         setMaximumPlayers(Integer.parseInt(serverData[2]));
+        setProtocol(0);           // set to zero (unknown) since 1.8b/1.3 server does not provide protocol level
         serverUp = true;
         setRequestType("SLP 1.8b/1.3 (beta)");
       }
@@ -384,7 +396,7 @@ public class MineStat
       if(serverData.length >= NUM_FIELDS)
       {
         // serverData[0] contains the section symbol and 1
-        // serverData[1] contains the protocol version (51 for example)
+        setProtocol(Integer.parseInt(serverData[1])); // 49 for 1.4.5 for example
         setVersion(serverData[2]);
         setMotd(serverData[3]);
         setStrippedMotd(stripMotdFormatting(serverData[3]));
@@ -487,7 +499,7 @@ public class MineStat
       if(serverData.length >= NUM_FIELDS)
       {
         // serverData[0] contains the section symbol and 1
-        // serverData[1] contains the protocol version (always 127 for >=1.7.x)
+        setProtocol(Integer.parseInt(serverData[1])); // 78 for 1.6.4 for example
         setVersion(serverData[2]);
         setMotd(serverData[3]);
         setStrippedMotd(stripMotdFormatting(serverData[3]));
@@ -640,6 +652,7 @@ public class MineStat
 
       // Populate object from JSON data
       JsonObject jobj = new Gson().fromJson(new String(rawData), JsonObject.class);
+      setProtocol(jobj.get("version").getAsJsonObject().get("protocol").getAsInt());
       setMotd(jobj.get("description").toString());
       setStrippedMotd(stripMotdFormatting(jobj.get("description").getAsJsonObject()));
       setVersion(jobj.get("version").getAsJsonObject().get("name").getAsString());
@@ -764,6 +777,7 @@ public class MineStat
       String serverId = new String(Arrays.copyOfRange(rawServerData, 35, 35 + serverIdLength), StandardCharsets.UTF_8);
       String[] splitData = serverId.split(";");
       serverUp = true;
+      setProtocol(Integer.parseInt(splitData[2]));
       setCurrentPlayers(Integer.parseInt(splitData[4]));
       setMaximumPlayers(Integer.parseInt(splitData[5]));
       setMotd(splitData[1]);
