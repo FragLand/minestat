@@ -302,6 +302,7 @@ public class MineStat
       {
         setVersion(">=1.8b/1.3"); // since server does not return version, set it
         setMotd(serverData[0]);
+        setStrippedMotd(stripMotdFormatting(serverData[0]));
         setCurrentPlayers(Integer.parseInt(serverData[1]));
         setMaximumPlayers(Integer.parseInt(serverData[2]));
         serverUp = true;
@@ -386,6 +387,7 @@ public class MineStat
         // serverData[1] contains the protocol version (51 for example)
         setVersion(serverData[2]);
         setMotd(serverData[3]);
+        setStrippedMotd(stripMotdFormatting(serverData[3]));
         setCurrentPlayers(Integer.parseInt(serverData[4]));
         setMaximumPlayers(Integer.parseInt(serverData[5]));
         serverUp = true;
@@ -488,6 +490,7 @@ public class MineStat
         // serverData[1] contains the protocol version (always 127 for >=1.7.x)
         setVersion(serverData[2]);
         setMotd(serverData[3]);
+        setStrippedMotd(stripMotdFormatting(serverData[3]));
         setCurrentPlayers(Integer.parseInt(serverData[4]));
         setMaximumPlayers(Integer.parseInt(serverData[5]));
         serverUp = true;
