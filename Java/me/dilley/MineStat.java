@@ -183,8 +183,18 @@ public class MineStat
          * since it may be due to an issue during the handshake.
          * Note: Newer server versions may still respond to older SLP requests.
          */
+        Retval retval = Retval.UNKNOWN;
+        boolean bedrockAttempted = false;
+        // Try Bedrock request first if port matches the default Bedrock port
+        if(port == DEFAULT_BEDROCK_PORT)
+        {
+          bedrockAttempted = true;
+          retval = bedrockRequest(address, port, getTimeout());
+          if(retval == Retval.SUCCESS)
+            break;
+        }
         // SLP 1.4/1.5
-        Retval retval = legacyRequest(address, port, getTimeout());
+          retval = legacyRequest(address, port, getTimeout());
         // SLP 1.8b/1.3
         if(retval != Retval.SUCCESS && retval != Retval.CONNFAIL)
           retval = betaRequest(address, port, getTimeout());
@@ -195,7 +205,7 @@ public class MineStat
         if(retval != Retval.CONNFAIL)
           retval = jsonRequest(address, port, getTimeout());
         // Bedrock/Pocket Edition
-        if(retval != Retval.CONNFAIL)
+        if(retval != Retval.CONNFAIL && !bedrockAttempted)
         {
           if(!isPortDefined)
             setPort(DEFAULT_BEDROCK_PORT);
