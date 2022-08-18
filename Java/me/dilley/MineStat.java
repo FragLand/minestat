@@ -39,6 +39,7 @@ public class MineStat
   public static final int DEFAULT_TIMEOUT = 5;          // default TCP/UDP timeout in seconds
   public static final int DEFAULT_SLP_PORT = 25565;     // default TCP port
   public static final int DEFAULT_BEDROCK_PORT = 19132; // default UDP port for Bedrock/Pocket Edition servers
+  public static final int SERVER_ID_STRING_OFFSET = 35; // server ID string offset for Bedrock/Pocket Edition servers
 
   public enum Retval
   {
@@ -774,7 +775,7 @@ public class MineStat
 
       /* Parse data */
       int serverIdLength = rawServerData[34]; // server ID string length
-      String serverId = new String(Arrays.copyOfRange(rawServerData, 35, 35 + serverIdLength), StandardCharsets.UTF_8);
+      String serverId = new String(Arrays.copyOfRange(rawServerData, SERVER_ID_STRING_OFFSET, SERVER_ID_STRING_OFFSET + serverIdLength), StandardCharsets.UTF_8);
       String[] splitData = serverId.split(";");
       serverUp = true;
       setProtocol(Integer.parseInt(splitData[2]));
