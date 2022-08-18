@@ -84,6 +84,12 @@ public class MineStat
   private boolean serverUp;
 
   /**
+   * Game mode
+   * @since 3.0.0
+   */
+  private String gameMode;
+
+  /**
    * Message of the day from the server
    */
   private String motd;
@@ -201,6 +207,10 @@ public class MineStat
 
   public void setTimeout(int timeout) { this.timeout = timeout; }
 
+  public String getGameMode() { return gameMode; }
+
+  public void setGameMode(String gameMode) { this.gameMode = gameMode; }
+
   public String getMotd() { return motd; }
 
   public void setMotd(String motd) { this.motd = motd; }
@@ -313,6 +323,7 @@ public class MineStat
       if(serverData.length >= NUM_FIELDS_BETA)
       {
         setVersion(">=1.8b/1.3"); // since server does not return version, set it
+        setGameMode("Unspecified");
         setMotd(serverData[0]);
         setStrippedMotd(stripMotdFormatting(serverData[0]));
         setCurrentPlayers(Integer.parseInt(serverData[1]));
@@ -404,6 +415,7 @@ public class MineStat
         setCurrentPlayers(Integer.parseInt(serverData[4]));
         setMaximumPlayers(Integer.parseInt(serverData[5]));
         serverUp = true;
+        setGameMode("Unspecified");
         setRequestType("SLP 1.4/1.5 (legacy)");
       }
       else
@@ -507,6 +519,7 @@ public class MineStat
         setCurrentPlayers(Integer.parseInt(serverData[4]));
         setMaximumPlayers(Integer.parseInt(serverData[5]));
         serverUp = true;
+        setGameMode("Unspecified");
         setRequestType("SLP 1.6 (extended legacy)");
       }
       else
@@ -660,6 +673,7 @@ public class MineStat
       setCurrentPlayers(jobj.get("players").getAsJsonObject().get("online").getAsInt());
       setMaximumPlayers(jobj.get("players").getAsJsonObject().get("max").getAsInt());
       serverUp = true;
+      setGameMode("Unspecified");
       setRequestType("SLP 1.7 (JSON)");
       if(!isDataValid())
         return Retval.UNKNOWN;
@@ -784,6 +798,7 @@ public class MineStat
       setMotd(splitData[1]);
       setStrippedMotd(stripMotdFormatting(splitData[1]));
       setVersion(splitData[3] + " " + splitData[7] + " (" + splitData[0] + ")");
+      setGameMode(splitData[8]);
       setRequestType("Bedrock/Pocket Edition");
     }
     catch(ConnectException ce)
