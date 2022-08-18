@@ -4,7 +4,8 @@ class Example
 {
   public static void main(String[] args)
   {
-    MineStat ms = new MineStat("fun.frag.land", 19132, 5, MineStat.Request.BEDROCK);
+    MineStat ms = new MineStat("fun.frag.land", 19132, MineStat.Request.BEDROCK);
+    //MineStat ms = new MineStat("fun.frag.land", 19132, 5, MineStat.Request.BEDROCK);
     System.out.println("Minecraft server status of " + ms.getAddress() + " on port " + ms.getPort() + ":");
     if(ms.isServerUp())
     {

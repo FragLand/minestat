@@ -148,6 +148,11 @@ public class MineStat
     this(address, port, timeout, Request.NONE);
   }
 
+  public MineStat(String address, int port, Request requestType)
+  {
+    this(address, port, DEFAULT_TIMEOUT, requestType);
+  }
+
   public MineStat(String address, int port, int timeout, Request requestType)
   {
     setAddress(address);
