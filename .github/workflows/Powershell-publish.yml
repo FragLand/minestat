@@ -5,10 +5,11 @@ on:
 
 jobs:
   publish-ps:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: PowerShell/
     steps:
+      - uses: actions/checkout@v3
       - name: Publish Module to PowerShell Gallery
-        uses: pcgeek86/publish-powershell-module-action@v20
-        id: publish-module
-        with:
-          NuGetApiKey: ${{ secrets.PS_GALLERY_KEY }}
+        run: Publish-Module -path MineStat -NuGetApiKey ${{ secrets.PS_GALLERY_KEY }}

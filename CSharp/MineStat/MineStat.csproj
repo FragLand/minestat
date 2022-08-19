@@ -1,18 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{11EDD760-FC1E-4BC0-8ED4-8F6D8FF97779}</ProjectGuid>
-    <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>MineStatLib</RootNamespace>
+    <!-- General Information about an assembly is controlled through the following set of attributes. Change these attribute values to modify the information associated with an assembly. -->
     <AssemblyName>MineStat</AssemblyName>
-    <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
+    <Description>A Minecraft server status checker</Description>
+    <Company>Frag Land</Company>
+    <Product>MineStat</Product>
+    <Copyright>Copyright © 2014-2022 Lloyd Dilley, 2021-2022 Felix Ern (MindSolve), 2022 Ajoro</Copyright>
+    <Authors>Lloyd Dilley, Felix Ern, Ajoro</Authors>
+
+    <!--The following GUID is for the ID of the typelib if this project is exposed to COM-->
+    <ProjectGuid>{11EDD760-FC1E-4BC0-8ED4-8F6D8FF97779}</ProjectGuid>
+
+    <!-- Version information for an assembly consists of the following four values: Major.Minor.Build.Revision -->
+    <AssemblyVersion>3.0.1.0</AssemblyVersion>
+    <FileVersion>3.0.1.0</FileVersion>
+    <Version>3.0.1.0</Version>
+  </PropertyGroup>
+  <PropertyGroup>
     <TargetFramework>net46</TargetFramework>
-    <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -34,18 +43,13 @@
     <DocumentationFile>bin\Release\MineStat.xml</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Runtime.Serialization" />
-    <Reference Include="System.Data.DataSetExtensions" />
-    <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Xml" />
-    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System"/>
+    <Reference Include="System.Core"/>
+    <Reference Include="System.Runtime.Serialization"/>
+    <Reference Include="System.Data.DataSetExtensions"/>
+    <Reference Include="Microsoft.CSharp"/>
+    <Reference Include="System.Data"/>
+    <Reference Include="System.Xml"/>
+    <Reference Include="System.Xml.Linq"/>
   </ItemGroup>
-  <ItemGroup>
-    <Compile Include="MineStat.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-  </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

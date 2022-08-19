@@ -1,6 +1,8 @@
 version: 1.0.0.{build}
 image: Visual Studio 2019
 configuration: Debug
+before_build:
+  - nuget restore CSharp\MineStat.sln
 build:
   verbosity: minimal
 on_success:
