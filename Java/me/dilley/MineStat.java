@@ -772,7 +772,7 @@ public class MineStat
   {
     try
     {
-      byte[] rawServerData = new byte[512];
+      byte[] rawServerData = new byte[1280];
       byte[] request = null;
       DatagramPacket requestPacket = null;
       DatagramPacket responsePacket = null;
