@@ -728,14 +728,14 @@ public class MineStat
   {
     return new byte[]
     {
-      (byte)((data >> 56) & 0xff),
-      (byte)((data >> 48) & 0xff),
-      (byte)((data >> 40) & 0xff),
-      (byte)((data >> 32) & 0xff),
-      (byte)((data >> 24) & 0xff),
-      (byte)((data >> 16) & 0xff),
-      (byte)((data >> 8)  & 0xff),
-      (byte)((data >> 0)  & 0xff),
+      (byte)((data >> 56) & 0xFF),
+      (byte)((data >> 48) & 0xFF),
+      (byte)((data >> 40) & 0xFF),
+      (byte)((data >> 32) & 0xFF),
+      (byte)((data >> 24) & 0xFF),
+      (byte)((data >> 16) & 0xFF),
+      (byte)((data >> 8)  & 0xFF),
+      (byte)((data >> 0)  & 0xFF),
     };
   }
 
@@ -807,7 +807,7 @@ public class MineStat
         clientSocket.close();
 
       /* Parse data */
-      int serverIdLength = rawServerData[34]; // server ID string length
+      short serverIdLength = (short)(((rawServerData[33] & 0xFF) << 8) | (rawServerData[34] & 0xFF)); // server ID string length
       String serverId = new String(Arrays.copyOfRange(rawServerData, SERVER_ID_STRING_OFFSET, SERVER_ID_STRING_OFFSET + serverIdLength), StandardCharsets.UTF_8);
       String[] splitData = serverId.split(";");
       serverUp = true;
