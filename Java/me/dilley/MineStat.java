@@ -1,6 +1,6 @@
 /*
  * MineStat.java - A Minecraft server status checker
- * Copyright (C) 2014-2021 Lloyd Dilley
+ * Copyright (C) 2014-2022 Lloyd Dilley
  * http://www.dilley.me/
  *
  * This program is free software; you can redistribute it and/or modify
@@ -28,14 +28,18 @@ import com.google.gson.*;
 import java.io.*;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Date;
 
 public class MineStat
 {
-  public static final String VERSION = "2.1.0"; // MineStat version
-  public static final byte NUM_FIELDS = 6;      // number of values expected from server
-  public static final byte NUM_FIELDS_BETA = 3; // number of values expected from a 1.8b/1.3 server
-  public static final int DEFAULT_TIMEOUT = 5;  // default TCP timeout in seconds
-  public static final int DEFAULT_PORT = 25565; // default TCP port
+  public static final String VERSION = "3.0.0";         // MineStat version
+  public static final byte NUM_FIELDS = 6;              // number of values expected from server
+  public static final byte NUM_FIELDS_BETA = 3;         // number of values expected from a 1.8b/1.3 server
+  public static final int DEFAULT_TIMEOUT = 5;          // default TCP/UDP timeout in seconds
+  public static final int DEFAULT_SLP_PORT = 25565;     // default TCP port
+  public static final int DEFAULT_BEDROCK_PORT = 19132; // default UDP port for Bedrock/Pocket Edition servers
+  public static final int SERVER_ID_STRING_OFFSET = 35; // server ID string offset for Bedrock/Pocket Edition servers
 
   public enum Retval
   {
@@ -50,7 +54,7 @@ public class MineStat
 
   public enum Request
   {
-    NONE(-1), BETA(0), LEGACY(1), EXTENDED(2), JSON(3);
+    NONE(-1), BETA(0), LEGACY(1), EXTENDED(2), JSON(3), BEDROCK(4);
 
     private final int request;
 
@@ -78,6 +82,12 @@ public class MineStat
    * Is the server up? (true or false)
    */
   private boolean serverUp;
+
+  /**
+   * Game mode
+   * @since 3.0.0
+   */
+  private String gameMode;
 
   /**
    * Message of the day from the server
@@ -112,26 +122,38 @@ public class MineStat
   private long latency;
 
   /**
-   * SLP protocol version
+   * Protocol level
+   * Note: Multiple Minecraft versions can share the same protocol level
+   * @since 3.0.0
+   */
+  private int protocol;
+
+  /**
+   * Protocol version
    */
   private String requestType;
 
   public MineStat(String address)
   {
-    this(address, DEFAULT_PORT, DEFAULT_TIMEOUT, Request.NONE);
+    this(address, DEFAULT_SLP_PORT, DEFAULT_TIMEOUT, Request.NONE, false);
   }
 
   public MineStat(String address, int port)
   {
-    this(address, port, DEFAULT_TIMEOUT, Request.NONE);
+    this(address, port, DEFAULT_TIMEOUT, Request.NONE, true);
   }
 
   public MineStat(String address, int port, int timeout)
   {
-    this(address, port, timeout, Request.NONE);
+    this(address, port, timeout, Request.NONE, true);
   }
 
-  public MineStat(String address, int port, int timeout, Request requestType)
+  public MineStat(String address, int port, Request requestType)
+  {
+    this(address, port, DEFAULT_TIMEOUT, requestType, true);
+  }
+
+  public MineStat(String address, int port, int timeout, Request requestType, boolean isPortDefined)
   {
     setAddress(address);
     setPort(port);
@@ -150,16 +172,29 @@ public class MineStat
       case JSON:
         jsonRequest(address, port, getTimeout());
         break;
+      case BEDROCK:
+        bedrockRequest(address, port, getTimeout());
+        break;
       default:
         /*
-         * Attempt various SLP ping requests in a particular order. If the
-         * connection fails, there is no reason to continue with subsequent
-         * requests. Attempts should continue in the event of a timeout
-         * however since it may be due to an issue during the handshake.
+         * Attempt various requests in a particular order. If the connection
+         * fails, there is no reason to continue with subsequent requests.
+         * Attempts should continue in the event of a timeout however
+         * since it may be due to an issue during the handshake.
          * Note: Newer server versions may still respond to older SLP requests.
          */
+        Retval retval = Retval.UNKNOWN;
+        boolean bedrockAttempted = false;
+        // Try Bedrock request first if port matches the default Bedrock port
+        if(port == DEFAULT_BEDROCK_PORT)
+        {
+          bedrockAttempted = true;
+          retval = bedrockRequest(address, port, getTimeout());
+          if(retval == Retval.SUCCESS)
+            break;
+        }
         // SLP 1.4/1.5
-        Retval retval = legacyRequest(address, port, getTimeout());
+          retval = legacyRequest(address, port, getTimeout());
         // SLP 1.8b/1.3
         if(retval != Retval.SUCCESS && retval != Retval.CONNFAIL)
           retval = betaRequest(address, port, getTimeout());
@@ -169,6 +204,13 @@ public class MineStat
         // SLP 1.7
         if(retval != Retval.CONNFAIL)
           retval = jsonRequest(address, port, getTimeout());
+        // Bedrock/Pocket Edition
+        if(retval != Retval.CONNFAIL && !bedrockAttempted)
+        {
+          if(!isPortDefined)
+            setPort(DEFAULT_BEDROCK_PORT);
+          retval = bedrockRequest(address, port, getTimeout());
+        }
     }
   }
 
@@ -183,6 +225,10 @@ public class MineStat
   public int getTimeout() { return timeout * 1000; } // convert to milliseconds
 
   public void setTimeout(int timeout) { this.timeout = timeout; }
+
+  public String getGameMode() { return gameMode; }
+
+  public void setGameMode(String gameMode) { this.gameMode = gameMode; }
 
   public String getMotd() { return motd; }
 
@@ -243,6 +289,10 @@ public class MineStat
 
   public void setLatency(long latency) { this.latency = latency; }
 
+  public int getProtocol() { return protocol; }
+
+  public void setProtocol(int protocol) { this.protocol = protocol; }
+
   public boolean isServerUp() { return serverUp; }
 
   public String getRequestType() { return requestType; }
@@ -292,9 +342,12 @@ public class MineStat
       if(serverData.length >= NUM_FIELDS_BETA)
       {
         setVersion(">=1.8b/1.3"); // since server does not return version, set it
+        setGameMode("Unspecified");
         setMotd(serverData[0]);
+        setStrippedMotd(stripMotdFormatting(serverData[0]));
         setCurrentPlayers(Integer.parseInt(serverData[1]));
         setMaximumPlayers(Integer.parseInt(serverData[2]));
+        setProtocol(0);           // set to zero (unknown) since 1.8b/1.3 server does not provide protocol level
         serverUp = true;
         setRequestType("SLP 1.8b/1.3 (beta)");
       }
@@ -374,12 +427,14 @@ public class MineStat
       if(serverData.length >= NUM_FIELDS)
       {
         // serverData[0] contains the section symbol and 1
-        // serverData[1] contains the protocol version (51 for example)
+        setProtocol(Integer.parseInt(serverData[1])); // 49 for 1.4.5 for example
         setVersion(serverData[2]);
         setMotd(serverData[3]);
+        setStrippedMotd(stripMotdFormatting(serverData[3]));
         setCurrentPlayers(Integer.parseInt(serverData[4]));
         setMaximumPlayers(Integer.parseInt(serverData[5]));
         serverUp = true;
+        setGameMode("Unspecified");
         setRequestType("SLP 1.4/1.5 (legacy)");
       }
       else
@@ -476,12 +531,14 @@ public class MineStat
       if(serverData.length >= NUM_FIELDS)
       {
         // serverData[0] contains the section symbol and 1
-        // serverData[1] contains the protocol version (always 127 for >=1.7.x)
+        setProtocol(Integer.parseInt(serverData[1])); // 78 for 1.6.4 for example
         setVersion(serverData[2]);
         setMotd(serverData[3]);
+        setStrippedMotd(stripMotdFormatting(serverData[3]));
         setCurrentPlayers(Integer.parseInt(serverData[4]));
         setMaximumPlayers(Integer.parseInt(serverData[5]));
         serverUp = true;
+        setGameMode("Unspecified");
         setRequestType("SLP 1.6 (extended legacy)");
       }
       else
@@ -622,19 +679,20 @@ public class MineStat
 
       dis.readFully(rawData);                     // fill byte array with JSON data
 
-      // Close sockets
-      if (!clientSocket.isClosed()) {
+      // Close socket
+      if(!clientSocket.isClosed())
         clientSocket.close();
-      }
 
       // Populate object from JSON data
       JsonObject jobj = new Gson().fromJson(new String(rawData), JsonObject.class);
+      setProtocol(jobj.get("version").getAsJsonObject().get("protocol").getAsInt());
       setMotd(jobj.get("description").toString());
       setStrippedMotd(stripMotdFormatting(jobj.get("description").getAsJsonObject()));
       setVersion(jobj.get("version").getAsJsonObject().get("name").getAsString());
       setCurrentPlayers(jobj.get("players").getAsJsonObject().get("online").getAsInt());
       setMaximumPlayers(jobj.get("players").getAsJsonObject().get("max").getAsInt());
       serverUp = true;
+      setGameMode("Unspecified");
       setRequestType("SLP 1.7 (JSON)");
       if(!isDataValid())
         return Retval.UNKNOWN;
@@ -660,7 +718,129 @@ public class MineStat
       serverUp = false;
       return Retval.UNKNOWN;
     }
+    return Retval.SUCCESS;
+  }
 
+  /*
+   * Convert long to byte array
+   */
+  public static byte[] toByteArr(long data)
+  {
+    return new byte[]
+    {
+      (byte)((data >> 56) & 0xFF),
+      (byte)((data >> 48) & 0xFF),
+      (byte)((data >> 40) & 0xFF),
+      (byte)((data >> 32) & 0xFF),
+      (byte)((data >> 24) & 0xFF),
+      (byte)((data >> 16) & 0xFF),
+      (byte)((data >> 8)  & 0xFF),
+      (byte)((data >> 0)  & 0xFF),
+    };
+  }
+
+  /*
+   * Bedrock/Pocket Edition
+   * Bedrock/Pocket Edition servers communicate as follows for an unconnected ping request:
+   * 1. Client sends:
+   *   1a. \x01 (unconnected ping packet containing the fields specified below)
+   *   1b. current time as a long
+   *   1c. magic number
+   *   1d. client GUID as a long
+   * 2. Server responds with:
+   *   2a. \x1c (unconnected pong packet containing the follow fields)
+   *   2b. current time as a long
+   *   2c. server GUID as a long
+   *   2d. 16-bit magic number
+   *   2e. server ID string length
+   *   2f. server ID as a string
+   * The fields from the pong response, in order, are:
+   *   - edition
+   *   - MotD line 1
+   *   - protocol version
+   *   - version name
+   *   - current player count
+   *   - maximum player count
+   *   - unique server ID
+   *   - MotD line 2
+   *   - game mode as a string
+   *   - game mode as a numeric
+   *   - IPv4 port number
+   *   - IPv6 port number
+   */
+  public Retval bedrockRequest(String address, int port, int timeout)
+  {
+    try
+    {
+      byte[] rawServerData = new byte[1280];
+      byte[] request = null;
+      DatagramPacket requestPacket = null;
+      DatagramPacket responsePacket = null;
+      DatagramSocket clientSocket = new DatagramSocket();
+
+      /* Connect */
+      clientSocket.setSoTimeout(getTimeout());
+      long startTime = System.currentTimeMillis();
+      clientSocket.connect(new InetSocketAddress(getAddress(), getPort()));
+      setLatency(System.currentTimeMillis() - startTime);
+
+      /* Handshake */
+      ByteArrayOutputStream baos = new ByteArrayOutputStream();
+      baos.write(0x01);                             // unconnected ping
+      baos.write(toByteArr(new Date().getTime()));  // current time as a long
+      // magic number
+      baos.write(new byte[] {(byte)0x00, (byte)0xFF, (byte)0xFF, (byte)0x00, (byte)0xFE, (byte)0xFE, (byte)0xFE, (byte)0xFE, (byte)0xFD,
+                             (byte)0xFD, (byte)0xFD, (byte)0xFD, (byte)0x12, (byte)0x34, (byte)0x56, (byte)0x78});
+      baos.write(toByteArr(2));                     // client GUID as a long
+      request = baos.toByteArray();                 // concatenate all the bytes
+      requestPacket = new DatagramPacket(request, request.length);
+      clientSocket.send(requestPacket);
+
+      /* Response */
+      responsePacket = new DatagramPacket(rawServerData, rawServerData.length);  // unconnected pong
+      clientSocket.receive(responsePacket);
+      if(rawServerData[0] != 0x1C)
+        return Retval.UNKNOWN;
+
+      /* Close socket */
+      if(!clientSocket.isClosed())
+        clientSocket.close();
+
+      /* Parse data */
+      short serverIdLength = (short)(((rawServerData[33] & 0xFF) << 8) | (rawServerData[34] & 0xFF)); // server ID string length
+      String serverId = new String(Arrays.copyOfRange(rawServerData, SERVER_ID_STRING_OFFSET, SERVER_ID_STRING_OFFSET + serverIdLength), StandardCharsets.UTF_8);
+      String[] splitData = serverId.split(";");
+      serverUp = true;
+      setProtocol(Integer.parseInt(splitData[2]));
+      setCurrentPlayers(Integer.parseInt(splitData[4]));
+      setMaximumPlayers(Integer.parseInt(splitData[5]));
+      setMotd(splitData[1]);
+      setStrippedMotd(stripMotdFormatting(splitData[1]));
+      setVersion(splitData[3] + " " + splitData[7] + " (" + splitData[0] + ")");
+      setGameMode(splitData[8]);
+      setRequestType("Bedrock/Pocket Edition");
+    }
+    catch(ConnectException ce)
+    {
+      return Retval.CONNFAIL;
+    }
+    catch(SocketException se)
+    {
+      return Retval.CONNFAIL;
+    }
+    catch(SocketTimeoutException ste)
+    {
+      return Retval.TIMEOUT;
+    }
+    catch(IOException ioe)
+    {
+      return Retval.CONNFAIL;
+    }
+    catch(Exception e)
+    {
+      serverUp = false;
+      return Retval.UNKNOWN;
+    }
     return Retval.SUCCESS;
   }
 }
