@@ -16,6 +16,7 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
+require 'base64'
 require 'json'
 require 'socket'
 require 'timeout'
@@ -91,6 +92,8 @@ class MineStat
     @max_players          # maximum player capacity
     @protocol             # protocol level
     @json_data            # JSON data for 1.7 queries
+    @favicon_b64          # base64-encoded favicon possibly contained in JSON 1.7 responses
+    @favicon              # decoded favicon data
     @latency              # ping time to server in milliseconds
     @timeout = timeout    # TCP/UDP timeout
     @server               # server socket
@@ -428,6 +431,11 @@ class MineStat
         strip_motd
         @current_players = json_data['players']['online'].to_i
         @max_players = json_data['players']['max'].to_i
+        @favicon_b64 = json_data['favicon']
+        if !@favicon_b64.nil? && !@favicon_b64.empty?
+          @favicon_b64 = favicon_b64.split("base64,")[1]
+          @favicon = Base64.decode64(favicon_b64)
+        end
         if !@version.empty? && !@motd.empty? && !@current_players.nil? && !@max_players.nil?
           @online = true
         else
@@ -568,6 +576,12 @@ class MineStat
   # Returns the complete JSON response data for queries to Minecraft
   # servers with a version greater than or equal to 1.7
   attr_reader :json_data
+
+  # Returns the base64-encoded favicon from JSON 1.7 queries
+  attr_reader :favicon_b64
+
+  # Returns the decoded favicon from JSON 1.7 queries
+  attr_reader :favicon
 
   # Returns the ping time to the server in ms
   attr_reader :latency
