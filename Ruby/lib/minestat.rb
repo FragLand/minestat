@@ -134,7 +134,7 @@ class MineStat
           retval = json_request()
         end
         # Bedrock/Pocket Edition
-        unless retval == Retval::CONNFAIL
+        unless retval == Retval::SUCCESS || retval == Retval::CONNFAIL
           retval = bedrock_request()
         end
     end
