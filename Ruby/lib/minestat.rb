@@ -97,7 +97,8 @@ class MineStat
     @latency              # ping time to server in milliseconds
     @timeout = timeout    # TCP/UDP timeout
     @server               # server socket
-    @request_type         # Protocol version
+    @request_type         # protocol version
+    @connection_status    # status of connection ("Success", "Fail", "Timeout", or "Unknown")
     @try_all = false      # try all protocols?
 
     @try_all = true if request_type == Request::NONE
@@ -138,7 +139,16 @@ class MineStat
           retval = bedrock_request()
         end
     end
+    set_connection_status(retval)
     @online = false unless retval == Retval::SUCCESS
+  end
+
+  # Sets connection status
+  def set_connection_status(retval)
+    @connection_status = "Success" if retval == Retval::SUCCESS
+    @connection_status = "Fail" if retval == Retval::CONNFAIL
+    @connection_status = "Timeout" if retval == Retval::TIMEOUT
+    @connection_status = "Unknown" if retval == Retval::UNKNOWN
   end
 
   # Strips message of the day formatting characters
@@ -588,6 +598,9 @@ class MineStat
 
   # Returns the protocol version
   attr_reader :request_type
+
+  # Returns the connection status
+  attr_reader :connection_status
 
   # Returns whether or not all ping protocols should be attempted
   attr_reader :try_all
