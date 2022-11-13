@@ -707,7 +707,14 @@ public class MineStat
       JsonObject jobj = new Gson().fromJson(new String(rawData), JsonObject.class);
       setProtocol(jobj.get("version").getAsJsonObject().get("protocol").getAsInt());
       setMotd(jobj.get("description").toString());
-      setStrippedMotd(stripMotdFormatting(jobj.get("description").getAsJsonObject()));
+      try
+      {
+        setStrippedMotd(stripMotdFormatting(jobj.get("description").getAsJsonObject()));
+      }
+      catch(Exception e)
+      {
+        setStrippedMotd(stripMotdFormatting(jobj.get("description").toString()));
+      }
       setVersion(jobj.get("version").getAsJsonObject().get("name").getAsString());
       setCurrentPlayers(jobj.get("players").getAsJsonObject().get("online").getAsInt());
       setMaximumPlayers(jobj.get("players").getAsJsonObject().get("max").getAsInt());
