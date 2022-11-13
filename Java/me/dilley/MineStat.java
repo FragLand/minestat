@@ -146,6 +146,12 @@ public class MineStat
    */
   private String requestType;
 
+  /**
+   * Connection status
+   * @since 3.0.2
+   */
+  private String connectionStatus;
+
   public MineStat(String address)
   {
     this(address, DEFAULT_SLP_PORT, DEFAULT_TIMEOUT, Request.NONE, false);
@@ -171,22 +177,23 @@ public class MineStat
     setAddress(address);
     setPort(port);
     setTimeout(timeout);
+    Retval retval = Retval.UNKNOWN;
     switch(requestType)
     {
       case BETA:
-        betaRequest(address, port, getTimeout());
+        retval = betaRequest(address, port, getTimeout());
         break;
       case LEGACY:
-        legacyRequest(address, port, getTimeout());
+        retval = legacyRequest(address, port, getTimeout());
         break;
       case EXTENDED:
-        extendedLegacyRequest(address, port, getTimeout());
+        retval = extendedLegacyRequest(address, port, getTimeout());
         break;
       case JSON:
-        jsonRequest(address, port, getTimeout());
+        retval = jsonRequest(address, port, getTimeout());
         break;
       case BEDROCK:
-        bedrockRequest(address, port, getTimeout());
+        retval = bedrockRequest(address, port, getTimeout());
         break;
       default:
         /*
@@ -196,7 +203,6 @@ public class MineStat
          * since it may be due to an issue during the handshake.
          * Note: Newer server versions may still respond to older SLP requests.
          */
-        Retval retval = Retval.UNKNOWN;
         boolean bedrockAttempted = false;
         // Try Bedrock request first if port matches the default Bedrock port
         if(port == DEFAULT_BEDROCK_PORT)
@@ -225,6 +231,7 @@ public class MineStat
           retval = bedrockRequest(address, port, getTimeout());
         }
     }
+    setConnectionStatus(retval);
   }
 
   public String getAddress() { return address; }
@@ -319,6 +326,20 @@ public class MineStat
   public String getRequestType() { return requestType; }
 
   public void setRequestType(String requestType) { this.requestType = requestType; }
+
+  public String getConnectionStatus() { return connectionStatus; }
+
+  public void setConnectionStatus(Retval connectionStatusCode)
+  {
+    if(connectionStatusCode == Retval.SUCCESS)
+      connectionStatus = "Success";
+    else if(connectionStatusCode == Retval.CONNFAIL)
+      connectionStatus = "Fail";
+    else if(connectionStatusCode == Retval.TIMEOUT)
+      connectionStatus = "Timeout";
+    else
+      connectionStatus = "Unknown";
+  }
 
   /*
    * 1.8b/1.3
