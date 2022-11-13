@@ -218,7 +218,7 @@ public class MineStat
         if(retval != Retval.CONNFAIL)
           retval = jsonRequest(address, port, getTimeout());
         // Bedrock/Pocket Edition
-        if(retval != Retval.CONNFAIL && !bedrockAttempted)
+        if(retval != Retval.SUCCESS || retval != Retval.CONNFAIL && !bedrockAttempted)
         {
           if(!isPortDefined)
             setPort(DEFAULT_BEDROCK_PORT);
