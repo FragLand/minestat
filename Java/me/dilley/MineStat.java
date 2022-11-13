@@ -34,7 +34,7 @@ import java.util.Date;
 
 public class MineStat
 {
-  public static final String VERSION = "3.0.1";         // MineStat version
+  public static final String VERSION = "3.0.2";         // MineStat version
   public static final byte NUM_FIELDS = 6;              // number of values expected from server
   public static final byte NUM_FIELDS_BETA = 3;         // number of values expected from a 1.8b/1.3 server
   public static final int DEFAULT_TIMEOUT = 5;          // default TCP/UDP timeout in seconds
