@@ -29,6 +29,7 @@ import java.io.*;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Date;
 
 public class MineStat
@@ -115,6 +116,18 @@ public class MineStat
    * Maximum player capacity of the server
    */
   private int maximumPlayers;
+
+  /**
+   * Base64-encoded favicon possibly contained in JSON 1.7 responses
+   * @since 3.0.2
+   */
+  private String faviconB64;
+
+  /**
+   * Decoded favicon data
+   * @since 3.0.2
+   */
+  private String favicon;
 
   /**
    * Ping time to server in milliseconds
@@ -255,17 +268,17 @@ public class MineStat
   public String stripMotdFormatting(JsonObject motd) {
     StringBuilder strippedMotd = new StringBuilder();
 
-    if (motd.isJsonPrimitive()) {
+    if(motd.isJsonPrimitive()) {
       return motd.getAsString();
     }
 
     JsonObject motdObj = motd.getAsJsonObject();
-    if (motdObj.has("text")) {
+    if(motdObj.has("text")) {
       strippedMotd.append(motdObj.get("text").getAsString());
     }
 
-    if (motdObj.has("extra") && motdObj.get("extra").isJsonArray()) {
-      for (JsonElement extraElem : motdObj.get("extra").getAsJsonArray()) {
+    if(motdObj.has("extra") && motdObj.get("extra").isJsonArray()) {
+      for(JsonElement extraElem : motdObj.get("extra").getAsJsonArray()) {
         strippedMotd.append(stripMotdFormatting(extraElem.getAsJsonObject()));
       }
     }
@@ -284,6 +297,14 @@ public class MineStat
   public int getMaximumPlayers() { return maximumPlayers; }
 
   public void setMaximumPlayers(int maximumPlayers) { this.maximumPlayers = maximumPlayers; }
+
+  public String getFaviconB64() { return faviconB64; }
+
+  public void setFaviconB64(String faviconB64) { this.faviconB64 = faviconB64; }
+
+  public String getFavicon() { return favicon; }
+
+  public void setFavicon(String favicon) { this.favicon = favicon; }
 
   public long getLatency() { return latency; }
 
@@ -677,12 +698,11 @@ public class MineStat
       int jsonLength = recvVarInt(dis);      // JSON response size
       byte[] rawData = new byte[jsonLength]; // storage for JSON data
 
-      dis.readFully(rawData);                     // fill byte array with JSON data
+      dis.readFully(rawData);                // fill byte array with JSON data
 
       // Close socket
       if(!clientSocket.isClosed())
         clientSocket.close();
-
       // Populate object from JSON data
       JsonObject jobj = new Gson().fromJson(new String(rawData), JsonObject.class);
       setProtocol(jobj.get("version").getAsJsonObject().get("protocol").getAsInt());
@@ -691,6 +711,9 @@ public class MineStat
       setVersion(jobj.get("version").getAsJsonObject().get("name").getAsString());
       setCurrentPlayers(jobj.get("players").getAsJsonObject().get("online").getAsInt());
       setMaximumPlayers(jobj.get("players").getAsJsonObject().get("max").getAsInt());
+      setFaviconB64(jobj.get("favicon").getAsString().split("base64,")[1]);
+      if(getFaviconB64() != null && !getFaviconB64().isEmpty())
+        setFavicon(new String(Base64.getDecoder().decode(getFaviconB64())));
       serverUp = true;
       setGameMode("Unspecified");
       setRequestType("SLP 1.7 (JSON)");
