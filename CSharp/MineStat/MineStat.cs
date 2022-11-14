@@ -43,7 +43,7 @@ namespace MineStatLib
     /// <summary>
     /// The MineStat library version.
     /// </summary>
-    public const string MineStatVersion = "3.0.1";
+    public const string MineStatVersion = "3.0.2";
     /// <summary>
     /// Default TCP timeout in seconds.
     /// </summary>
