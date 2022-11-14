@@ -130,6 +130,10 @@ namespace MineStatLib
     /// </summary>
     public SlpProtocol Protocol { get; set; }
     /// <summary>
+    /// The connection status. See <see cref="ConnStatus"/> for more info.
+    /// </summary>
+    public ConnStatus ConnStatus { get; set; }
+    /// <summary>
     /// Bedrock specific: The current gamemode (Creative/Survival/Adventure)
     /// </summary>
     public string Gamemode { get; set; }
@@ -192,21 +196,21 @@ namespace MineStatLib
       // 4.: Extended Legacy (1.6)
       // 5.: JSON (1.7+)
 
-      var result = RequestWithRaknetProtocol();
-      if (result == ConnStatus.Connfail || result == ConnStatus.Success)
+      ConnStatus = RequestWithRaknetProtocol();
+      if (ConnStatus == ConnStatus.Connfail || ConnStatus == ConnStatus.Success)
         return;
 
-      result = RequestWrapper(RequestWithLegacyProtocol);
+      ConnStatus = RequestWrapper(RequestWithLegacyProtocol);
 
-      if (result != ConnStatus.Connfail && result != ConnStatus.Success)
+      if (ConnStatus != ConnStatus.Connfail && ConnStatus != ConnStatus.Success)
       {
-        result = RequestWrapper(RequestWithBetaProtocol);
+        ConnStatus = RequestWrapper(RequestWithBetaProtocol);
       }
-      if (result != ConnStatus.Connfail)
-        result = RequestWrapper(RequestWithExtendedLegacyProtocol);
+      if (ConnStatus != ConnStatus.Connfail)
+        ConnStatus = RequestWrapper(RequestWithExtendedLegacyProtocol);
 
-      if (result != ConnStatus.Connfail /* && result != ConnStatus.Success */)
-        RequestWrapper(RequestWithJsonProtocol);
+      if (ConnStatus != ConnStatus.Connfail /* && ConnStatus != ConnStatus.Success */)
+        ConnStatus = RequestWrapper(RequestWithJsonProtocol);
     }
     
     /// <summary>
