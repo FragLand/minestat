@@ -798,7 +798,7 @@ namespace MineStatLib
     }
 
     /// <summary>
-    /// Wrapper for NetworkStream.<see cref="NetworkStream.Read"/>, which blocks until the full `size` amount of bytes has been read.
+    /// Wrapper for NetworkStream.<see cref="NetworkStream.Read(byte[], int, int)"/>, which blocks until the full `size` amount of bytes has been read.
     /// </summary>
     /// <param name="stream">The network stream to read `size` bytes from</param>
     /// <param name="size">The number of bytes to receive.</param>
