@@ -135,12 +135,11 @@ class MineStat
           retval = json_request()
         end
         # Bedrock/Pocket Edition
-        unless retval == Retval::SUCCESS || retval == Retval::CONNFAIL
+        unless @online || retval == Retval::SUCCESS || retval == Retval::CONNFAIL
           retval = bedrock_request()
         end
     end
-    set_connection_status(retval)
-    @online = false unless retval == Retval::SUCCESS
+    set_connection_status(retval) unless @online
   end
 
   # Sets connection status
@@ -286,7 +285,6 @@ class MineStat
         retval = connect()
         return retval unless retval == Retval::SUCCESS
         # Perform handshake and acquire data
-        @request_type = "SLP 1.8b/1.3 (beta)"
         @server.write("\xFE")
         retval = parse_data("\u00A7", true) # section symbol
       end
@@ -295,6 +293,10 @@ class MineStat
     rescue => exception
       $stderr.puts exception
       return Retval::UNKNOWN
+    end
+    if retval == Retval::SUCCESS
+      @request_type = "SLP 1.8b/1.3 (beta)"
+      set_connection_status(retval)
     end
     return retval
   end
@@ -325,7 +327,6 @@ class MineStat
         retval = connect()
         return retval unless retval == Retval::SUCCESS
         # Perform handshake and acquire data
-        @request_type = "SLP 1.4/1.5 (legacy)"
         @server.write("\xFE\x01")
         retval = parse_data("\x00") # null
       end
@@ -334,6 +335,10 @@ class MineStat
     rescue => exception
       $stderr.puts exception
       return Retval::UNKNOWN
+    end
+    if retval == Retval::SUCCESS
+      @request_type = "SLP 1.4/1.5 (legacy)"
+      set_connection_status(retval)
     end
     return retval
   end
@@ -372,7 +377,6 @@ class MineStat
         retval = connect()
         return retval unless retval == Retval::SUCCESS
         # Perform handshake and acquire data
-        @request_type = "SLP 1.6 (extended legacy)"
         @server.write("\xFE\x01\xFA")
         @server.write("\x00\x0B") # 11 (length of "MC|PingHost")
         @server.write('MC|PingHost'.encode('UTF-16BE').force_encoding('ASCII-8BIT'))
@@ -388,6 +392,10 @@ class MineStat
     rescue => exception
       $stderr.puts exception
       return Retval::UNKNOWN
+    end
+    if retval == Retval::SUCCESS
+      @request_type = "SLP 1.6 (extended legacy)"
+      set_connection_status(retval)
     end
     return retval
   end
@@ -415,7 +423,6 @@ class MineStat
         retval = connect()
         return retval unless retval == Retval::SUCCESS
         # Perform handshake
-        @request_type = "SLP 1.7 (JSON)"
         payload = "\x00\x00"
         payload += [@address.length].pack('c') << @address
         payload += [@port].pack('n')
@@ -459,6 +466,10 @@ class MineStat
     rescue => exception
       $stderr.puts exception
       return Retval::UNKNOWN
+    end
+    if retval == Retval::SUCCESS
+      @request_type = "SLP 1.7 (JSON)"
+      set_connection_status(retval)
     end
     return retval
   end
@@ -526,7 +537,6 @@ class MineStat
     retval = nil
     begin
       Timeout::timeout(@timeout) do
-        @request_type = "Bedrock/Pocket Edition"
         retval = connect()
         return retval unless retval == Retval::SUCCESS
         # Perform handshake and acquire data
@@ -543,6 +553,10 @@ class MineStat
     rescue => exception
       $stderr.puts exception
       return Retval::UNKNOWN
+    end
+    if retval == Retval::SUCCESS
+      @request_type = "Bedrock/Pocket Edition"
+      set_connection_status(retval)
     end
     return retval
   end
