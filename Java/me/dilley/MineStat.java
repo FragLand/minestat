@@ -224,14 +224,20 @@ public class MineStat
         if(retval != Retval.CONNFAIL)
           retval = jsonRequest(address, port, getTimeout());
         // Bedrock/Pocket Edition
-        if(retval != Retval.SUCCESS || retval != Retval.CONNFAIL && !bedrockAttempted)
+        if(!isServerUp())
         {
-          if(!isPortDefined)
-            setPort(DEFAULT_BEDROCK_PORT);
-          retval = bedrockRequest(address, port, getTimeout());
+          if(retval != Retval.SUCCESS || retval != Retval.CONNFAIL && !bedrockAttempted)
+          {
+            if(!isPortDefined)
+              setPort(DEFAULT_BEDROCK_PORT);
+            retval = bedrockRequest(address, port, getTimeout());
+          }
         }
     }
-    setConnectionStatus(retval);
+    if(isServerUp())
+      setConnectionStatus(Retval.SUCCESS);
+    else
+      setConnectionStatus(retval);
   }
 
   public String getAddress() { return address; }
@@ -415,7 +421,6 @@ public class MineStat
     }
     catch(Exception e)
     {
-      serverUp = false;
       return Retval.UNKNOWN;
     }
     return Retval.SUCCESS;
@@ -501,7 +506,6 @@ public class MineStat
     }
     catch(Exception e)
     {
-      serverUp = false;
       return Retval.UNKNOWN;
     }
     return Retval.SUCCESS;
@@ -605,7 +609,6 @@ public class MineStat
     }
     catch(Exception e)
     {
-      serverUp = false;
       return Retval.UNKNOWN;
     }
     return Retval.SUCCESS;
@@ -739,9 +742,17 @@ public class MineStat
       setVersion(jobj.get("version").getAsJsonObject().get("name").getAsString());
       setCurrentPlayers(jobj.get("players").getAsJsonObject().get("online").getAsInt());
       setMaximumPlayers(jobj.get("players").getAsJsonObject().get("max").getAsInt());
-      setFaviconB64(jobj.get("favicon").getAsString().split("base64,")[1]);
-      if(getFaviconB64() != null && !getFaviconB64().isEmpty())
-        setFavicon(new String(Base64.getDecoder().decode(getFaviconB64())));
+      try
+      {
+        setFaviconB64(jobj.get("favicon").getAsString().split("base64,")[1]);
+        if(getFaviconB64() != null && !getFaviconB64().isEmpty())
+          setFavicon(new String(Base64.getDecoder().decode(getFaviconB64())));
+      }
+      catch(Exception e)
+      {
+        setFaviconB64(null);
+        setFavicon("");
+      }
       serverUp = true;
       setGameMode("Unspecified");
       setRequestType("SLP 1.7 (JSON)");
@@ -766,7 +777,6 @@ public class MineStat
     }
     catch(Exception e)
     {
-      serverUp = false;
       return Retval.UNKNOWN;
     }
     return Retval.SUCCESS;
@@ -889,7 +899,6 @@ public class MineStat
     }
     catch(Exception e)
     {
-      serverUp = false;
       return Retval.UNKNOWN;
     }
     return Retval.SUCCESS;
