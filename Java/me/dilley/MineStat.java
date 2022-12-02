@@ -397,7 +397,6 @@ public class MineStat
         setMaximumPlayers(Integer.parseInt(serverData[2]));
         setProtocol(0);           // set to zero (unknown) since 1.8b/1.3 server does not provide protocol level
         serverUp = true;
-        setRequestType("SLP 1.8b/1.3 (beta)");
       }
       else
         return Retval.UNKNOWN;
@@ -423,6 +422,7 @@ public class MineStat
     {
       return Retval.UNKNOWN;
     }
+    setRequestType("SLP 1.8b/1.3 (beta)");
     return Retval.SUCCESS;
   }
 
@@ -482,7 +482,6 @@ public class MineStat
         setMaximumPlayers(Integer.parseInt(serverData[5]));
         serverUp = true;
         setGameMode("Unspecified");
-        setRequestType("SLP 1.4/1.5 (legacy)");
       }
       else
         return Retval.UNKNOWN;
@@ -508,6 +507,7 @@ public class MineStat
     {
       return Retval.UNKNOWN;
     }
+    setRequestType("SLP 1.4/1.5 (legacy)");
     return Retval.SUCCESS;
   }
 
@@ -585,7 +585,6 @@ public class MineStat
         setMaximumPlayers(Integer.parseInt(serverData[5]));
         serverUp = true;
         setGameMode("Unspecified");
-        setRequestType("SLP 1.6 (extended legacy)");
       }
       else
         return Retval.UNKNOWN;
@@ -611,6 +610,7 @@ public class MineStat
     {
       return Retval.UNKNOWN;
     }
+    setRequestType("SLP 1.6 (extended legacy)");
     return Retval.SUCCESS;
   }
 
@@ -755,7 +755,6 @@ public class MineStat
       }
       serverUp = true;
       setGameMode("Unspecified");
-      setRequestType("SLP 1.7 (JSON)");
       if(!isDataValid())
         return Retval.UNKNOWN;
     }
@@ -779,6 +778,7 @@ public class MineStat
     {
       return Retval.UNKNOWN;
     }
+    setRequestType("SLP 1.7 (JSON)");
     return Retval.SUCCESS;
   }
 
@@ -879,7 +879,6 @@ public class MineStat
       setStrippedMotd(stripMotdFormatting(splitData[1]));
       setVersion(splitData[3] + " " + splitData[7] + " (" + splitData[0] + ")");
       setGameMode(splitData[8]);
-      setRequestType("Bedrock/Pocket Edition");
     }
     catch(ConnectException ce)
     {
@@ -901,6 +900,7 @@ public class MineStat
     {
       return Retval.UNKNOWN;
     }
+    setRequestType("Bedrock/Pocket Edition");
     return Retval.SUCCESS;
   }
 }
