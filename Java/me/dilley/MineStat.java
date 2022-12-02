@@ -226,7 +226,7 @@ public class MineStat
         // Bedrock/Pocket Edition
         if(!isServerUp())
         {
-          if(retval != Retval.SUCCESS || retval != Retval.CONNFAIL && !bedrockAttempted)
+          if(retval != Retval.SUCCESS && !bedrockAttempted)
           {
             if(!isPortDefined)
               setPort(DEFAULT_BEDROCK_PORT);

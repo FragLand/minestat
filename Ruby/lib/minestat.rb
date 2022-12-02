@@ -135,7 +135,7 @@ class MineStat
           retval = json_request()
         end
         # Bedrock/Pocket Edition
-        unless @online || retval == Retval::SUCCESS || retval == Retval::CONNFAIL
+        unless @online || retval == Retval::SUCCESS
           retval = bedrock_request()
         end
     end
@@ -537,6 +537,7 @@ class MineStat
     retval = nil
     begin
       Timeout::timeout(@timeout) do
+        @request_type = "Bedrock/Pocket Edition"
         retval = connect()
         return retval unless retval == Retval::SUCCESS
         # Perform handshake and acquire data
@@ -555,7 +556,6 @@ class MineStat
       return Retval::UNKNOWN
     end
     if retval == Retval::SUCCESS
-      @request_type = "Bedrock/Pocket Edition"
       set_connection_status(retval)
     end
     return retval
