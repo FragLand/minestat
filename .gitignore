@@ -22,3 +22,8 @@ venv/
 # Ignore all compiled c# files
 *.exe
 *.dll
+
+#Visual Studio Files
+.vs/
+**/bin/Debug/
+**/bin/Release/
