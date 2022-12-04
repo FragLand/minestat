@@ -1,6 +1,6 @@
 {
   "name": "fragland/minestat",
-  "version": "2.3.0",
+  "version": "2.3.1",
   "type": "library",
   "description": "A Minecraft server status checker",
   "keywords": ["Minecraft","status"],
