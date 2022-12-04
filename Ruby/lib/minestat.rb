@@ -16,6 +16,7 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
+require 'base64'
 require 'json'
 require 'socket'
 require 'timeout'
@@ -24,7 +25,7 @@ require 'timeout'
 # Provides a ruby interface for polling Minecraft server status.
 class MineStat
   # MineStat version
-  VERSION = "2.2.1"
+  VERSION = "2.2.4"
   # Number of values expected from server
   NUM_FIELDS = 6
   # Number of values expected from a 1.8b/1.3 server
@@ -91,10 +92,13 @@ class MineStat
     @max_players          # maximum player capacity
     @protocol             # protocol level
     @json_data            # JSON data for 1.7 queries
+    @favicon_b64          # base64-encoded favicon possibly contained in JSON 1.7 responses
+    @favicon              # decoded favicon data
     @latency              # ping time to server in milliseconds
     @timeout = timeout    # TCP/UDP timeout
     @server               # server socket
-    @request_type         # Protocol version
+    @request_type         # protocol version
+    @connection_status    # status of connection ("Success", "Fail", "Timeout", or "Unknown")
     @try_all = false      # try all protocols?
 
     @try_all = true if request_type == Request::NONE
@@ -131,11 +135,19 @@ class MineStat
           retval = json_request()
         end
         # Bedrock/Pocket Edition
-        unless retval == Retval::CONNFAIL
+        unless @online || retval == Retval::SUCCESS
           retval = bedrock_request()
         end
     end
-    @online = false unless retval == Retval::SUCCESS
+    set_connection_status(retval) unless @online
+  end
+
+  # Sets connection status
+  def set_connection_status(retval)
+    @connection_status = "Success" if retval == Retval::SUCCESS
+    @connection_status = "Fail" if retval == Retval::CONNFAIL
+    @connection_status = "Timeout" if retval == Retval::TIMEOUT
+    @connection_status = "Unknown" if retval == Retval::UNKNOWN
   end
 
   # Strips message of the day formatting characters
@@ -273,7 +285,6 @@ class MineStat
         retval = connect()
         return retval unless retval == Retval::SUCCESS
         # Perform handshake and acquire data
-        @request_type = "SLP 1.8b/1.3 (beta)"
         @server.write("\xFE")
         retval = parse_data("\u00A7", true) # section symbol
       end
@@ -282,6 +293,10 @@ class MineStat
     rescue => exception
       $stderr.puts exception
       return Retval::UNKNOWN
+    end
+    if retval == Retval::SUCCESS
+      @request_type = "SLP 1.8b/1.3 (beta)"
+      set_connection_status(retval)
     end
     return retval
   end
@@ -312,7 +327,6 @@ class MineStat
         retval = connect()
         return retval unless retval == Retval::SUCCESS
         # Perform handshake and acquire data
-        @request_type = "SLP 1.4/1.5 (legacy)"
         @server.write("\xFE\x01")
         retval = parse_data("\x00") # null
       end
@@ -321,6 +335,10 @@ class MineStat
     rescue => exception
       $stderr.puts exception
       return Retval::UNKNOWN
+    end
+    if retval == Retval::SUCCESS
+      @request_type = "SLP 1.4/1.5 (legacy)"
+      set_connection_status(retval)
     end
     return retval
   end
@@ -359,7 +377,6 @@ class MineStat
         retval = connect()
         return retval unless retval == Retval::SUCCESS
         # Perform handshake and acquire data
-        @request_type = "SLP 1.6 (extended legacy)"
         @server.write("\xFE\x01\xFA")
         @server.write("\x00\x0B") # 11 (length of "MC|PingHost")
         @server.write('MC|PingHost'.encode('UTF-16BE').force_encoding('ASCII-8BIT'))
@@ -375,6 +392,10 @@ class MineStat
     rescue => exception
       $stderr.puts exception
       return Retval::UNKNOWN
+    end
+    if retval == Retval::SUCCESS
+      @request_type = "SLP 1.6 (extended legacy)"
+      set_connection_status(retval)
     end
     return retval
   end
@@ -402,7 +423,6 @@ class MineStat
         retval = connect()
         return retval unless retval == Retval::SUCCESS
         # Perform handshake
-        @request_type = "SLP 1.7 (JSON)"
         payload = "\x00\x00"
         payload += [@address.length].pack('c') << @address
         payload += [@port].pack('n')
@@ -428,6 +448,11 @@ class MineStat
         strip_motd
         @current_players = json_data['players']['online'].to_i
         @max_players = json_data['players']['max'].to_i
+        @favicon_b64 = json_data['favicon']
+        if !@favicon_b64.nil? && !@favicon_b64.empty?
+          @favicon_b64 = favicon_b64.split("base64,")[1]
+          @favicon = Base64.decode64(favicon_b64)
+        end
         if !@version.empty? && !@motd.empty? && !@current_players.nil? && !@max_players.nil?
           @online = true
         else
@@ -441,6 +466,10 @@ class MineStat
     rescue => exception
       $stderr.puts exception
       return Retval::UNKNOWN
+    end
+    if retval == Retval::SUCCESS
+      @request_type = "SLP 1.7 (JSON)"
+      set_connection_status(retval)
     end
     return retval
   end
@@ -526,6 +555,9 @@ class MineStat
       $stderr.puts exception
       return Retval::UNKNOWN
     end
+    if retval == Retval::SUCCESS
+      set_connection_status(retval)
+    end
     return retval
   end
 
@@ -569,11 +601,20 @@ class MineStat
   # servers with a version greater than or equal to 1.7
   attr_reader :json_data
 
+  # Returns the base64-encoded favicon from JSON 1.7 queries
+  attr_reader :favicon_b64
+
+  # Returns the decoded favicon from JSON 1.7 queries
+  attr_reader :favicon
+
   # Returns the ping time to the server in ms
   attr_reader :latency
 
   # Returns the protocol version
   attr_reader :request_type
+
+  # Returns the connection status
+  attr_reader :connection_status
 
   # Returns whether or not all ping protocols should be attempted
   attr_reader :try_all
