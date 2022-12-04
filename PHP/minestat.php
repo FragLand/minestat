@@ -63,6 +63,8 @@ class MineStat
   private $max_players;               // maximum player capacity
   private $protocol;                  // protocol level
   private $json_data;                 // JSON data for 1.7 queries
+  private $favicon_b64;               // base64-encoded favicon possibly contained in JSON 1.7 responses
+  private $favicon;                   // decoded favicon data
   private $latency;                   // ping time to server in milliseconds
   private $timeout;                   // timeout in seconds
   private $socket;                    // network socket
@@ -139,6 +141,10 @@ class MineStat
   public function get_protocol() { return $this->protocol; }
 
   public function get_json() { return $this->json_data; }
+
+  public function get_favicon_b64() { return $this->favicon_b64; }
+
+  public function get_favicon() { return $this->favicon; }
 
   public function get_latency() { return $this->latency; }
 
@@ -459,6 +465,13 @@ class MineStat
       $this->strip_motd();
       $this->current_players = (int)@$json_data['players']['online'];
       $this->max_players = (int)@$json_data['players']['max'];
+      $this->favicon_b64 = @$json_data['favicon'];
+      if(isset($this->favicon_b64))
+      {
+        $this->favicon_b64 = explode("base64,", $this->favicon_b64);
+        $this->favicon_b64 = $this->favicon_b64[1];
+        $this->favicon = base64_decode($this->favicon_b64);
+      }
       if(isset($this->version) && isset($this->motd) && isset($this->current_players) && isset($this->max_players))
         $this->online = true;
       else
