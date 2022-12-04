@@ -42,15 +42,36 @@ public class MineStat
   public static final int DEFAULT_BEDROCK_PORT = 19132; // default UDP port for Bedrock/Pocket Edition servers
   public static final int SERVER_ID_STRING_OFFSET = 35; // server ID string offset for Bedrock/Pocket Edition servers
 
-  public enum Retval
+  public enum ConnectionStatus
   {
-    SUCCESS(0), CONNFAIL(-1), TIMEOUT(-2), UNKNOWN(-3);
+    /** The connection was successful and the response data was parsed without problems. */
+    SUCCESS(0, "Success"),
 
-    private final int retval;
+    /** The connection failed due to an unknown hostname or incorrect port number. */
+    CONNFAIL(-1, "Connection Failure"),
 
-    private Retval(int retval) { this.retval = retval; }
+    /** The connection timed out. Either the server is overloaded or it dropped our packets. */
+    TIMEOUT(-2, "Timeout"),
 
-    public int getRetval() { return retval; }
+    /** The connection was successful, but the response data could not be properly parsed. */
+    UNKNOWN(-3, "Unknown");
+
+    private final int magicNumber;
+    private final String shortDescription;
+
+    private ConnectionStatus(int magicNumber, String shortDescription) {
+        this.magicNumber = magicNumber;
+        this.shortDescription = shortDescription;
+    }
+
+    public int getMagicNumber() { return magicNumber; }
+
+    /**
+     * Returns a human-readable short description of the ConnectionStatus.
+     * @return A short human-readable description.
+     **/
+    @Override
+    public String toString() { return shortDescription; }
   }
 
   public enum Request
@@ -150,7 +171,7 @@ public class MineStat
    * Connection status
    * @since 3.0.2
    */
-  private String connectionStatus;
+  private ConnectionStatus connectionStatus;
 
   public MineStat(String address)
   {
@@ -177,23 +198,23 @@ public class MineStat
     setAddress(address);
     setPort(port);
     setTimeout(timeout);
-    Retval retval = Retval.UNKNOWN;
+    ConnectionStatus intConnectionStatus = ConnectionStatus.UNKNOWN;
     switch(requestType)
     {
       case BETA:
-        retval = betaRequest(address, port, getTimeout());
+        intConnectionStatus = betaRequest(address, port, getTimeout());
         break;
       case LEGACY:
-        retval = legacyRequest(address, port, getTimeout());
+        intConnectionStatus = legacyRequest(address, port, getTimeout());
         break;
       case EXTENDED:
-        retval = extendedLegacyRequest(address, port, getTimeout());
+        intConnectionStatus = extendedLegacyRequest(address, port, getTimeout());
         break;
       case JSON:
-        retval = jsonRequest(address, port, getTimeout());
+        intConnectionStatus = jsonRequest(address, port, getTimeout());
         break;
       case BEDROCK:
-        retval = bedrockRequest(address, port, getTimeout());
+        intConnectionStatus = bedrockRequest(address, port, getTimeout());
         break;
       default:
         /*
@@ -208,36 +229,36 @@ public class MineStat
         if(port == DEFAULT_BEDROCK_PORT)
         {
           bedrockAttempted = true;
-          retval = bedrockRequest(address, port, getTimeout());
-          if(retval == Retval.SUCCESS)
+          intConnectionStatus = bedrockRequest(address, port, getTimeout());
+          if(intConnectionStatus == ConnectionStatus.SUCCESS)
             break;
         }
         // SLP 1.4/1.5
-          retval = legacyRequest(address, port, getTimeout());
+          intConnectionStatus = legacyRequest(address, port, getTimeout());
         // SLP 1.8b/1.3
-        if(retval != Retval.SUCCESS && retval != Retval.CONNFAIL)
-          retval = betaRequest(address, port, getTimeout());
+        if(intConnectionStatus != ConnectionStatus.SUCCESS && intConnectionStatus != ConnectionStatus.CONNFAIL)
+          intConnectionStatus = betaRequest(address, port, getTimeout());
         // SLP 1.6
-        if(retval != Retval.CONNFAIL)
-          retval = extendedLegacyRequest(address, port, getTimeout());
+        if(intConnectionStatus != ConnectionStatus.CONNFAIL)
+          intConnectionStatus = extendedLegacyRequest(address, port, getTimeout());
         // SLP 1.7
-        if(retval != Retval.CONNFAIL)
-          retval = jsonRequest(address, port, getTimeout());
+        if(intConnectionStatus != ConnectionStatus.CONNFAIL)
+          intConnectionStatus = jsonRequest(address, port, getTimeout());
         // Bedrock/Pocket Edition
         if(!isServerUp())
         {
-          if(retval != Retval.SUCCESS && !bedrockAttempted)
+          if(intConnectionStatus != ConnectionStatus.SUCCESS && !bedrockAttempted)
           {
             if(!isPortDefined)
               setPort(DEFAULT_BEDROCK_PORT);
-            retval = bedrockRequest(address, port, getTimeout());
+            intConnectionStatus = bedrockRequest(address, port, getTimeout());
           }
         }
     }
     if(isServerUp())
-      setConnectionStatus(Retval.SUCCESS);
+      this.connectionStatus = ConnectionStatus.SUCCESS;
     else
-      setConnectionStatus(retval);
+      this.connectionStatus = intConnectionStatus;
   }
 
   public String getAddress() { return address; }
@@ -333,19 +354,8 @@ public class MineStat
 
   public void setRequestType(String requestType) { this.requestType = requestType; }
 
-  public String getConnectionStatus() { return connectionStatus; }
-
-  public void setConnectionStatus(Retval connectionStatusCode)
-  {
-    if(connectionStatusCode == Retval.SUCCESS)
-      connectionStatus = "Success";
-    else if(connectionStatusCode == Retval.CONNFAIL)
-      connectionStatus = "Fail";
-    else if(connectionStatusCode == Retval.TIMEOUT)
-      connectionStatus = "Timeout";
-    else
-      connectionStatus = "Unknown";
-  }
+  public ConnectionStatus getConnectionStatus() { return connectionStatus; }
+  public String getConnectionStatusDescription() { return connectionStatus.toString(); }
 
   /*
    * 1.8b/1.3
@@ -357,7 +367,7 @@ public class MineStat
    *   2c. 3 fields delimited by \u00A7 (section symbol)
    * The 3 fields, in order, are: message of the day, current players, and max players
    */
-  public Retval betaRequest(String address, int port, int timeout)
+  public ConnectionStatus betaRequest(String address, int port, int timeout)
   {
     try
     {
@@ -380,11 +390,11 @@ public class MineStat
       else
       {
         clientSocket.close();
-        return Retval.UNKNOWN;
+        return ConnectionStatus.UNKNOWN;
       }
 
       if(rawServerData == null)
-        return Retval.UNKNOWN;
+        return ConnectionStatus.UNKNOWN;
 
       serverData = new String(rawServerData, StandardCharsets.UTF_16).split("\u00A7"); // section symbol
       if(serverData.length >= NUM_FIELDS_BETA)
@@ -399,31 +409,31 @@ public class MineStat
         serverUp = true;
       }
       else
-        return Retval.UNKNOWN;
+        return ConnectionStatus.UNKNOWN;
     }
 
     catch(ConnectException ce)
     {
-      return Retval.CONNFAIL;
+      return ConnectionStatus.CONNFAIL;
     }
     catch(SocketException se)
     {
-      return Retval.CONNFAIL;
+      return ConnectionStatus.CONNFAIL;
     }
     catch(SocketTimeoutException ste)
     {
-      return Retval.TIMEOUT;
+      return ConnectionStatus.TIMEOUT;
     }
     catch(IOException ioe)
     {
-      return Retval.CONNFAIL;
+      return ConnectionStatus.CONNFAIL;
     }
     catch(Exception e)
     {
-      return Retval.UNKNOWN;
+      return ConnectionStatus.UNKNOWN;
     }
     setRequestType("SLP 1.8b/1.3 (beta)");
-    return Retval.SUCCESS;
+    return ConnectionStatus.SUCCESS;
   }
 
   /*
@@ -441,7 +451,7 @@ public class MineStat
    * The protocol version corresponds with the server version and can be the
    * same for different server versions.
    */
-  public Retval legacyRequest(String address, int port, int timeout)
+  public ConnectionStatus legacyRequest(String address, int port, int timeout)
   {
     try
     {
@@ -464,11 +474,11 @@ public class MineStat
       else
       {
         clientSocket.close();
-        return Retval.UNKNOWN;
+        return ConnectionStatus.UNKNOWN;
       }
 
       if(rawServerData == null)
-        return Retval.UNKNOWN;
+        return ConnectionStatus.UNKNOWN;
 
       serverData = new String(rawServerData, StandardCharsets.UTF_16BE).split("\u0000"); // null
       if(serverData.length >= NUM_FIELDS)
@@ -484,31 +494,31 @@ public class MineStat
         setGameMode("Unspecified");
       }
       else
-        return Retval.UNKNOWN;
+        return ConnectionStatus.UNKNOWN;
     }
 
     catch(ConnectException ce)
     {
-      return Retval.CONNFAIL;
+      return ConnectionStatus.CONNFAIL;
     }
     catch(SocketException se)
     {
-      return Retval.CONNFAIL;
+      return ConnectionStatus.CONNFAIL;
     }
     catch(SocketTimeoutException ste)
     {
-      return Retval.TIMEOUT;
+      return ConnectionStatus.TIMEOUT;
     }
     catch(IOException ioe)
     {
-      return Retval.CONNFAIL;
+      return ConnectionStatus.CONNFAIL;
     }
     catch(Exception e)
     {
-      return Retval.UNKNOWN;
+      return ConnectionStatus.UNKNOWN;
     }
     setRequestType("SLP 1.4/1.5 (legacy)");
-    return Retval.SUCCESS;
+    return ConnectionStatus.SUCCESS;
   }
 
   /*
@@ -534,7 +544,7 @@ public class MineStat
    * The protocol version corresponds with the server version and can be the
    * same for different server versions.
    */
-  public Retval extendedLegacyRequest(String address, int port, int timeout)
+  public ConnectionStatus extendedLegacyRequest(String address, int port, int timeout)
   {
     try
     {
@@ -567,11 +577,11 @@ public class MineStat
       else
       {
         clientSocket.close();
-        return Retval.UNKNOWN;
+        return ConnectionStatus.UNKNOWN;
       }
 
       if(rawServerData == null)
-        return Retval.UNKNOWN;
+        return ConnectionStatus.UNKNOWN;
 
       serverData = new String(rawServerData, StandardCharsets.UTF_16BE).split("\u0000"); // null
       if(serverData.length >= NUM_FIELDS)
@@ -587,31 +597,31 @@ public class MineStat
         setGameMode("Unspecified");
       }
       else
-        return Retval.UNKNOWN;
+        return ConnectionStatus.UNKNOWN;
     }
 
     catch(ConnectException ce)
     {
-      return Retval.CONNFAIL;
+      return ConnectionStatus.CONNFAIL;
     }
     catch(SocketException se)
     {
-      return Retval.CONNFAIL;
+      return ConnectionStatus.CONNFAIL;
     }
     catch(SocketTimeoutException ste)
     {
-      return Retval.TIMEOUT;
+      return ConnectionStatus.TIMEOUT;
     }
     catch(IOException ioe)
     {
-      return Retval.CONNFAIL;
+      return ConnectionStatus.CONNFAIL;
     }
     catch(Exception e)
     {
-      return Retval.UNKNOWN;
+      return ConnectionStatus.UNKNOWN;
     }
     setRequestType("SLP 1.6 (extended legacy)");
-    return Retval.SUCCESS;
+    return ConnectionStatus.SUCCESS;
   }
 
   /*
@@ -627,7 +637,7 @@ public class MineStat
         int varInt = dis.readByte();
         intData |= (varInt & 0x7F) << width++ * 7;
         if(width > 5)
-          return Retval.UNKNOWN.getRetval(); // overflow
+          return ConnectionStatus.UNKNOWN.getMagicNumber(); // overflow
         if((varInt & 0x80) != 128)           // Little Endian Base 128 (LEB128)
           break;
       }
@@ -635,14 +645,14 @@ public class MineStat
     }
     catch(IOException ioe)
     {
-      return Retval.UNKNOWN.getRetval();
+      return ConnectionStatus.UNKNOWN.getMagicNumber();
     }
   }
 
   /*
    * Pack a varint from an int
    */
-  public Retval sendVarInt(DataOutputStream dos, int intData)
+  public ConnectionStatus sendVarInt(DataOutputStream dos, int intData)
   {
     try
     {
@@ -651,7 +661,7 @@ public class MineStat
         if((intData & 0xFFFFFF80) == 0)
         {
           dos.writeByte(intData);
-          return Retval.SUCCESS;
+          return ConnectionStatus.SUCCESS;
         }
         dos.writeByte(intData & 0x7F | 0x80);
         intData >>>= 7;
@@ -659,7 +669,7 @@ public class MineStat
     }
     catch(IOException ioe)
     {
-      return Retval.UNKNOWN;
+      return ConnectionStatus.UNKNOWN;
     }
   }
 
@@ -693,7 +703,7 @@ public class MineStat
    *   'version': {'protocol': 404, 'name': '1.13.2'},
    *   'description': {'text': 'A Minecraft Server'}}
    */
-  public Retval jsonRequest(String address, int port, int timeout)
+  public ConnectionStatus jsonRequest(String address, int port, int timeout)
   {
     try
     {
@@ -756,30 +766,30 @@ public class MineStat
       serverUp = true;
       setGameMode("Unspecified");
       if(!isDataValid())
-        return Retval.UNKNOWN;
+        return ConnectionStatus.UNKNOWN;
     }
     catch(ConnectException ce)
     {
-      return Retval.CONNFAIL;
+      return ConnectionStatus.CONNFAIL;
     }
     catch(SocketException se)
     {
-      return Retval.CONNFAIL;
+      return ConnectionStatus.CONNFAIL;
     }
     catch(SocketTimeoutException ste)
     {
-      return Retval.TIMEOUT;
+      return ConnectionStatus.TIMEOUT;
     }
     catch(IOException ioe)
     {
-      return Retval.CONNFAIL;
+      return ConnectionStatus.CONNFAIL;
     }
     catch(Exception e)
     {
-      return Retval.UNKNOWN;
+      return ConnectionStatus.UNKNOWN;
     }
     setRequestType("SLP 1.7 (JSON)");
-    return Retval.SUCCESS;
+    return ConnectionStatus.SUCCESS;
   }
 
   /*
@@ -829,7 +839,7 @@ public class MineStat
    *   - IPv4 port number
    *   - IPv6 port number
    */
-  public Retval bedrockRequest(String address, int port, int timeout)
+  public ConnectionStatus bedrockRequest(String address, int port, int timeout)
   {
     try
     {
@@ -861,7 +871,7 @@ public class MineStat
       responsePacket = new DatagramPacket(rawServerData, rawServerData.length);  // unconnected pong
       clientSocket.receive(responsePacket);
       if(rawServerData[0] != 0x1C)
-        return Retval.UNKNOWN;
+        return ConnectionStatus.UNKNOWN;
 
       /* Close socket */
       if(!clientSocket.isClosed())
@@ -882,25 +892,25 @@ public class MineStat
     }
     catch(ConnectException ce)
     {
-      return Retval.CONNFAIL;
+      return ConnectionStatus.CONNFAIL;
     }
     catch(SocketException se)
     {
-      return Retval.CONNFAIL;
+      return ConnectionStatus.CONNFAIL;
     }
     catch(SocketTimeoutException ste)
     {
-      return Retval.TIMEOUT;
+      return ConnectionStatus.TIMEOUT;
     }
     catch(IOException ioe)
     {
-      return Retval.CONNFAIL;
+      return ConnectionStatus.CONNFAIL;
     }
     catch(Exception e)
     {
-      return Retval.UNKNOWN;
+      return ConnectionStatus.UNKNOWN;
     }
     setRequestType("Bedrock/Pocket Edition");
-    return Retval.SUCCESS;
+    return ConnectionStatus.SUCCESS;
   }
 }
