@@ -106,7 +106,7 @@ class MineStat
           $retval = $this->extended_legacy_request(); // SLP 1.6
         if($retval != MineStat::RETURN_CONNFAIL)
           $retval = $this->json_request();            // SLP 1.7
-        if($retval != MineStat::RETURN_CONNFAIL)
+        if(!$this->is_online())
           $retval = $this->bedrock_request();         // Bedrock/Pocket Edition
     }
     if($this->is_online())
@@ -326,13 +326,14 @@ class MineStat
   {
     try
     {
-      $this->request_type = "SLP 1.8b/1.3 (beta)";
       $retval = $this->connect();
       if($retval != MineStat::RETURN_SUCCESS)
         return $retval;
       // Start the handshake and attempt to acquire data
       socket_write($this->socket, "\xFE");
       $retval = $this->parse_data("\xA7", true);
+      if($retval == MineStat::RETURN_SUCCESS)
+        $this->request_type = "SLP 1.8b/1.3 (beta)";
     }
     catch(Exception $e)
     {
@@ -361,13 +362,14 @@ class MineStat
   {
     try
     {
-      $this->request_type = "SLP 1.4/1.5 (legacy)";
       $retval = $this->connect();
       if($retval != MineStat::RETURN_SUCCESS)
         return $retval;
       // Start the handshake and attempt to acquire data
       socket_write($this->socket, "\xFE\x01");
       $retval = $this->parse_data("\x00");
+      if($retval == MineStat::RETURN_SUCCESS)
+        $this->request_type = "SLP 1.4/1.5 (legacy)";
     }
     catch(Exception $e)
     {
@@ -404,7 +406,6 @@ class MineStat
   {
     try
     {
-      $this->request_type = "SLP 1.6 (extended legacy)";
       $retval = $this->connect();
       if($retval != MineStat::RETURN_SUCCESS)
         return $retval;
@@ -418,6 +419,8 @@ class MineStat
       socket_write($this->socket, mb_convert_encoding($this->address, "UTF-16BE"));
       socket_write($this->socket, pack('N', $this->port));
       $retval = $this->parse_data("\x00");
+      if($retval == MineStat::RETURN_SUCCESS)
+        $this->request_type = "SLP 1.6 (extended legacy)";
     }
     catch(Exception $e)
     {
@@ -449,7 +452,6 @@ class MineStat
   {
     try
     {
-      $this->request_type = "SLP 1.7 (JSON)";
       $retval = $this->connect();
       if($retval != MineStat::RETURN_SUCCESS)
         return $retval;
@@ -501,6 +503,7 @@ class MineStat
     {
       return MineStat::RETURN_UNKNOWN;
     }
+    $this->request_type = "SLP 1.7 (JSON)";
     return MineStat::RETURN_SUCCESS;
   }
 
