@@ -69,6 +69,7 @@ class MineStat
   private $timeout;                   // timeout in seconds
   private $socket;                    // network socket
   private $request_type;              // protocol version
+  private $connection_status;         // status of connection ("Success", "Fail", "Timeout", or "Unknown")
   private $try_all;                   // try all protocols?
 
   public function __construct($address, $port = MineStat::DEFAULT_TCP_PORT, $timeout = MineStat::DEFAULT_TIMEOUT, $request_type = MineStat::REQUEST_NONE)
@@ -108,6 +109,10 @@ class MineStat
         if($retval != MineStat::RETURN_CONNFAIL)
           $retval = $this->bedrock_request();         // Bedrock/Pocket Edition
     }
+    if($this->is_online())
+      $this->set_connection_status(MineStat::RETURN_SUCCESS);
+    else
+      $this->set_connection_status($retval);
   }
 
   public function __destruct()
@@ -149,6 +154,21 @@ class MineStat
   public function get_latency() { return $this->latency; }
 
   public function get_request_type() { return $this->request_type; }
+
+  public function get_connection_status() { return $this->connection_status; }
+
+  /* Sets connection status */
+  private function set_connection_status($retval)
+  {
+    if($retval == MineStat::RETURN_SUCCESS)
+      $this->connection_status = "Success";
+    if($retval == MineStat::RETURN_CONNFAIL)
+      $this->connection_status = "Fail";
+    if($retval == MineStat::RETURN_TIMEOUT)
+      $this->connection_status = "Timeout";
+    if($retval == MineStat::RETURN_UNKNOWN)
+      $this->connection_status = "Unknown";
+  }
 
   /* Strips message of the day formatting characters */
   private function strip_motd()
