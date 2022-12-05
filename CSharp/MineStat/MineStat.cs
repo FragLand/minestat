@@ -452,6 +452,8 @@ namespace MineStatLib
 
         // Extract version
         Version = root.XPathSelectElement("//version/name")?.Value;
+
+        // Favicon
         Favicon = root.XPathSelectElement("//favicon")?.Value;
 
         // the MOTD
