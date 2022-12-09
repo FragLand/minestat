@@ -133,6 +133,11 @@ namespace MineStatLib
     /// Bedrock specific: The current gamemode (Creative/Survival/Adventure)
     /// </summary>
     public string Gamemode { get; set; }
+    /// <summary>
+    /// Favicon for the Minecraft server when returned by the server (in base64 format)
+    /// </summary>
+    public string Favicon { get; set; }
+
     /// <inheritdoc cref="MineStat"/>
     /// <example>
     /// <code>
@@ -446,6 +451,9 @@ namespace MineStatLib
 
         // Extract version
         Version = root.XPathSelectElement("//version/name")?.Value;
+
+        // Favicon
+        Favicon = root.XPathSelectElement("//favicon")?.Value;
 
         // the MOTD
         var descriptionElement = root.XPathSelectElement("//description");
