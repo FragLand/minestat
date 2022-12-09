@@ -73,7 +73,7 @@ The default TCP timeout value is 5 seconds.
 
 # LICENSE
 
-Copyright (C) 2016-2021 Lloyd Dilley
+Copyright (C) 2016-2022 Lloyd Dilley
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
