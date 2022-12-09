@@ -132,7 +132,7 @@ namespace MineStatLib
     /// <summary>
     /// The connection status. See <see cref="ConnStatus"/> for more info.
     /// </summary>
-    public ConnStatus ConnStatus { get; set; }
+    public ConnStatus ConnectionStatus { get; set; }
     /// <summary>
     /// Bedrock specific: The current gamemode (Creative/Survival/Adventure)
     /// </summary>
@@ -153,24 +153,24 @@ namespace MineStatLib
       Address = address;
       Port = port;
       Timeout = timeout;
-      
+
       // If the user manually selected a protocol, use that
       switch (protocol)
       {
         case SlpProtocol.Beta:
-          RequestWrapper(RequestWithBetaProtocol);
+          ConnectionStatus = RequestWrapper(RequestWithBetaProtocol);
           break;
         case SlpProtocol.Legacy:
-          RequestWrapper(RequestWithLegacyProtocol);
+          ConnectionStatus = RequestWrapper(RequestWithLegacyProtocol);
           break;
         case SlpProtocol.ExtendedLegacy:
-          RequestWrapper(RequestWithExtendedLegacyProtocol);
+          ConnectionStatus = RequestWrapper(RequestWithExtendedLegacyProtocol);
           break;
         case SlpProtocol.Json:
-          RequestWrapper(RequestWithJsonProtocol);
+          ConnectionStatus = RequestWrapper(RequestWithJsonProtocol);
           break;
         case SlpProtocol.Bedrock_Raknet:
-          RequestWithRaknetProtocol();
+          ConnectionStatus = RequestWithRaknetProtocol();
           break;
         case SlpProtocol.Automatic:
           break;
@@ -196,23 +196,31 @@ namespace MineStatLib
       // 4.: Extended Legacy (1.6)
       // 5.: JSON (1.7+)
 
-      ConnStatus = RequestWithRaknetProtocol();
-      if (ConnStatus == ConnStatus.Connfail || ConnStatus == ConnStatus.Success)
+      ConnectionStatus = RequestWithRaknetProtocol();
+      if (ConnectionStatus == ConnStatus.Connfail || ConnectionStatus == ConnStatus.Success)
         return;
 
-      ConnStatus = RequestWrapper(RequestWithLegacyProtocol);
+      ConnectionStatus = RequestWrapper(RequestWithLegacyProtocol);
+      ConnStatus result;
 
-      if (ConnStatus != ConnStatus.Connfail && ConnStatus != ConnStatus.Success)
+      if (ConnectionStatus != ConnStatus.Connfail && ConnectionStatus != ConnStatus.Success)
+        ConnectionStatus = RequestWrapper(RequestWithBetaProtocol);
+
+      if (ConnectionStatus != ConnStatus.Connfail)
       {
-        ConnStatus = RequestWrapper(RequestWithBetaProtocol);
+        result = RequestWrapper(RequestWithExtendedLegacyProtocol);
+        if (result < ConnectionStatus)
+          ConnectionStatus = result;
       }
-      if (ConnStatus != ConnStatus.Connfail)
-        ConnStatus = RequestWrapper(RequestWithExtendedLegacyProtocol);
 
-      if (ConnStatus != ConnStatus.Connfail /* && ConnStatus != ConnStatus.Success */)
-        ConnStatus = RequestWrapper(RequestWithJsonProtocol);
+      if (ConnectionStatus != ConnStatus.Connfail)
+      {
+        result = RequestWrapper(RequestWithJsonProtocol);
+        if (result < ConnectionStatus)
+          ConnectionStatus = result;
+      }
     }
-    
+
     /// <summary>
     /// Function for stripping all formatting codes from a motd.
     /// </summary>
@@ -338,7 +346,7 @@ namespace MineStatLib
 
       var dic = keys.Zip(payload.Split((char)59), (k, v) => new { k, v })
               .ToDictionary(x => x.k, x => x.v);
-      
+
       Protocol = SlpProtocol.Bedrock_Raknet;
       ServerUp = true;
       CurrentPlayersInt = Convert.ToInt32(dic["current_players"]);

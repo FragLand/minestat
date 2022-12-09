@@ -143,12 +143,18 @@ function MineStat {
       }
       # Minecraft 1.6 (extended legacy SLP)
       if ($queryprotocol.HasFlag([SlpProtocol]::ExtendedLegacy) -and $this.connstatus -notin [ConnStatus]::Fail) {
-        $this.connstatus = $this.RequestWithExtendedLegacyProtocol()
+        $result = $this.RequestWithExtendedLegacyProtocol()
+        if ($result -ge $this.connstatus){
+          $this.connstatus = $result
+        }
         Write-Verbose "ExtendedLegacy - $this.connstatus"
       }
       # Minecraft 1.7+ (JSON SLP)
       if ($queryprotocol.HasFlag([SlpProtocol]::Json) -and $this.connstatus -notin [ConnStatus]::Fail) {
-        $this.connstatus = $this.RequestWithJsonProtocol()
+        $result = $this.RequestWithJsonProtocol()
+        if ($result -ge $this.connstatus){
+          $this.connstatus = $result
+        }
         Write-Verbose "Json - $this.connstatus"
       }
     }
