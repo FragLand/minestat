@@ -24,7 +24,7 @@ use warnings;
 use IO::Socket::INET;
 use Time::HiRes qw(time);
 
-our $VERSION = "1.0.2";        # MineStat version
+our $VERSION = "1.1.0";        # MineStat version
 our $NUM_FIELDS = 6;           # number of values expected from server
 our $NUM_FIELDS_BETA = 3;      # number of values expected from a 1.8b/1.3 server
 our $DEFAULT_TCP_PORT = 25565; # default TCP port
@@ -285,13 +285,13 @@ Minecraft::ServerStatus - A Minecraft server status checker
 
 =head1 VERSION
 
-Version 1.0.1
+Version 1.1.0
 
 =head1 SYNOPSIS
 
     use Minecraft::ServerStatus;
 
-    $ms = Minecraft::ServerStatus::init("minecraft.frag.land", 25565);
+    $ms = Minecraft::ServerStatus::init("minecraft.frag.land");
 
     print "Minecraft server status of $ms->{address} on port $ms->{port}:\n";
     if($ms->{online})
@@ -299,6 +299,7 @@ Version 1.0.1
       print "Server is online running version $ms->{version} with $ms->{current_players} out of $ms->{max_players} players.\n";
       print "Message of the day: $ms->{motd}\n";
       print "Latency: $ms->{latency}ms\n";
+      print "Connected using protocol: $ms->{request_type}\n";
     }
     else
     {
@@ -324,7 +325,8 @@ To install this module:
 
     Minecraft::ServerStatus::init("minecraft.frag.land", 25565);
 
-The above function connects to the specified Minecraft server using the address and port. You may also specify the TCP timeout:
+The above function connects to the specified Minecraft server using the address and port. If the port number is omitted, the
+default port, 25565, is used. You may also specify the TCP timeout:
 
     Minecraft::ServerStatus::init("minecraft.frag.land", 25565, 3);
 
@@ -360,7 +362,7 @@ The default TCP timeout value is 5 seconds.
 
 =head1 LICENSE
 
-Copyright (C) 2016-2021 Lloyd Dilley
+Copyright (C) 2016-2022 Lloyd Dilley
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
