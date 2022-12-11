@@ -21,7 +21,7 @@
 
 class MineStat
 {
-  const VERSION = "2.3.0";            // MineStat version
+  const VERSION = "2.3.1";            // MineStat version
   const NUM_FIELDS = 6;               // number of values expected from server
   const NUM_FIELDS_BETA = 3;          // number of values expected from a 1.8b/1.3 server
   const MAX_VARINT_SIZE = 5;          // maximum number of bytes a varint can be
@@ -63,10 +63,13 @@ class MineStat
   private $max_players;               // maximum player capacity
   private $protocol;                  // protocol level
   private $json_data;                 // JSON data for 1.7 queries
+  private $favicon_b64;               // base64-encoded favicon possibly contained in JSON 1.7 responses
+  private $favicon;                   // decoded favicon data
   private $latency;                   // ping time to server in milliseconds
   private $timeout;                   // timeout in seconds
   private $socket;                    // network socket
   private $request_type;              // protocol version
+  private $connection_status;         // status of connection ("Success", "Fail", "Timeout", or "Unknown")
   private $try_all;                   // try all protocols?
 
   public function __construct($address, $port = MineStat::DEFAULT_TCP_PORT, $timeout = MineStat::DEFAULT_TIMEOUT, $request_type = MineStat::REQUEST_NONE)
@@ -103,9 +106,13 @@ class MineStat
           $retval = $this->extended_legacy_request(); // SLP 1.6
         if($retval != MineStat::RETURN_CONNFAIL)
           $retval = $this->json_request();            // SLP 1.7
-        if($retval != MineStat::RETURN_CONNFAIL)
+        if(!$this->is_online())
           $retval = $this->bedrock_request();         // Bedrock/Pocket Edition
     }
+    if($this->is_online())
+      $this->set_connection_status(MineStat::RETURN_SUCCESS);
+    else
+      $this->set_connection_status($retval);
   }
 
   public function __destruct()
@@ -140,9 +147,28 @@ class MineStat
 
   public function get_json() { return $this->json_data; }
 
+  public function get_favicon_b64() { return $this->favicon_b64; }
+
+  public function get_favicon() { return $this->favicon; }
+
   public function get_latency() { return $this->latency; }
 
   public function get_request_type() { return $this->request_type; }
+
+  public function get_connection_status() { return $this->connection_status; }
+
+  /* Sets connection status */
+  private function set_connection_status($retval)
+  {
+    if($retval == MineStat::RETURN_SUCCESS)
+      $this->connection_status = "Success";
+    if($retval == MineStat::RETURN_CONNFAIL)
+      $this->connection_status = "Fail";
+    if($retval == MineStat::RETURN_TIMEOUT)
+      $this->connection_status = "Timeout";
+    if($retval == MineStat::RETURN_UNKNOWN)
+      $this->connection_status = "Unknown";
+  }
 
   /* Strips message of the day formatting characters */
   private function strip_motd()
@@ -300,13 +326,14 @@ class MineStat
   {
     try
     {
-      $this->request_type = "SLP 1.8b/1.3 (beta)";
       $retval = $this->connect();
       if($retval != MineStat::RETURN_SUCCESS)
         return $retval;
       // Start the handshake and attempt to acquire data
       socket_write($this->socket, "\xFE");
       $retval = $this->parse_data("\xA7", true);
+      if($retval == MineStat::RETURN_SUCCESS)
+        $this->request_type = "SLP 1.8b/1.3 (beta)";
     }
     catch(Exception $e)
     {
@@ -335,13 +362,14 @@ class MineStat
   {
     try
     {
-      $this->request_type = "SLP 1.4/1.5 (legacy)";
       $retval = $this->connect();
       if($retval != MineStat::RETURN_SUCCESS)
         return $retval;
       // Start the handshake and attempt to acquire data
       socket_write($this->socket, "\xFE\x01");
       $retval = $this->parse_data("\x00");
+      if($retval == MineStat::RETURN_SUCCESS)
+        $this->request_type = "SLP 1.4/1.5 (legacy)";
     }
     catch(Exception $e)
     {
@@ -378,7 +406,6 @@ class MineStat
   {
     try
     {
-      $this->request_type = "SLP 1.6 (extended legacy)";
       $retval = $this->connect();
       if($retval != MineStat::RETURN_SUCCESS)
         return $retval;
@@ -392,6 +419,8 @@ class MineStat
       socket_write($this->socket, mb_convert_encoding($this->address, "UTF-16BE"));
       socket_write($this->socket, pack('N', $this->port));
       $retval = $this->parse_data("\x00");
+      if($retval == MineStat::RETURN_SUCCESS)
+        $this->request_type = "SLP 1.6 (extended legacy)";
     }
     catch(Exception $e)
     {
@@ -423,7 +452,6 @@ class MineStat
   {
     try
     {
-      $this->request_type = "SLP 1.7 (JSON)";
       $retval = $this->connect();
       if($retval != MineStat::RETURN_SUCCESS)
         return $retval;
@@ -459,6 +487,13 @@ class MineStat
       $this->strip_motd();
       $this->current_players = (int)@$json_data['players']['online'];
       $this->max_players = (int)@$json_data['players']['max'];
+      $this->favicon_b64 = @$json_data['favicon'];
+      if(isset($this->favicon_b64))
+      {
+        $this->favicon_b64 = explode("base64,", $this->favicon_b64);
+        $this->favicon_b64 = $this->favicon_b64[1];
+        $this->favicon = base64_decode($this->favicon_b64);
+      }
       if(isset($this->version) && isset($this->motd) && isset($this->current_players) && isset($this->max_players))
         $this->online = true;
       else
@@ -468,6 +503,7 @@ class MineStat
     {
       return MineStat::RETURN_UNKNOWN;
     }
+    $this->request_type = "SLP 1.7 (JSON)";
     return MineStat::RETURN_SUCCESS;
   }
 
