@@ -4,14 +4,14 @@ Minecraft::ServerStatus - A Minecraft server status checker
 
 # VERSION
 
-Version 1.0.2
+Version 1.1.0
 
 # SYNOPSIS
 
 ```perl
   use Minecraft::ServerStatus;
 
-  $ms = Minecraft::ServerStatus::init("minecraft.frag.land", 25565);
+  $ms = Minecraft::ServerStatus::init("minecraft.frag.land");
 
   print "Minecraft server status of $ms->{address} on port $ms->{port}:\n";
   if($ms->{online})
@@ -19,6 +19,7 @@ Version 1.0.2
     print "Server is online running version $ms->{version} with $ms->{current_players} out of $ms->{max_players} players.\n";
     print "Message of the day: $ms->{motd}\n";
     print "Latency: $ms->{latency}ms\n";
+    print "Connected using protocol: $ms->{request_type}\n";
   }
   else
   {
@@ -49,7 +50,8 @@ To install this module:
   Minecraft::ServerStatus::init("minecraft.frag.land", 25565);
 ```
 
-The above function connects to the specified Minecraft server using an address and port. You may also specify the TCP timeout:
+The above function connects to the specified Minecraft server using an address and port. If the port number is omitted, the
+default port, 25565, is used. You may also specify the TCP timeout:
 
 ```perl
   Minecraft::ServerStatus::init("minecraft.frag.land", 25565, 3);
@@ -73,7 +75,7 @@ The default TCP timeout value is 5 seconds.
 
 # LICENSE
 
-Copyright (C) 2016-2021 Lloyd Dilley
+Copyright (C) 2016-2022 Lloyd Dilley
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
