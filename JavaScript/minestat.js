@@ -38,6 +38,7 @@ module.exports =
   {
     this.address = address;
     this.port = port;
+    this.online = false;
 
     // if 3rd argument is a function, it's the callback (timeout is optional)
     if(typeof(timeout) === typeof(Function()))
