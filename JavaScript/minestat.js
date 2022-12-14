@@ -1,6 +1,6 @@
 /*
  * minestat.js - A Minecraft server status checker
- * Copyright (C) 2016 Lloyd Dilley
+ * Copyright (C) 2016, 2022 Lloyd Dilley
  * http://www.dilley.me/
  *
  * This program is free software; you can redistribute it and/or modify
@@ -20,7 +20,7 @@
 
 // For use with Node.js
 
-const VERSION = "1.0.3";   // MineStat version
+const VERSION = "1.0.4";   // MineStat version
 const NUM_FIELDS = 6;      // number of values expected from server
 const DEFAULT_TIMEOUT = 5; // default TCP timeout in seconds
 address = null;
@@ -38,6 +38,7 @@ module.exports =
   {
     this.address = address;
     this.port = port;
+    this.online = false;
 
     // if 3rd argument is a function, it's the callback (timeout is optional)
     if(typeof(timeout) === typeof(Function()))
