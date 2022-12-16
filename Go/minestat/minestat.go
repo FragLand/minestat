@@ -24,6 +24,7 @@ import "net"
 import "strings"
 import "time"
 
+const VERSION "1.0.0"         // MineStat version
 const NUM_FIELDS int = 6
 const DEFAULT_TIMEOUT int = 5 // default TCP timeout in seconds
 var Address string
