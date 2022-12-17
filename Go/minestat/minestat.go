@@ -1,6 +1,6 @@
 /*
  * minestat.go - A Minecraft server status checker
- * Copyright (C) 2016 Lloyd Dilley
+ * Copyright (C) 2016, 2022 Lloyd Dilley
  * http://www.dilley.me/
  *
  * This program is free software; you can redistribute it and/or modify
@@ -24,17 +24,17 @@ import "net"
 import "strings"
 import "time"
 
-const VERSION "1.0.0"         // MineStat version
-const NUM_FIELDS int = 6
-const DEFAULT_TIMEOUT int = 5 // default TCP timeout in seconds
-var Address string
-var Port string
-var Online bool               // online or offline?
-var Version string            // server version
-var Motd string               // message of the day
-var Current_players string    // current number of players online
-var Max_players string        // maximum player capacity
-var Latency time.Duration     // ping time to server in milliseconds
+const VERSION string = "1.0.0" // MineStat version
+const NUM_FIELDS int = 6       // number of values expected from server
+const DEFAULT_TIMEOUT int = 5  // default TCP timeout in seconds
+var Address string             // server hostname or IP address
+var Port string                // server TCP port
+var Online bool                // online or offline?
+var Version string             // server version
+var Motd string                // message of the day
+var Current_players string     // current number of players online
+var Max_players string         // maximum player capacity
+var Latency time.Duration      // ping time to server in milliseconds
 
 func Init(given_address string, given_port string, optional_timeout ...int) {
   timeout := DEFAULT_TIMEOUT
