@@ -21,22 +21,24 @@
 package minestat
 
 import "net"
+import "strconv"
 import "strings"
 import "time"
 
-const VERSION string = "1.0.0" // MineStat version
-const NUM_FIELDS int = 6       // number of values expected from server
-const DEFAULT_TIMEOUT int = 5  // default TCP timeout in seconds
-var Address string             // server hostname or IP address
-var Port string                // server TCP port
-var Online bool                // online or offline?
-var Version string             // server version
-var Motd string                // message of the day
-var Current_players string     // current number of players online
-var Max_players string         // maximum player capacity
-var Latency time.Duration      // ping time to server in milliseconds
+const VERSION string = "1.0.0"  // MineStat version
+const NUM_FIELDS int = 6        // number of values expected from server
+const NUM_FIELDS_BETA uint8 = 3 // number of values expected from a 1.8b/1.3 server
+const DEFAULT_TIMEOUT uint8 = 5 // default TCP timeout in seconds
+var Address string              // server hostname or IP address
+var Port uint16                 // server TCP port
+var Online bool                 // online or offline?
+var Version string              // server version
+var Motd string                 // message of the day
+var Current_players uint32      // current number of players online
+var Max_players uint32          // maximum player capacity
+var Latency time.Duration       // ping time to server in milliseconds
 
-func Init(given_address string, given_port string, optional_timeout ...int) {
+func Init(given_address string, given_port uint16, optional_timeout ...uint8) {
   timeout := DEFAULT_TIMEOUT
   if len(optional_timeout) > 0 {
     timeout = optional_timeout[0]
@@ -46,7 +48,7 @@ func Init(given_address string, given_port string, optional_timeout ...int) {
   /* Latency may report a misleading value of >1s due to name resolution delay when using net.Dial().
      A workaround for this issue is to use an IP address instead of a hostname or FQDN. */
   start_time := time.Now()
-  conn, err := net.DialTimeout("tcp", Address + ":" + Port, time.Duration(timeout) * time.Second)
+  conn, err := net.DialTimeout("tcp", Address + ":" + strconv.FormatUint(uint64(Port), 10), time.Duration(timeout) * time.Second)
   Latency = time.Since(start_time)
   Latency = Latency.Round(time.Millisecond)
   if err != nil {
@@ -78,8 +80,10 @@ func Init(given_address string, given_port string, optional_timeout ...int) {
     Online = true
     Version = data[2]
     Motd = data[3]
-    Current_players = data[4]
-    Max_players = data[5]
+    current_players, _ := strconv.ParseUint(data[4], 10, 32)
+    max_players, _ := strconv.ParseUint(data[5], 10, 32)
+    Current_players = uint32(current_players)
+    Max_players = uint32(max_players)
   } else {
     Online = false
   }
