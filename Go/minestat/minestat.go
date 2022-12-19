@@ -27,30 +27,64 @@ import "time"
 // To install the unicode dependency below: go get golang.org/x/text/encoding/unicode
 import "golang.org/x/text/encoding/unicode"
 
-const VERSION string = "1.0.0"  // MineStat version
-const NUM_FIELDS int = 6        // number of values expected from server
-const NUM_FIELDS_BETA uint8 = 3 // number of values expected from a 1.8b/1.3 server
-const DEFAULT_TIMEOUT uint8 = 5 // default TCP timeout in seconds
-var Address string              // server hostname or IP address
-var Port uint16                 // server TCP port
-var Online bool = false         // online or offline?
-var Version string              // server version
-var Motd string                 // message of the day
-var Current_players uint32      // current number of players online
-var Max_players uint32          // maximum player capacity
-var Latency time.Duration       // ping time to server in milliseconds
+const VERSION string = "1.0.0"     // MineStat version
+const NUM_FIELDS int = 6           // number of values expected from server
+const NUM_FIELDS_BETA uint8 = 3    // number of values expected from a 1.8b/1.3 server
+const DEFAULT_TCP_PORT = 25565     // default TCP port
+const DEFAULT_BEDROCK_PORT = 19132 // Bedrock/Pocket Edition default UDP port
+const DEFAULT_TIMEOUT uint8 = 5    // default TCP timeout in seconds
 
-func Init(given_address string, given_port uint16, optional_timeout ...uint8) {
-  timeout := DEFAULT_TIMEOUT
-  if len(optional_timeout) > 0 {
-    timeout = optional_timeout[0]
-  }
+type Status_code uint8
+const (
+  SUCCESS Status_code = 0
+  CONNFAIL = 1
+  TIMEOUT = 2
+  UNKNOWN = 3
+)
+
+type Request_type int8
+const (
+  NONE Request_type = -1
+  BETA = 0
+  LEGACY = 1
+  EXTENDED = 2
+  JSON = 3
+  BEDROCK = 4
+)
+
+var Address string          // server hostname or IP address
+var Port uint16             // server TCP port
+var Online bool = false     // online or offline?
+var Version string          // server version
+var Motd string             // message of the day
+var Current_players uint32  // current number of players online
+var Max_players uint32      // maximum player capacity
+var Latency time.Duration   // ping time to server in milliseconds
+var Timeout uint8           // TCP/UDP timeout in seconds
+var Protocol Request_type   // protocol version
+var Connection_status uint8 // status of connection
+
+func Init(given_address string, optional_params ...uint16) {
   Address = given_address
-  Port = given_port
+  Port = DEFAULT_TCP_PORT
+  Timeout = DEFAULT_TIMEOUT
+  Protocol = NONE
+
+  if len(optional_params) == 1 {
+    Port = optional_params[0]
+  } else if len(optional_params) == 2 {
+    Port = optional_params[0]
+    Timeout = uint8(optional_params[1])
+  } else if len(optional_params) >= 3 {
+    Port = optional_params[0]
+    Timeout = uint8(optional_params[1])
+    Protocol = Request_type(optional_params[2])
+  }
+
   /* Latency may report a misleading value of >1s due to name resolution delay when using net.Dial().
      A workaround for this issue is to use an IP address instead of a hostname or FQDN. */
   start_time := time.Now()
-  conn, err := net.DialTimeout("tcp", Address + ":" + strconv.FormatUint(uint64(Port), 10), time.Duration(timeout) * time.Second)
+  conn, err := net.DialTimeout("tcp", Address + ":" + strconv.FormatUint(uint64(Port), 10), time.Duration(Timeout) * time.Second)
   Latency = time.Since(start_time)
   Latency = Latency.Round(time.Millisecond)
   if err != nil {
