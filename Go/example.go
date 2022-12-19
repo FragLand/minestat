@@ -10,6 +10,7 @@ func main() {
     fmt.Printf("Server is online running version %s with %d out of %d players.\n", minestat.Version, minestat.Current_players, minestat.Max_players)
     fmt.Printf("Message of the day: %s\n", minestat.Motd)
     fmt.Printf("Latency: %dms\n", minestat.Latency)
+    fmt.Printf("Connected using protocol: %s\n", minestat.Protocol)
   } else {
     fmt.Println("Server is offline!")
   }
