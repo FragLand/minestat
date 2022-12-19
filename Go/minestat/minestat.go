@@ -34,22 +34,20 @@ const DEFAULT_TCP_PORT = 25565     // default TCP port
 const DEFAULT_BEDROCK_PORT = 19132 // Bedrock/Pocket Edition default UDP port
 const DEFAULT_TIMEOUT uint8 = 5    // default TCP timeout in seconds
 
-type Status_code uint8
 const (
-  SUCCESS Status_code = 0
-  CONNFAIL = 1
-  TIMEOUT = 2
-  UNKNOWN = 3
+  RETURN_SUCCESS uint8 = 0
+  RETURN_CONNFAIL = 1
+  RETURN_TIMEOUT = 2
+  RETURN_UNKNOWN = 3
 )
 
-type Request_type int8
 const (
-  NONE Request_type = -1
-  BETA = 0
-  LEGACY = 1
-  EXTENDED = 2
-  JSON = 3
-  BEDROCK = 4
+  REQUEST_NONE uint16 = 0 // uint16 to be compatible with optional_params array
+  REQUEST_BETA = 0
+  REQUEST_LEGACY = 1
+  REQUEST_EXTENDED = 2
+  REQUEST_JSON = 3
+  REQUEST_BEDROCK = 4
 )
 
 var Address string          // server hostname or IP address
@@ -61,14 +59,14 @@ var Current_players uint32  // current number of players online
 var Max_players uint32      // maximum player capacity
 var Latency time.Duration   // ping time to server in milliseconds
 var Timeout uint8           // TCP/UDP timeout in seconds
-var Protocol Request_type   // protocol version
+var Request_type uint8      // protocol version
 var Connection_status uint8 // status of connection
 
 func Init(given_address string, optional_params ...uint16) {
   Address = given_address
   Port = DEFAULT_TCP_PORT
   Timeout = DEFAULT_TIMEOUT
-  Protocol = NONE
+  Request_type = uint8(REQUEST_NONE)
 
   if len(optional_params) == 1 {
     Port = optional_params[0]
@@ -78,7 +76,7 @@ func Init(given_address string, optional_params ...uint16) {
   } else if len(optional_params) >= 3 {
     Port = optional_params[0]
     Timeout = uint8(optional_params[1])
-    Protocol = Request_type(optional_params[2])
+    Request_type = uint8(optional_params[2])
   }
 
   /* Latency may report a misleading value of >1s due to name resolution delay when using net.Dial().
