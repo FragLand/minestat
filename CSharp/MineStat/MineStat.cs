@@ -141,7 +141,7 @@ namespace MineStatLib
     /// <summary>
     /// Favicon decoded to byte array
     /// </summary>
-    public byte[] FaviconBytes => string.IsNullOrWhiteSpace(Favicon) && Favicon.Contains("base64,") ? Convert.FromBase64String(Favicon.Substring(Favicon.IndexOf(",") + 1)) : null;
+    public byte[] FaviconBytes => !string.IsNullOrWhiteSpace(Favicon) && Favicon.Contains("base64,") ? Convert.FromBase64String(Favicon.Substring(Favicon.IndexOf(",") + 1)) : null;
 
     /// <inheritdoc cref="MineStat"/>
     /// <example>
