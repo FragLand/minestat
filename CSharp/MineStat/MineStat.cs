@@ -134,9 +134,14 @@ namespace MineStatLib
     /// </summary>
     public string Gamemode { get; set; }
     /// <summary>
-    /// Favicon for the Minecraft server when returned by the server (in base64 format)
+    /// Favicon for the Minecraft server when returned by the server (In Base64 Format)
     /// </summary>
     public string Favicon { get; set; }
+
+    /// <summary>
+    /// Favicon decoded to byte array
+    /// </summary>
+    public byte[] FaviconBytes => !string.IsNullOrWhiteSpace(Favicon) && Favicon.Contains("base64,") ? Convert.FromBase64String(Favicon.Substring(Favicon.IndexOf(",") + 1)) : null;
 
     /// <inheritdoc cref="MineStat"/>
     /// <example>
