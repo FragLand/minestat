@@ -135,7 +135,7 @@ Contains possible SLP (Server List Ping) protocols.
   """
 
 class MineStat:
-  VERSION = "2.3.0"             # MineStat version
+  VERSION = "2.3.1"             # MineStat version
   DEFAULT_TIMEOUT = 5           # default TCP timeout in seconds
 
   def __init__(self, address: str, port: int, timeout: int = DEFAULT_TIMEOUT, query_protocol: SlpProtocols = None) -> None:
@@ -194,7 +194,7 @@ class MineStat:
     # Minecraft Bedrock/Pocket/Education Edition (MCPE/MCEE)
     result = self.bedrock_raknet_query()
 
-    if result in [ConnStatus.CONNFAIL, ConnStatus.SUCCESS]:
+    if result is ConnStatus.SUCCESS:
       return
 
     # Minecraft 1.4 & 1.5 (legacy SLP)
