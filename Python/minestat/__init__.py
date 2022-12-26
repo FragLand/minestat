@@ -15,6 +15,7 @@
 # You should have received a copy of the GNU General Public License along
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+import base64
 import io
 import json
 import socket
@@ -140,7 +141,9 @@ class MineStat:
 
   def __init__(self, address: str, port: int, timeout: int = DEFAULT_TIMEOUT, query_protocol: SlpProtocols = None) -> None:
     self.address: str = address
+    """hostname or IP address of the Minecraft server"""
     self.port: int = port
+    """port number the Minecraft server accepts connections on"""
     self.online: bool = False
     """online or offline?"""
     self.version: Optional[str] = None
@@ -159,6 +162,10 @@ class MineStat:
     """socket timeout"""
     self.slp_protocol: Optional[SlpProtocols] = None
     """Server List Ping protocol"""
+    self.favicon_b64: Optional[str] = None
+    """base64-encoded favicon possibly contained in JSON 1.7 responses"""
+    self.favicon: Optional[str] = None
+    """decoded favicon data"""
     self.gamemode: Optional[str] = None
     """Bedrock specific: The current game mode (Creative/Survival/Adventure)"""
 
@@ -451,6 +458,10 @@ class MineStat:
 
     self.max_players = payload_obj["players"]["max"]
     self.current_players = payload_obj["players"]["online"]
+
+    self.favicon_b64 = payload_obj["favicon"]
+    if self.favicon_b64:
+      self.favicon = str(base64.b64decode(self.favicon_b64.split("base64,")[1]), 'ISO-8859–1')
 
     # If we got here, everything is in order.
     self.online = True
