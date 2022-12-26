@@ -144,8 +144,11 @@ class MineStat:
     """hostname or IP address of the Minecraft server"""
     autoport: bool = False
     if port == 0:
-      self.port = self.DEFAULT_TCP_PORT
       autoport = True
+      if query_protocol is SlpProtocols.BEDROCK_RAKNET:
+        self.port = self.DEFAULT_BEDROCK_PORT
+      else:
+        self.port = self.DEFAULT_TCP_PORT
     else:
       self.port: int = port
     """port number the Minecraft server accepts connections on"""
