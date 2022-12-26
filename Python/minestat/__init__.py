@@ -25,7 +25,6 @@ from time import time, perf_counter
 from enum import Enum
 from typing import Union, Optional
 
-
 class ConnStatus(Enum):
   """
 Contains possible connection states.
@@ -137,12 +136,19 @@ Contains possible SLP (Server List Ping) protocols.
 
 class MineStat:
   VERSION = "2.3.1"             # MineStat version
+  DEFAULT_TCP_PORT = 25565      # default TCP port for SLP queries
+  DEFAULT_BEDROCK_PORT = 19132  # default UDP port for Bedrock/MCPE servers
   DEFAULT_TIMEOUT = 5           # default TCP timeout in seconds
 
-  def __init__(self, address: str, port: int, timeout: int = DEFAULT_TIMEOUT, query_protocol: SlpProtocols = None) -> None:
+  def __init__(self, address: str, port: int = 0, timeout: int = DEFAULT_TIMEOUT, query_protocol: SlpProtocols = None) -> None:
     self.address: str = address
     """hostname or IP address of the Minecraft server"""
-    self.port: int = port
+    autoport: bool = False
+    if port == 0:
+      self.port = self.DEFAULT_TCP_PORT
+      autoport = True
+    else:
+      self.port: int = port
     """port number the Minecraft server accepts connections on"""
     self.online: bool = False
     """online or offline?"""
@@ -199,10 +205,15 @@ class MineStat:
     # A legacy query alone works fine.
 
     # Minecraft Bedrock/Pocket/Education Edition (MCPE/MCEE)
+    if autoport:
+      self.port = self.DEFAULT_BEDROCK_PORT
     result = self.bedrock_raknet_query()
 
     if result is ConnStatus.SUCCESS:
       return
+
+    if autoport:
+      self.port = self.DEFAULT_TCP_PORT
 
     # Minecraft 1.4 & 1.5 (legacy SLP)
     result = self.legacy_query()

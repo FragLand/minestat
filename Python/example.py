@@ -2,7 +2,7 @@ import minestat
 
 # Below is an example using the MineStat class.
 # If server is offline, other instance members will be None.
-ms = minestat.MineStat('minecraft.frag.land', 25565)
+ms = minestat.MineStat('minecraft.frag.land')
 print('Minecraft server status of %s on port %d:' % (ms.address, ms.port))
 if ms.online:
   print('Server is online running version %s with %s out of %s players.' % (ms.version, ms.current_players, ms.max_players))
