@@ -493,7 +493,7 @@ class MineStat:
       self.favicon_b64 = payload_obj["favicon"]
       if self.favicon_b64:
         self.favicon = str(base64.b64decode(self.favicon_b64.split("base64,")[1]), 'ISO-8859–1')
-    except:
+    except KeyError:
       self.favicon_b64 = None
       self.favicon = None
 
