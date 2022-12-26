@@ -174,6 +174,8 @@ class MineStat:
     """decoded favicon data"""
     self.gamemode: Optional[str] = None
     """Bedrock specific: The current game mode (Creative/Survival/Adventure)"""
+    self.connection_status: Optional[ConnStatus] = None
+    """Status of connection ("SUCCESS", "CONNFAIL", "TIMEOUT", or "UNKNOWN")"""
 
     # Future improvement: IPv4/IPv6, multiple addresses
     # If a host has multiple IP addresses or a IPv4 and a IPv6 address,
@@ -184,17 +186,19 @@ class MineStat:
     # See https://docs.python.org/3/library/socket.html#socket.getaddrinfo
 
     # If the user wants a specific protocol, use only that.
+    result = ConnStatus.UNKNOWN
     if query_protocol:
       if query_protocol is SlpProtocols.BETA:
-        self.beta_query()
+        result = self.beta_query()
       elif query_protocol is SlpProtocols.LEGACY:
-        self.legacy_query()
+        result = self.legacy_query()
       elif query_protocol is SlpProtocols.EXTENDED_LEGACY:
-        self.extended_legacy_query()
+        result = self.extended_legacy_query()
       elif query_protocol is SlpProtocols.JSON:
-        self.json_query()
+        result = self.json_query()
       elif query_protocol is SlpProtocols.BEDROCK_RAKNET:
-        self.bedrock_raknet_query()
+        result = self.bedrock_raknet_query()
+      self.connection_status = result
 
       return
 
@@ -208,6 +212,7 @@ class MineStat:
     if autoport:
       self.port = self.DEFAULT_BEDROCK_PORT
     result = self.bedrock_raknet_query()
+    self.connection_status = result
 
     if result is ConnStatus.SUCCESS:
       return
@@ -229,6 +234,8 @@ class MineStat:
     # Minecraft 1.7+ (JSON SLP)
     if result is not ConnStatus.CONNFAIL:
       self.json_query()
+
+    self.connection_status = result
 
   @staticmethod
   def motd_strip_formatting(raw_motd: Union[str, dict]) -> str:
