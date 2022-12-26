@@ -63,3 +63,5 @@ The following attributes are available on the `MineStat` object:
   - Base64-encoded favicon possibly contained in JSON 1.7 responses.
 - `favicon`: str
   - Base64-decoded favicon data.
+- `connection_status`: minestat.ConnStatus
+  - Status of connection ("SUCCESS", "CONNFAIL", "TIMEOUT", or "UNKNOWN").

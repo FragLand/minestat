@@ -50,7 +50,6 @@ Contains possible connection states.
   UNKNOWN = -3
   """The connection was established, but the server spoke an unknown/unsupported SLP protocol."""
 
-
 class SlpProtocols(Enum):
   """
 Contains possible SLP (Server List Ping) protocols.
