@@ -470,9 +470,12 @@ class MineStat:
     self.max_players = payload_obj["players"]["max"]
     self.current_players = payload_obj["players"]["online"]
 
-    self.favicon_b64 = payload_obj["favicon"]
-    if self.favicon_b64:
-      self.favicon = str(base64.b64decode(self.favicon_b64.split("base64,")[1]), 'ISO-8859–1')
+    try:
+      self.favicon_b64 = payload_obj["favicon"]
+      if self.favicon_b64:
+        self.favicon = str(base64.b64decode(self.favicon_b64.split("base64,")[1]), 'ISO-8859–1')
+    except:
+      pass
 
     # If we got here, everything is in order.
     self.online = True
