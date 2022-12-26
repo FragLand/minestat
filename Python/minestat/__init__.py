@@ -54,6 +54,11 @@ class SlpProtocols(Enum):
   """
 Contains possible SLP (Server List Ping) protocols.
 
+- `ALL`: Try all protocols.
+
+  Attempts to connect to a remote server using all available protocols until an acceptable response
+  is received or until failure.
+
 - `BEDROCK_RAKNET`: The Minecraft Bedrock/Education edition protocol.
 
   *Available for all Minecraft Bedrock versions, not compatible with Java edition.*
@@ -86,6 +91,11 @@ Contains possible SLP (Server List Ping) protocols.
 
   def __str__(self) -> str:
     return str(self.name)
+
+  ALL = 5
+  """
+  Attempt to use all protocols.
+  """
 
   BEDROCK_RAKNET = 4
   """
@@ -139,7 +149,7 @@ class MineStat:
   DEFAULT_BEDROCK_PORT = 19132  # default UDP port for Bedrock/MCPE servers
   DEFAULT_TIMEOUT = 5           # default TCP timeout in seconds
 
-  def __init__(self, address: str, port: int = 0, timeout: int = DEFAULT_TIMEOUT, query_protocol: SlpProtocols = None) -> None:
+  def __init__(self, address: str, port: int = 0, timeout: int = DEFAULT_TIMEOUT, query_protocol: SlpProtocols = SlpProtocols.ALL) -> None:
     self.address: str = address
     """hostname or IP address of the Minecraft server"""
     autoport: bool = False
@@ -189,7 +199,7 @@ class MineStat:
 
     # If the user wants a specific protocol, use only that.
     result = ConnStatus.UNKNOWN
-    if query_protocol:
+    if query_protocol is not SlpProtocols.ALL:
       if query_protocol is SlpProtocols.BETA:
         result = self.beta_query()
       elif query_protocol is SlpProtocols.LEGACY:
