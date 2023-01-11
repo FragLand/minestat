@@ -59,3 +59,9 @@ The following attributes are available on the `MineStat` object:
   - Protocol used to retrieve information from the server.
 - `gamemode`: str (***Bedrock specific***)
   - Gamemode currently active on the server (Creative/Survival/Adventure). None if the server is not a Bedrock server.
+- `favicon_b64`: str
+  - Base64-encoded favicon possibly contained in JSON 1.7 responses.
+- `favicon`: str
+  - Base64-decoded favicon data.
+- `connection_status`: minestat.ConnStatus
+  - Status of connection ("SUCCESS", "CONNFAIL", "TIMEOUT", or "UNKNOWN").

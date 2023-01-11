@@ -34,7 +34,7 @@ import java.util.Date;
 
 public class MineStat
 {
-  public static final String VERSION = "3.0.4";         // MineStat version
+  public static final String VERSION = "3.0.5";         // MineStat version
   public static final byte NUM_FIELDS = 6;              // number of values expected from server
   public static final byte NUM_FIELDS_BETA = 3;         // number of values expected from a 1.8b/1.3 server
   public static final int DEFAULT_TIMEOUT = 5;          // default TCP/UDP timeout in seconds
@@ -424,6 +424,10 @@ public class MineStat
     {
       return ConnectionStatus.TIMEOUT;
     }
+    catch(EOFException eofe)
+    {
+      return ConnectionStatus.UNKNOWN;
+    }
     catch(IOException ioe)
     {
       return ConnectionStatus.CONNFAIL;
@@ -508,6 +512,10 @@ public class MineStat
     catch(SocketTimeoutException ste)
     {
       return ConnectionStatus.TIMEOUT;
+    }
+    catch(EOFException eofe)
+    {
+      return ConnectionStatus.UNKNOWN;
     }
     catch(IOException ioe)
     {
@@ -611,6 +619,10 @@ public class MineStat
     catch(SocketTimeoutException ste)
     {
       return ConnectionStatus.TIMEOUT;
+    }
+    catch(EOFException eofe)
+    {
+      return ConnectionStatus.UNKNOWN;
     }
     catch(IOException ioe)
     {
@@ -780,6 +792,10 @@ public class MineStat
     {
       return ConnectionStatus.TIMEOUT;
     }
+    catch(EOFException eofe)
+    {
+      return ConnectionStatus.UNKNOWN;
+    }
     catch(IOException ioe)
     {
       return ConnectionStatus.CONNFAIL;
@@ -901,6 +917,10 @@ public class MineStat
     catch(SocketTimeoutException ste)
     {
       return ConnectionStatus.TIMEOUT;
+    }
+    catch(EOFException eofe)
+    {
+      return ConnectionStatus.UNKNOWN;
     }
     catch(IOException ioe)
     {
