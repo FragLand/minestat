@@ -424,6 +424,10 @@ public class MineStat
     {
       return ConnectionStatus.TIMEOUT;
     }
+    catch(EOFException eofe)
+    {
+      return ConnectionStatus.UNKNOWN;
+    }
     catch(IOException ioe)
     {
       return ConnectionStatus.CONNFAIL;
@@ -508,6 +512,10 @@ public class MineStat
     catch(SocketTimeoutException ste)
     {
       return ConnectionStatus.TIMEOUT;
+    }
+    catch(EOFException eofe)
+    {
+      return ConnectionStatus.UNKNOWN;
     }
     catch(IOException ioe)
     {
@@ -611,6 +619,10 @@ public class MineStat
     catch(SocketTimeoutException ste)
     {
       return ConnectionStatus.TIMEOUT;
+    }
+    catch(EOFException eofe)
+    {
+      return ConnectionStatus.UNKNOWN;
     }
     catch(IOException ioe)
     {
@@ -780,6 +792,10 @@ public class MineStat
     {
       return ConnectionStatus.TIMEOUT;
     }
+    catch(EOFException eofe)
+    {
+      return ConnectionStatus.UNKNOWN;
+    }
     catch(IOException ioe)
     {
       return ConnectionStatus.CONNFAIL;
@@ -901,6 +917,10 @@ public class MineStat
     catch(SocketTimeoutException ste)
     {
       return ConnectionStatus.TIMEOUT;
+    }
+    catch(EOFException eofe)
+    {
+      return ConnectionStatus.UNKNOWN;
     }
     catch(IOException ioe)
     {
