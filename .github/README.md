@@ -43,19 +43,23 @@ class Example
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/FragLand/minestat/Go/minestat.svg)](https://pkg.go.dev/github.com/FragLand/minestat/Go/minestat)
 
+**Note:** MineStat for Go requires UTF-16 string support to handle character encoding conversion. To install this dependency:\
+`go get golang.org/x/text/encoding/unicode`
+
 ```go
 package main
 
 import "fmt"
-import "github.com/FragLand/minestat/minestat"
+import "github.com/FragLand/minestat/Go/minestat"
 
 func main() {
-  minestat.Init("minecraft.frag.land", "25565")
-  fmt.Printf("Minecraft server status of %s on port %s:\n", minestat.Address, minestat.Port)
+  minestat.Init("minecraft.frag.land")
+  fmt.Printf("Minecraft server status of %s on port %d:\n", minestat.Address, minestat.Port)
   if minestat.Online {
-    fmt.Printf("Server is online running version %s with %s out of %s players.\n", minestat.Version, minestat.Current_players, minestat.Max_players)
+    fmt.Printf("Server is online running version %s with %d out of %d players.\n", minestat.Version, minestat.Current_players, minestat.Max_players)
     fmt.Printf("Message of the day: %s\n", minestat.Motd)
-    fmt.Printf("Latency: %s\n", minestat.Latency)
+    fmt.Printf("Latency: %dms\n", minestat.Latency)
+    fmt.Printf("Connected using protocol: %s\n", minestat.Protocol)
   } else {
     fmt.Println("Server is offline!")
   }
@@ -139,9 +143,9 @@ else
 
 ### PHP example
 
-**Note:** MineStat for PHP requires multi-byte string support to handle character encoding conversion. Enabling `mbstring` support can be as simple as installing the `php-mbstring` package for your platform. If building PHP from source, see https://www.php.net/manual/en/mbstring.installation.php. To validate, `phpinfo()` output will reference `mbstring` if the feature is enabled.
-
 [![Packagist Version](https://img.shields.io/packagist/v/fragland/minestat?color=orange&label=Packagist%20package&style=plastic)](https://packagist.org/packages/fragland/minestat)
+
+**Note:** MineStat for PHP requires multi-byte string support to handle character encoding conversion. Enabling `mbstring` support can be as simple as installing the `php-mbstring` package for your platform. If building PHP from source, see https://www.php.net/manual/en/mbstring.installation.php. To validate, `phpinfo()` output will reference `mbstring` if the feature is enabled.
 
 ```php
 <?php
