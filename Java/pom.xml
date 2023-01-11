@@ -4,7 +4,7 @@
   <name>MineStat</name>
   <groupId>io.github.fragland</groupId>
   <artifactId>MineStat</artifactId>
-  <version>3.0.4</version>
+  <version>3.0.5</version>
   <packaging>jar</packaging>
   <description>MineStat is a Minecraft server status checker.</description>
   <url>https://github.com/fragland/minestat</url>
