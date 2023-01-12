@@ -1,5 +1,40 @@
 # Contributing to MineStat
 
+## Issue Tracker
+
+https://github.com/FragLand/minestat/issues
+
+## Discord
+
+https://discord.frag.land/
+
 ## Coding Convention
 
-Please follow the existing styling as closely as possible for any code contributions.
+Please follow the existing styling as closely as possible for any code contributions. This will vary by programming language. Here are some general tips:
+
+* Make use of comments to document code when sensible.
+
+* Use spaces and not tabs.
+
+* Indent by 2 spaces.
+
+* Use Allman style for blocks. For example:
+   ```c
+   int func()
+   {
+     // ...
+   }
+   ```
+   Rather than K&R style:
+   ```c
+   int func() {
+     // ...
+   }
+   ```
+
+* Constant names should typically be capitalized. For example:
+   ```c
+   const double PI = 3.141592653589793238463;
+   ```
+
+* Variable and function names containing multiple words should be separated with an underscore `_`. Use PascalCase for C# and camelCase for Java.
