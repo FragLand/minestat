@@ -1,9 +1,10 @@
-MineStat
+MineStat :chart_with_upwards_trend:
 ========
 
 [![AppVeyor build status](https://img.shields.io/appveyor/ci/ldilley/minestat?label=AppVeyor%20build%20status)](https://ci.appveyor.com/project/ldilley/minestat)
 [![CodeQL build status](https://github.com/FragLand/minestat/actions/workflows/CodeQL.yml/badge.svg?branch=master)](https://github.com/FragLand/minestat/actions/workflows/CodeQL.yml)
 [![CodeFactor grade](https://img.shields.io/codefactor/grade/github/FragLand/minestat?label=CodeFactor%20quality)](https://www.codefactor.io/repository/github/fragland/minestat)
+[![Discord](https://img.shields.io/discord/540333638479380487?label=Discord)](https://discord.frag.land/)
 
 MineStat is a Minecraft server status checker.
 
@@ -11,6 +12,19 @@ You can use these classes/modules in a monitoring script to poll multiple Minecr
 visitors see the status of your server from their browser. MineStat has been ported to multiple languages for use with ASP.NET, FastCGI, mod_perl, mod_php, mod_python, Node.js, Rails, Tomcat, and more.
 
 If you are planning to host MineStat on a shared webhost, make sure that the provider allows outbound sockets.
+
+## Protocol Support :telephone_receiver:
+**Note:** The Go, JavaScript, and Perl implementations are currently under development.
+
+|Protocol|C#|Go|Java|JavaScript|Perl|PHP|PowerShell|Python|Ruby|
+|-|--|--|----|----------|----|---|------|----|--|
+|**1.8b/1.3 (beta)**|:heavy_check_mark:|:heavy_check_mark:|:heavy_check_mark:|:x:|:heavy_check_mark:|:heavy_check_mark:|:heavy_check_mark:|:heavy_check_mark:|:heavy_check_mark:|
+|**1.4/1.5 (legacy)**|:heavy_check_mark:|:heavy_check_mark:|:heavy_check_mark:|:heavy_check_mark:|:heavy_check_mark:|:heavy_check_mark:|:heavy_check_mark:|:heavy_check_mark:|:heavy_check_mark:|
+|**1.6 (extended legacy)**|:heavy_check_mark:|:x:|:heavy_check_mark:|:x:|:x:|:heavy_check_mark:|:heavy_check_mark:|:heavy_check_mark:|:heavy_check_mark:|
+|**>=1.7 (JSON)**|:heavy_check_mark:|:x:|:heavy_check_mark:|:x:|:x:|:heavy_check_mark:|:heavy_check_mark:|:heavy_check_mark:|:heavy_check_mark:|
+|**Bedrock/PE/RakNet**|:heavy_check_mark:|:x:|:heavy_check_mark:|:x:|:x:|:heavy_check_mark:|:heavy_check_mark:|:heavy_check_mark:|:heavy_check_mark:|
+
+## Examples :memo:
 
 ### C# example
 
@@ -239,3 +253,6 @@ else
   puts "Server is offline!"
 end
 ```
+
+## Contributing and Support :octocat:
+Feel free to [submit an issue](https://github.com/FragLand/minestat/issues/new/choose) if you require assistance or would like to make a feature request. You are also welcome to [join our Discord server](https://discord.frag.land/). Any contributions such as build testing, creating bug reports or feature requests, and submitting pull requests are appreciated. Our code style guidelines can be found in the "Coding Convention" section of [CONTRIBUTING.md](https://github.com/FragLand/minestat/blob/master/.github/CONTRIBUTING.md). Please see the [fork and pull guide](https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/creating-a-pull-request-from-a-fork) if you are not certain how to submit a pull request.
