@@ -1,7 +1,7 @@
 ###
 # ==++==
 #
-# Copyright (C) 2020-2022 Ajoro and MineStat contributors.
+# Copyright (C) 2020-2023 Ajoro and MineStat contributors.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,9 +21,9 @@
   GUID = '9adc7f28-e495-424d-83ef-8e48b08b5909'
   Author = "Ajoro and MineStat contributors"
   CompanyName = "Frag Land"
-  Copyright = "(C) 2020-2022 Ajoro and MineStat contributors"
+  Copyright = "(C) 2020-2023 Ajoro and MineStat contributors"
   HelpInfoUri = "https://github.com/FragLand/minestat/tree/master/PowerShell"
-  ModuleVersion = "2.0.4"
+  ModuleVersion = "2.0.5"
   PowerShellVersion = "5.0"
   RootModule = "MineStat.psm1"
   Description = "MineStat is a Minecraft server connection status checker."
@@ -37,6 +37,11 @@
       ProjectUri = "https://github.com/FragLand/minestat"
       LicenseUri = "https://www.gnu.org/licenses/gpl-3.0.txt"
       ReleaseNotes = @'
+## 2.0.5
+- Renamed connstatus to connection_status
+- Made verbose command display better 
+- Add -version to display current script version
+
 ## 2.0.4
 - Exposed connstatus
 
