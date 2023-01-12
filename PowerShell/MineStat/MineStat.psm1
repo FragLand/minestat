@@ -1,6 +1,6 @@
 ###
 # MineStat.psm1
-# Copyright (C) 2020-2022 Ajoro and MineStat contributors.
+# Copyright (C) 2020-2023 Ajoro and MineStat contributors.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -44,7 +44,9 @@ function MineStat {
       })]
     $Protocol = 15,
     # The time in seconds, after which a connection is timed out. 
-    [int]$Timeout = 5
+    [int]$Timeout = 5,
+    # Display current script version
+    [switch]$version
   )
 
   enum ConnStatus {
@@ -67,6 +69,11 @@ function MineStat {
     Legacy = 2
     Beta = 1
     Unknown = 0
+  }
+
+  if ($version){
+    $ModuleInfos = Import-PowerShellDataFile -Path "$PsScriptRoot\MineStat.psd1"
+    Write-Host "MineStat version: $($ModuleInfos.ModuleVersion.ToString())"
   }
 
   try {
@@ -840,7 +847,7 @@ function MineStat {
       return [ConnStatus]::Success
     }
 
-    [byte[]] NetStreamReadExact([System.Net.Sockets.NetworkStream]$stream, [int]$size) {
+    hidden [byte[]] NetStreamReadExact([System.Net.Sockets.NetworkStream]$stream, [int]$size) {
       $totalReadBytes = 0
       $resultBuffer = New-Object System.Collections.Generic.List[byte]
 
