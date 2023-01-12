@@ -43,7 +43,7 @@ namespace MineStatLib
     /// <summary>
     /// The MineStat library version.
     /// </summary>
-    public const string MineStatVersion = "3.0.1";
+    public const string MineStatVersion = "3.0.2";
     /// <summary>
     /// Default TCP timeout in seconds.
     /// </summary>
@@ -130,6 +130,10 @@ namespace MineStatLib
     /// </summary>
     public SlpProtocol Protocol { get; set; }
     /// <summary>
+    /// The connection status. See <see cref="ConnStatus"/> for more info.
+    /// </summary>
+    public ConnStatus ConnectionStatus { get; set; }
+    /// <summary>
     /// Bedrock specific: The current gamemode (Creative/Survival/Adventure)
     /// </summary>
     public string Gamemode { get; set; }
@@ -159,24 +163,24 @@ namespace MineStatLib
       Address = address;
       Port = port;
       Timeout = timeout;
-      
+
       // If the user manually selected a protocol, use that
       switch (protocol)
       {
         case SlpProtocol.Beta:
-          RequestWrapper(RequestWithBetaProtocol);
+          ConnectionStatus = RequestWrapper(RequestWithBetaProtocol);
           break;
         case SlpProtocol.Legacy:
-          RequestWrapper(RequestWithLegacyProtocol);
+          ConnectionStatus = RequestWrapper(RequestWithLegacyProtocol);
           break;
         case SlpProtocol.ExtendedLegacy:
-          RequestWrapper(RequestWithExtendedLegacyProtocol);
+          ConnectionStatus = RequestWrapper(RequestWithExtendedLegacyProtocol);
           break;
         case SlpProtocol.Json:
-          RequestWrapper(RequestWithJsonProtocol);
+          ConnectionStatus = RequestWrapper(RequestWithJsonProtocol);
           break;
         case SlpProtocol.Bedrock_Raknet:
-          RequestWithRaknetProtocol();
+          ConnectionStatus = RequestWithRaknetProtocol();
           break;
         case SlpProtocol.Automatic:
           break;
@@ -202,23 +206,31 @@ namespace MineStatLib
       // 4.: Extended Legacy (1.6)
       // 5.: JSON (1.7+)
 
-      var result = RequestWithRaknetProtocol();
-      if (result == ConnStatus.Connfail || result == ConnStatus.Success)
+      ConnectionStatus = RequestWithRaknetProtocol();
+      if (ConnectionStatus == ConnStatus.Connfail || ConnectionStatus == ConnStatus.Success)
         return;
 
-      result = RequestWrapper(RequestWithLegacyProtocol);
+      ConnectionStatus = RequestWrapper(RequestWithLegacyProtocol);
+      ConnStatus result;
 
-      if (result != ConnStatus.Connfail && result != ConnStatus.Success)
+      if (ConnectionStatus != ConnStatus.Connfail && ConnectionStatus != ConnStatus.Success)
+        ConnectionStatus = RequestWrapper(RequestWithBetaProtocol);
+
+      if (ConnectionStatus != ConnStatus.Connfail)
       {
-        result = RequestWrapper(RequestWithBetaProtocol);
-      }
-      if (result != ConnStatus.Connfail)
         result = RequestWrapper(RequestWithExtendedLegacyProtocol);
+        if (result < ConnectionStatus)
+          ConnectionStatus = result;
+      }
 
-      if (result != ConnStatus.Connfail /* && result != ConnStatus.Success */)
-        RequestWrapper(RequestWithJsonProtocol);
+      if (ConnectionStatus != ConnStatus.Connfail)
+      {
+        result = RequestWrapper(RequestWithJsonProtocol);
+        if (result < ConnectionStatus)
+          ConnectionStatus = result;
+      }
     }
-    
+
     /// <summary>
     /// Function for stripping all formatting codes from a motd.
     /// </summary>
@@ -344,7 +356,7 @@ namespace MineStatLib
 
       var dic = keys.Zip(payload.Split((char)59), (k, v) => new { k, v })
               .ToDictionary(x => x.k, x => x.v);
-      
+
       Protocol = SlpProtocol.Bedrock_Raknet;
       ServerUp = true;
       CurrentPlayersInt = Convert.ToInt32(dic["current_players"]);
@@ -807,7 +819,7 @@ namespace MineStatLib
     }
 
     /// <summary>
-    /// Wrapper for NetworkStream.<see cref="NetworkStream.Read"/>, which blocks until the full `size` amount of bytes has been read.
+    /// Wrapper for NetworkStream.<see cref="NetworkStream.Read(byte[], int, int)"/>, which blocks until the full `size` amount of bytes has been read.
     /// </summary>
     /// <param name="stream">The network stream to read `size` bytes from</param>
     /// <param name="size">The number of bytes to receive.</param>

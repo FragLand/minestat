@@ -13,9 +13,9 @@
     <ProjectGuid>{11EDD760-FC1E-4BC0-8ED4-8F6D8FF97779}</ProjectGuid>
 
     <!-- Version information for an assembly consists of the following four values: Major.Minor.Build.Revision -->
-    <AssemblyVersion>3.0.1.0</AssemblyVersion>
-    <FileVersion>3.0.1.0</FileVersion>
-    <Version>3.0.1.0</Version>
+    <AssemblyVersion>3.0.2.0</AssemblyVersion>
+    <FileVersion>3.0.2.0</FileVersion>
+    <Version>3.0.2.0</Version>
   </PropertyGroup>
   <PropertyGroup>
     <TargetFrameworks>net46;netstandard20</TargetFrameworks>

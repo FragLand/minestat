@@ -118,38 +118,44 @@ function MineStat {
     hidden [string[]]$playerList
     hidden [string]$motd
     hidden [string]$stripped_motd
+    hidden [string]$connstatus = [ConnStatus]::Unknown
 
     ServerStatus($address, $port, $timeout, [SlpProtocol]$queryprotocol) {
       $this.address = $address
       $this.port = $port
       $this.timeout = $timeout
-      $result = 0
       Write-Verbose $queryprotocol
 
       # Minecraft Bedrock/Pocket/Education Edition (MCPE/MCEE)
       if ($queryprotocol.HasFlag([SlpProtocol]::BedrockRaknet)) {
-        $result = $this.RequestWithRaknetProtocol()
-        Write-Verbose "BedrockRaknet - $result"
+        $this.connstatus = $this.RequestWithRaknetProtocol()
+        Write-Verbose "BedrockRaknet - $this.connstatus"
       }
       # Minecraft 1.4 & 1.5 (legacy SLP)
-      if ($queryprotocol.HasFlag([SlpProtocol]::Legacy) -and $result -notin [ConnStatus]::Fail, [ConnStatus]::Success) {
-        $result = $this.RequestWithLegacyProtocol()
-        Write-Verbose "Legacy - $result"
+      if ($queryprotocol.HasFlag([SlpProtocol]::Legacy) -and $this.connstatus -notin [ConnStatus]::Fail, [ConnStatus]::Success) {
+        $this.connstatus = $this.RequestWithLegacyProtocol()
+        Write-Verbose "Legacy - $this.connstatus"
       }
       # Minecraft Beta 1.8 to Release 1.3 (beta SLP)
-      if ($queryprotocol.HasFlag([SlpProtocol]::Beta) -and $result -notin [ConnStatus]::Fail, [ConnStatus]::Success) {
-        $result = $this.RequestWithBetaProtocol()
-        Write-Verbose "Beta - $result"
+      if ($queryprotocol.HasFlag([SlpProtocol]::Beta) -and $this.connstatus -notin [ConnStatus]::Fail, [ConnStatus]::Success) {
+        $this.connstatus = $this.RequestWithBetaProtocol()
+        Write-Verbose "Beta - $this.connstatus"
       }
       # Minecraft 1.6 (extended legacy SLP)
-      if ($queryprotocol.HasFlag([SlpProtocol]::ExtendedLegacy) -and $result -notin [ConnStatus]::Fail) {
+      if ($queryprotocol.HasFlag([SlpProtocol]::ExtendedLegacy) -and $this.connstatus -notin [ConnStatus]::Fail) {
         $result = $this.RequestWithExtendedLegacyProtocol()
-        Write-Verbose "ExtendedLegacy - $result"
+        if ($result -ge $this.connstatus){
+          $this.connstatus = $result
+        }
+        Write-Verbose "ExtendedLegacy - $this.connstatus"
       }
       # Minecraft 1.7+ (JSON SLP)
-      if ($queryprotocol.HasFlag([SlpProtocol]::Json) -and $result -notin [ConnStatus]::Fail) {
+      if ($queryprotocol.HasFlag([SlpProtocol]::Json) -and $this.connstatus -notin [ConnStatus]::Fail) {
         $result = $this.RequestWithJsonProtocol()
-        Write-Verbose "Json - $result"
+        if ($result -ge $this.connstatus){
+          $this.connstatus = $result
+        }
+        Write-Verbose "Json - $this.connstatus"
       }
     }
 
