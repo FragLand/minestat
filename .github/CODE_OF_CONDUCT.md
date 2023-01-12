@@ -1,2 +1,2 @@
 ## Code of Conduct
-Please be kind to others. You may submit an issue if you experience a problem and it will be reviewed at the earliest possible time.
+The MineStat development team is quite welcoming. The expectation is simply that people respect one another and make the best effort to resolve conflicts peacefully.
