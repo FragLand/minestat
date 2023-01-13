@@ -16,13 +16,13 @@ ms = minestat.MineStat('minecraft.frag.land', 25565)
 print('Minecraft server status of %s on port %d:' % (ms.address, ms.port))
 if ms.online:
   print('Server is online running version %s with %s out of %s players.' % (ms.version, ms.current_players, ms.max_players))
+  # Bedrock-specific attribute:
+  if ms.gamemode:
+    print('Game mode: %s' % ms.gamemode)
   print('Message of the day: %s' % ms.motd)
   print('Message of the day without formatting: %s' % ms.stripped_motd)
   print('Latency: %sms' % ms.latency)
   print('Connected using protocol: %s' % ms.slp_protocol)
-  # Bedrock specific attribute:
-  if ms.slp_protocol is minestat.SlpProtocols.BEDROCK_RAKNET:
-    print('Game mode: %s' % ms.gamemode)
 else:
   print('Server is offline!')
 ```

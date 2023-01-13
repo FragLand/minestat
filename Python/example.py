@@ -6,6 +6,8 @@ ms = minestat.MineStat('minecraft.frag.land')
 print('Minecraft server status of %s on port %d:' % (ms.address, ms.port))
 if ms.online:
   print('Server is online running version %s with %s out of %s players.' % (ms.version, ms.current_players, ms.max_players))
+  if ms.gamemode:
+    print('Game mode: %s' % ms.gamemode)
   print('Message of the day: %s' % ms.motd)
   print('Message of the day without formatting: %s' % ms.stripped_motd)
   print('Latency: %sms' % ms.latency)
