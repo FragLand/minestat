@@ -247,7 +247,10 @@ class MineStat:
     if result is not ConnStatus.CONNFAIL:
       self.json_query()
 
-    self.connection_status = result
+    if self.online:
+      self.connection_status = ConnStatus.SUCCESS
+    else:
+      self.connection_status = result
 
   @staticmethod
   def motd_strip_formatting(raw_motd: Union[str, dict]) -> str:
