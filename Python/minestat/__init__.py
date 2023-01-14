@@ -144,7 +144,7 @@ Contains possible SLP (Server List Ping) protocols.
   """
 
 class MineStat:
-  VERSION = "2.4.2"             # MineStat version
+  VERSION = "2.4.3"             # MineStat version
   DEFAULT_TCP_PORT = 25565      # default TCP port for SLP queries
   DEFAULT_BEDROCK_PORT = 19132  # default UDP port for Bedrock/MCPE servers
   DEFAULT_TIMEOUT = 5           # default TCP timeout in seconds
@@ -247,7 +247,10 @@ class MineStat:
     if result is not ConnStatus.CONNFAIL:
       self.json_query()
 
-    self.connection_status = result
+    if self.online:
+      self.connection_status = ConnStatus.SUCCESS
+    else:
+      self.connection_status = result
 
   @staticmethod
   def motd_strip_formatting(raw_motd: Union[str, dict]) -> str:
