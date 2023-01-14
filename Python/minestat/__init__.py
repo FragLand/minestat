@@ -1,5 +1,5 @@
 # minestat.py - A Minecraft server status checker
-# Copyright (C) 2016-2022 Lloyd Dilley, Felix Ern (MindSolve)
+# Copyright (C) 2016-2023 Lloyd Dilley, Felix Ern (MindSolve)
 # http://www.dilley.me/
 #
 # This program is free software; you can redistribute it and/or modify
@@ -144,7 +144,7 @@ Contains possible SLP (Server List Ping) protocols.
   """
 
 class MineStat:
-  VERSION = "2.4.1"             # MineStat version
+  VERSION = "2.4.3"             # MineStat version
   DEFAULT_TCP_PORT = 25565      # default TCP port for SLP queries
   DEFAULT_BEDROCK_PORT = 19132  # default UDP port for Bedrock/MCPE servers
   DEFAULT_TIMEOUT = 5           # default TCP timeout in seconds
@@ -247,7 +247,10 @@ class MineStat:
     if result is not ConnStatus.CONNFAIL:
       self.json_query()
 
-    self.connection_status = result
+    if self.online:
+      self.connection_status = ConnStatus.SUCCESS
+    else:
+      self.connection_status = result
 
   @staticmethod
   def motd_strip_formatting(raw_motd: Union[str, dict]) -> str:
@@ -370,12 +373,18 @@ class MineStat:
 
     self.current_players = int(payload["current_players"])
     self.max_players = int(payload["max_players"])
-    self.version = payload["version"] + " " + payload["motd_2"] + "(" + payload["edition"] + ")"
+    try:
+      self.version = payload["version"] + " " + payload["motd_2"] + " " + "(" + payload["edition"] + ")"
+    except KeyError: # older Bedrock server versions do not respond with the secondary MotD.
+      self.version = payload["version"] + " " + "(" + payload["edition"] + ")"
 
     self.motd = payload["motd_1"]
     self.stripped_motd = self.motd_strip_formatting(self.motd)
 
-    self.gamemode = payload["gamemode"]
+    try:
+      self.gamemode = payload["gamemode"]
+    except KeyError: # older Bedrock server versions do not respond with the game mode.
+      self.gamemode = None
 
     return ConnStatus.SUCCESS
 
