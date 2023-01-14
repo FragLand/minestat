@@ -27,6 +27,7 @@ if ($ms.Online) {
 
 ```powershell
 PS C:\> MineStat -Address "localhost","mc.hypixel.net:25565" -Port 25568 -Protocol Beta,Extendedlegacy,Json -Timeout 2 -verbose
+VERBOSE: MineStat version: 2.0.5
 VERBOSE: Beta, ExtendedLegacy, Json
 VERBOSE: Beta - Success
 VERBOSE: ExtendedLegacy - Success
