@@ -44,9 +44,7 @@ function MineStat {
       })]
     $Protocol = 15,
     # The time in seconds, after which a connection is timed out. 
-    [int]$Timeout = 5,
-    # Display current script version
-    [switch]$version
+    [int]$Timeout = 5
   )
 
   enum ConnStatus {
@@ -71,10 +69,8 @@ function MineStat {
     Unknown = 0
   }
 
-  if ($version){
-    $ModuleInfos = Import-PowerShellDataFile -Path "$PsScriptRoot\MineStat.psd1"
-    Write-Host "MineStat version: $($ModuleInfos.ModuleVersion.ToString())"
-  }
+  $ModuleInfos = Import-PowerShellDataFile -Path "$PsScriptRoot\MineStat.psd1"
+  Write-Verbose "MineStat version: $($ModuleInfos.ModuleVersion.ToString())"
 
   try {
     # Return array if address input is array
@@ -394,7 +390,7 @@ function MineStat {
       $this.online = $true;
       $this.current_players = $payload_obj.current_players
       $this.max_players = $payload_obj.max_players
-      $this.version = "$($payload_obj.version) $($payload_obj.motd_2) ($($payload_obj.edition))"
+      $this.version = @($payload_obj.version, $payload_obj.motd_2, "($($payload_obj.edition))") -ne $null -join " "
       $this.motd = $payload_obj.motd_1
       $this.generateMotds($this.motd)
       $this.Gamemode = $payload_obj.gamemode

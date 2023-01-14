@@ -39,8 +39,9 @@
       ReleaseNotes = @'
 ## 2.0.5
 - Renamed connstatus to connection_status
-- Made verbose command display better 
-- Add -version to display current script version
+- Hide empty motd_2 (bedrock_raknet)
+- Add scriptversion to verbose output
+- Fix verbose output not displaying currentstatus
 
 ## 2.0.4
 - Exposed connstatus
