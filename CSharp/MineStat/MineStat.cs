@@ -361,10 +361,16 @@ namespace MineStatLib
       ServerUp = true;
       CurrentPlayersInt = Convert.ToInt32(dic["current_players"]);
       MaximumPlayersInt = Convert.ToInt32(dic["max_players"]);
-      Version = dic["version"] + " " + dic["motd_2"] + " (" + dic["edition"] + ")";
+      // motd_2 not returned on older bedrock versions
+      if (dic.ContainsKey("motd_2"))
+        Version = dic["version"] + " " + dic["motd_2"] + " (" + dic["edition"] + ")";
+      else
+        Version = dic["version"] + " (" + dic["edition"] + ")";
       Motd = dic["motd_1"];
       Stripped_Motd = strip_motd_formatting(Motd);
-      Gamemode = dic["gamemode"];
+      // gamemode can be empty on older bedrock versions
+      if (dic.ContainsKey("gamemode"))
+        Gamemode = dic["gamemode"];
       return ConnStatus.Success;
     }
     /// <summary>
