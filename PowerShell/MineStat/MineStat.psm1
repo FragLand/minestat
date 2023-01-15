@@ -1,6 +1,6 @@
 ###
 # MineStat.psm1
-# Copyright (C) 2020-2022 Ajoro and MineStat contributors.
+# Copyright (C) 2020-2023 Ajoro and MineStat contributors.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -57,7 +57,7 @@ function MineStat {
     # The connection timed out. (Server under too much load? Firewall rules OK?)
     Timeout = -2
     # The socket to the server could not be established. Server offline, wrong hostname or port?
-    Fail = -3
+    ConnFail = -3
   }
 
   [Flags()] enum SlpProtocol {
@@ -68,6 +68,9 @@ function MineStat {
     Beta = 1
     Unknown = 0
   }
+
+  $ModuleInfos = Import-PowerShellDataFile -Path "$PsScriptRoot\MineStat.psd1"
+  Write-Verbose "MineStat version: $($ModuleInfos.ModuleVersion.ToString())"
 
   try {
     # Return array if address input is array
@@ -118,7 +121,7 @@ function MineStat {
     hidden [string[]]$playerList
     hidden [string]$motd
     hidden [string]$stripped_motd
-    hidden [string]$connstatus = [ConnStatus]::Unknown
+    hidden [string]$connection_status = [ConnStatus]::Unknown
 
     ServerStatus($address, $port, $timeout, [SlpProtocol]$queryprotocol) {
       $this.address = $address
@@ -128,34 +131,34 @@ function MineStat {
 
       # Minecraft Bedrock/Pocket/Education Edition (MCPE/MCEE)
       if ($queryprotocol.HasFlag([SlpProtocol]::BedrockRaknet)) {
-        $this.connstatus = $this.RequestWithRaknetProtocol()
-        Write-Verbose "BedrockRaknet - $this.connstatus"
+        $this.connection_status = $this.RequestWithRaknetProtocol()
+        Write-Verbose "BedrockRaknet - $($this.connection_status.ToString())"
       }
       # Minecraft 1.4 & 1.5 (legacy SLP)
-      if ($queryprotocol.HasFlag([SlpProtocol]::Legacy) -and $this.connstatus -notin [ConnStatus]::Fail, [ConnStatus]::Success) {
-        $this.connstatus = $this.RequestWithLegacyProtocol()
-        Write-Verbose "Legacy - $this.connstatus"
+      if ($queryprotocol.HasFlag([SlpProtocol]::Legacy) -and $this.connection_status -notin [ConnStatus]::ConnFail, [ConnStatus]::Success) {
+        $this.connection_status = $this.RequestWithLegacyProtocol()
+        Write-Verbose "Legacy - $($this.connection_status.ToString())"
       }
       # Minecraft Beta 1.8 to Release 1.3 (beta SLP)
-      if ($queryprotocol.HasFlag([SlpProtocol]::Beta) -and $this.connstatus -notin [ConnStatus]::Fail, [ConnStatus]::Success) {
-        $this.connstatus = $this.RequestWithBetaProtocol()
-        Write-Verbose "Beta - $this.connstatus"
+      if ($queryprotocol.HasFlag([SlpProtocol]::Beta) -and $this.connection_status -notin [ConnStatus]::ConnFail, [ConnStatus]::Success) {
+        $this.connection_status = $this.RequestWithBetaProtocol()
+        Write-Verbose "Beta - $($this.connection_status.ToString())"
       }
       # Minecraft 1.6 (extended legacy SLP)
-      if ($queryprotocol.HasFlag([SlpProtocol]::ExtendedLegacy) -and $this.connstatus -notin [ConnStatus]::Fail) {
+      if ($queryprotocol.HasFlag([SlpProtocol]::ExtendedLegacy) -and $this.connection_status -notin [ConnStatus]::ConnFail) {
         $result = $this.RequestWithExtendedLegacyProtocol()
-        if ($result -ge $this.connstatus){
-          $this.connstatus = $result
+        if ($result -ge $this.connection_status) {
+          $this.connection_status = $result
         }
-        Write-Verbose "ExtendedLegacy - $this.connstatus"
+        Write-Verbose "ExtendedLegacy - $result"
       }
       # Minecraft 1.7+ (JSON SLP)
-      if ($queryprotocol.HasFlag([SlpProtocol]::Json) -and $this.connstatus -notin [ConnStatus]::Fail) {
+      if ($queryprotocol.HasFlag([SlpProtocol]::Json) -and $this.connection_status -notin [ConnStatus]::ConnFail) {
         $result = $this.RequestWithJsonProtocol()
-        if ($result -ge $this.connstatus){
-          $this.connstatus = $result
+        if ($result -ge $this.connection_status) {
+          $this.connection_status = $result
         }
-        Write-Verbose "Json - $this.connstatus"
+        Write-Verbose "Json - $result"
       }
     }
 
@@ -311,7 +314,7 @@ function MineStat {
       catch {
         $this.latency = -1
         $stopwatch.Stop()
-        return [ConnStatus]::Fail
+        return [ConnStatus]::ConnFail
       }
       $stopwatch.Stop()
       $this.latency = $stopwatch.ElapsedMilliseconds
@@ -341,8 +344,10 @@ function MineStat {
           return [ConnStatus]::InvalidResponse
         }
 
-        $responseTimeStamp = [System.BitConverter]::ToInt64((readbytestream $response 8), 0)
-        $responseServerGUID = [System.BitConverter]::ToInt64((readbytestream $response 8), 0)
+        # responseTimeStamp (never used)
+        [System.BitConverter]::ToInt64((readbytestream $response 8), 0)
+        # responseServerGUID (never used)
+        [System.BitConverter]::ToInt64((readbytestream $response 8), 0)
 
         [byte[]]$responseMagic = readbytestream $response 16
 
@@ -352,8 +357,9 @@ function MineStat {
         # if ([System.BitConverter]::IsLittleEndian) {
         #   [System.Array]::Reverse($response);
         # }
-
-        $responseIdStringLength = [System.BitConverter]::ToUInt16((readbytestream $response 2), 0)
+        
+        # responseIdStringLength (never used)
+        [System.BitConverter]::ToUInt16((readbytestream $response 2), 0)
 
         $temp = readbytestream $response $response.Count
         $responseIdString = [System.Text.Encoding]::UTF8.GetString($temp) 
@@ -384,7 +390,7 @@ function MineStat {
       $this.online = $true;
       $this.current_players = $payload_obj.current_players
       $this.max_players = $payload_obj.max_players
-      $this.version = "$($payload_obj.version) $($payload_obj.motd_2) ($($payload_obj.edition))"
+      $this.version = @($payload_obj.version, $payload_obj.motd_2, "($($payload_obj.edition))") -ne $null -join " "
       $this.motd = $payload_obj.motd_1
       $this.generateMotds($this.motd)
       $this.Gamemode = $payload_obj.gamemode
@@ -481,7 +487,7 @@ function MineStat {
         $tcpclient.EndConnect($result)
       }
       catch [System.Net.Sockets.SocketException] {
-        return [ConnStatus]::Fail
+        return [ConnStatus]::ConnFail
       }
       $stopwatch.Stop()
       $this.Latency = $stopwatch.ElapsedMilliseconds
@@ -637,7 +643,7 @@ function MineStat {
         $tcpclient.EndConnect($result)
       }
       catch [System.Net.Sockets.SocketException] {
-        return [ConnStatus]::Fail
+        return [ConnStatus]::ConnFail
       }
       $stopwatch.Stop()
 
@@ -715,7 +721,7 @@ function MineStat {
         $tcpclient.EndConnect($result)
       }
       catch [System.Net.Sockets.SocketException] {
-        return [ConnStatus]::Fail
+        return [ConnStatus]::ConnFail
       }
       $stopwatch.Stop()
 
@@ -790,7 +796,7 @@ function MineStat {
         $tcpclient.EndConnect($result)
       }
       catch [System.Net.Sockets.SocketException] {
-        return [ConnStatus]::Fail
+        return [ConnStatus]::ConnFail
       }
       $stopwatch.Stop()
 
@@ -837,7 +843,7 @@ function MineStat {
       return [ConnStatus]::Success
     }
 
-    [byte[]] NetStreamReadExact([System.Net.Sockets.NetworkStream]$stream, [int]$size) {
+    hidden [byte[]] NetStreamReadExact([System.Net.Sockets.NetworkStream]$stream, [int]$size) {
       $totalReadBytes = 0
       $resultBuffer = New-Object System.Collections.Generic.List[byte]
 

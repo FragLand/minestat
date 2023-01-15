@@ -26,7 +26,8 @@ if ($ms.Online) {
 ### Commandline Example
 
 ```powershell
-PS C:\> MineStat -Address "localhost","mc.hypixel.net" -Port 25565 -Protocol Beta,Extendedlegacy,Json -Timeout 2 -verbose
+PS C:\> MineStat -Address "localhost","mc.hypixel.net:25565" -Port 25568 -Protocol Beta,Extendedlegacy,Json -Timeout 2 -verbose
+VERBOSE: MineStat version: 2.0.5
 VERBOSE: Beta, ExtendedLegacy, Json
 VERBOSE: Beta - Success
 VERBOSE: ExtendedLegacy - Success
@@ -37,7 +38,7 @@ VERBOSE: ExtendedLegacy - Unknown
 VERBOSE: Json - Success
 
 address         : localhost
-port            : 25565
+port            : 25568
 online          : True
 current_players : 3
 max_players     : 20
@@ -74,21 +75,25 @@ slp_protocol    : BedrockRaknet
 - `Address`: str[] / str
   - Address (domain or IP-address) of the server to connect to. 
   - Can take array input and also take `address:port` as input.
+  - Default: localhost
 - `Port`: uint
   - Port of the server to connect to.
+  - Default: 25565
 - `Protocol`: int / str / array
-  - SlpProtocol to use. Dosn't use bedrock by default.
+  - SlpProtocol to use.
+  - Dosn't use BedrockRaknet by default.
 - `Timeout`: int
   - Time in seconds before timeout (for each SlpProtocol)
+  - Default: 5
 
 #### Available attributes
 
-- `online`: bool
-  - Whether the server is online and reachable with the specified protocol. True if online.
 - `address`: str
   - Addresss (domain or IP-address) of the server to connect to.
 - `port`: int
   - Port of the server to connect to.
+- `online`: bool
+  - Whether the server is online and reachable with the specified protocol. True if online.
 - `version`: str
   - String describing the server Minecraft version. In vanilla servers the version number (e.g. 1.18.2),
     may be modified by the server (e.g. by ViaVersion). On Bedrock servers includes the Edition (MCEE/MCPE)
@@ -101,7 +106,7 @@ slp_protocol    : BedrockRaknet
   - Count of maximum allowed players as reported by the server.
 - `latency`: int
   - Time in milliseconds the server took to respond to the information request.
-- `slp_protocol`: SlpProtocol
+- `slp_protocol`: minestat.SlpProtocol
   - Protocol used to retrieve information from the server.
 
 #### Extra attributes
@@ -110,8 +115,10 @@ slp_protocol    : BedrockRaknet
   - Gamemode currently active on the server (Creative/Survival/Adventure). None if the server is not a Bedrock server.
 - `playerlist`: str[] (**_Json specific_**)
   - List of current playernames. \*Ignored by some servers.
-- `favicion`: str (**_Json specific_**)
+- `favicon`: str (**_Json specific_**)
   - Server favicon in base64.
+- `connection_status`: minestat.ConnStatus
+  - Status of connection ("Success", "Connfail", "InvalidResponse", "Timeout", or "Unknown").
 - `motd`: str
   - The raw MOTD returned by the server. May include formatting codes (§) or JSON chat components.
   - Examples (See https://github.com/FragLand/minestat/issues/84#issuecomment-895375890):
@@ -121,3 +128,5 @@ slp_protocol    : BedrockRaknet
   - The MOTD with all formatting removed ("human readable").
   - Example (See https://github.com/FragLand/minestat/issues/84#issuecomment-895375890)
     - Above MOTD example: `~~ MAGIC1.16 v3~~`
+- `timeout`: int
+  - Time in seconds before timeout (for each SlpProtocol) from input
