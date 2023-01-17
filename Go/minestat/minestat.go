@@ -24,7 +24,6 @@ import "net"
 import "strconv"
 import "strings"
 import "time"
-// To install the unicode dependency below: go get golang.org/x/text/encoding/unicode
 import "golang.org/x/text/encoding/unicode"
 
 const VERSION string = "2.0.0"     // MineStat version
