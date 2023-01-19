@@ -18,7 +18,7 @@ Please follow the existing styling as closely as possible for any code contribut
 
 * Indent by 2 spaces.
 
-* Use Allman style for blocks. For example:
+* Use Allman style for blocks (this is not applicable to Go unfortunately). For example:
    ```c
    int func()
    {
@@ -34,7 +34,7 @@ Please follow the existing styling as closely as possible for any code contribut
 
 * Constant names should typically be capitalized. For example:
    ```c
-   const double PI = 3.141592653589793238463;
+   const double PI = 3.14159;
    ```
 
-* Variable and function names containing multiple words should be separated with an underscore `_`. Use PascalCase for C# and camelCase for Java.
+* Variable and function names containing multiple words should be separated with an underscore `_`. Use PascalCase for C# method names and camelCase for Java method names. Also use camelCase for C# method parameters and local variables.
