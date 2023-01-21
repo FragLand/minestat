@@ -85,7 +85,7 @@ class MineStat
     @port = port          # TCP/UDP port of server
     @online               # online or offline?
     @version              # server version
-    @mode = "Unspecified" # game mode (Bedrock/Pocket Edition only)
+    @mode                 # game mode (Bedrock/Pocket Edition only)
     @motd                 # message of the day
     @stripped_motd        # message of the day without formatting
     @current_players      # current number of players online
