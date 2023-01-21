@@ -124,10 +124,21 @@ function MineStat {
     hidden [string]$connection_status = [ConnStatus]::Unknown
 
     ServerStatus($address, $port, $timeout, [SlpProtocol]$queryprotocol) {
-      $this.address = $address
-      $this.port = $port
+      try {
+        $resolved = Resolve-DnsName -type srv _minecraft._tcp.$address -ErrorAction Stop
+        if ($resolved.type -ne "SRV") {
+          throw
+        }
+        $this.address = $resolved.NameTarget
+        $this.port = $resolved.port
+        Write-Verbose ("Found {0}:{1}" -f $this.address, $this.port)
+      }
+      catch {
+        $this.address = $address
+        $this.port = $port
+      }
       $this.timeout = $timeout
-      Write-Verbose $queryprotocol
+      Write-Verbose "Checking SlpProtocol: $queryprotocol"
 
       # Minecraft Bedrock/Pocket/Education Edition (MCPE/MCEE)
       if ($queryprotocol.HasFlag([SlpProtocol]::BedrockRaknet)) {
