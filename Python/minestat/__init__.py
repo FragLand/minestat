@@ -374,9 +374,9 @@ class MineStat:
     self.current_players = int(payload["current_players"])
     self.max_players = int(payload["max_players"])
     try:
-      self.version = payload["version"] + " " + payload["motd_2"] + " " + "(" + payload["edition"] + ")"
+      self.version = payload["version"] + " " + payload["motd_2"] + " (" + payload["edition"] + ")"
     except KeyError: # older Bedrock server versions do not respond with the secondary MotD.
-      self.version = payload["version"] + " " + "(" + payload["edition"] + ")"
+      self.version = payload["version"] + " (" + payload["edition"] + ")"
 
     self.motd = payload["motd_1"]
     self.stripped_motd = self.motd_strip_formatting(self.motd)
