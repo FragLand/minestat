@@ -150,12 +150,12 @@ class MineStat
           retval = bedrock_request()
         end
     end
-    set_connection_status(retval) unless @online
+    set_connection_status(retval)
   end
 
   # Sets connection status
   def set_connection_status(retval)
-    @connection_status = "Success" if retval == Retval::SUCCESS
+    @connection_status = "Success" if @online || retval == Retval::SUCCESS
     @connection_status = "Fail" if retval == Retval::CONNFAIL
     @connection_status = "Timeout" if retval == Retval::TIMEOUT
     @connection_status = "Unknown" if retval == Retval::UNKNOWN
