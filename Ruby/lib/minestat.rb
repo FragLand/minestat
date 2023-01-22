@@ -103,17 +103,25 @@ class MineStat
     @try_all = false      # try all protocols?
 
     @try_all = true if request_type == Request::NONE
+    resolve_srv(address, port)
+    set_connection_status(attempt_protocols())
+  end
 
+  # Attempts to resolve SRV records
+  def resolve_srv(address, port)
     begin
       resolver = Resolv::DNS.new
       res = resolver.getresource("_minecraft._tcp.#{@address}", Resolv::DNS::Resource::IN::SRV)
       @address = res.target.to_s # SRV target
       @port = res.port.to_i      # SRV port
-    rescue => exception          # primarily catch Resolv::ResolvError
+    rescue => exception          # primarily catch Resolv::ResolvError and revert if unable to resolve SRV record(s)
       @address = address
       @port = port
     end
+  end
 
+  # Attempts the use of various protocols
+  def attempt_protocols()
     case request_type
       when Request::BETA
         retval = beta_request()
@@ -150,7 +158,7 @@ class MineStat
           retval = bedrock_request()
         end
     end
-    set_connection_status(retval)
+    return retval
   end
 
   # Sets connection status
@@ -197,7 +205,7 @@ class MineStat
     rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH
       return Retval::CONNFAIL
     rescue => exception
-      $stderr.puts exception
+      #$stderr.puts exception
       return Retval::UNKNOWN
     end
     return Retval::SUCCESS
