@@ -18,6 +18,7 @@
 
 require 'base64'
 require 'json'
+require 'resolv'
 require 'socket'
 require 'timeout'
 
@@ -102,6 +103,16 @@ class MineStat
     @try_all = false      # try all protocols?
 
     @try_all = true if request_type == Request::NONE
+
+    begin
+      resolver = Resolv::DNS.new
+      res = resolver.getresource("_minecraft._tcp.#{@address}", Resolv::DNS::Resource::IN::SRV)
+      @address = res.target.to_s # SRV target
+      @port = res.port.to_i      # SRV port
+    rescue => exception          # primarily catch Resolv::ResolvError
+      @address = address
+      @port = port
+    end
 
     case request_type
       when Request::BETA
