@@ -1,5 +1,5 @@
 # minestat.rb - A Minecraft server status checker
-# Copyright (C) 2014-2022 Lloyd Dilley
+# Copyright (C) 2014-2023 Lloyd Dilley
 # http://www.dilley.me/
 #
 # This program is free software; you can redistribute it and/or modify
@@ -18,6 +18,7 @@
 
 require 'base64'
 require 'json'
+require 'resolv'
 require 'socket'
 require 'timeout'
 
@@ -25,7 +26,7 @@ require 'timeout'
 # Provides a ruby interface for polling Minecraft server status.
 class MineStat
   # MineStat version
-  VERSION = "2.2.4"
+  VERSION = "2.3.0"
   # Number of values expected from server
   NUM_FIELDS = 6
   # Number of values expected from a 1.8b/1.3 server
@@ -85,7 +86,7 @@ class MineStat
     @port = port          # TCP/UDP port of server
     @online               # online or offline?
     @version              # server version
-    @mode = "Unspecified" # game mode (Bedrock/Pocket Edition only)
+    @mode                 # game mode (Bedrock/Pocket Edition only)
     @motd                 # message of the day
     @stripped_motd        # message of the day without formatting
     @current_players      # current number of players online
@@ -102,7 +103,25 @@ class MineStat
     @try_all = false      # try all protocols?
 
     @try_all = true if request_type == Request::NONE
+    resolve_srv(address, port)
+    set_connection_status(attempt_protocols())
+  end
 
+  # Attempts to resolve SRV records
+  def resolve_srv(address, port)
+    begin
+      resolver = Resolv::DNS.new
+      res = resolver.getresource("_minecraft._tcp.#{@address}", Resolv::DNS::Resource::IN::SRV)
+      @address = res.target.to_s # SRV target
+      @port = res.port.to_i      # SRV port
+    rescue => exception          # primarily catch Resolv::ResolvError and revert if unable to resolve SRV record(s)
+      @address = address
+      @port = port
+    end
+  end
+
+  # Attempts the use of various protocols
+  def attempt_protocols()
     case request_type
       when Request::BETA
         retval = beta_request()
@@ -139,12 +158,12 @@ class MineStat
           retval = bedrock_request()
         end
     end
-    set_connection_status(retval) unless @online
+    return retval
   end
 
   # Sets connection status
   def set_connection_status(retval)
-    @connection_status = "Success" if retval == Retval::SUCCESS
+    @connection_status = "Success" if @online || retval == Retval::SUCCESS
     @connection_status = "Fail" if retval == Retval::CONNFAIL
     @connection_status = "Timeout" if retval == Retval::TIMEOUT
     @connection_status = "Unknown" if retval == Retval::UNKNOWN
@@ -186,7 +205,7 @@ class MineStat
     rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH
       return Retval::CONNFAIL
     rescue => exception
-      $stderr.puts exception
+      #$stderr.puts exception
       return Retval::UNKNOWN
     end
     return Retval::SUCCESS
