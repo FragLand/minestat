@@ -26,14 +26,15 @@ if ($ms.Online) {
 ### Commandline Example
 
 ```powershell
-PS C:\> MineStat -Address "localhost","mc.hypixel.net:25565" -Port 25568 -Protocol Beta,Extendedlegacy,Json -Timeout 2 -verbose
-VERBOSE: MineStat version: 2.0.5
-VERBOSE: Beta, ExtendedLegacy, Json
-VERBOSE: Beta - Success
+PS C:\> MineStat -Address "localhost","hypixel.net" -Port 25568 -Protocol Extendedlegacy,Json -Timeout 2 -verbose
+VERBOSE: MineStat version: 2.0.6
+VERBOSE: _minecraft._tcp.localhost
+VERBOSE: Checking SlpProtocol: ExtendedLegacy, Json
 VERBOSE: ExtendedLegacy - Success
 VERBOSE: Json - Unknown
-VERBOSE: Beta, ExtendedLegacy, Json
-VERBOSE: Beta - Unknown
+VERBOSE: _minecraft._tcp.hypixel.net
+VERBOSE: Found mc.hypixel.net:25565
+VERBOSE: Checking SlpProtocol: ExtendedLegacy, Json
 VERBOSE: ExtendedLegacy - Unknown
 VERBOSE: Json - Success
 
@@ -55,7 +56,7 @@ max_players     : 200000
 latency         : 22
 version         : Requires MC 1.8 / 1.19
 formatted_motd  :                 Hypixel Network [1.8-1.19]
-                    SUMMER EVENT - LEVEL UP, NEW COSMETICS
+                    
 slp_protocol    : Json
 
 PS C:\> MineStat "mc.advancius.net:19132" -Protocol BedrockRaknet
@@ -75,9 +76,11 @@ slp_protocol    : BedrockRaknet
 - `Address`: str[] / str
   - Address (domain or IP-address) of the server to connect to. 
   - Can take array input and also take `address:port` as input.
+  - Tries to detect address using SRV record first.
   - Default: localhost
 - `Port`: uint
   - Port of the server to connect to.
+  - Tries to detect port using SRV record first.
   - Default: 25565
 - `Protocol`: int / str / array
   - SlpProtocol to use.
