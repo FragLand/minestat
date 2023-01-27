@@ -59,10 +59,7 @@ class Example
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/FragLand/minestat/Go/minestat.svg)](https://pkg.go.dev/github.com/FragLand/minestat/Go/minestat)
 
-**Note:** To use minestat for go in your project/module you need to install it using:\
-`go get github.com/FragLand/minestat/Go/minestat`\
-This only works in go modules so be sure to check if you are working in one, if not create one using:\
-`go mod init example.com/myprojekt`
+To use the Go package: `go get github.com/FragLand/minestat/Go/minestat`
 
 ```go
 package main
