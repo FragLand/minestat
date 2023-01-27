@@ -59,8 +59,7 @@ class Example
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/FragLand/minestat/Go/minestat.svg)](https://pkg.go.dev/github.com/FragLand/minestat/Go/minestat)
 
-**Note:** MineStat for Go requires UTF-16 string support to handle character encoding conversion. To install this dependency:\
-`go get golang.org/x/text/encoding/unicode`
+To use the Go package: `go get github.com/FragLand/minestat/Go/minestat`
 
 ```go
 package main
