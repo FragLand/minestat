@@ -81,7 +81,7 @@ class MineStat
 
   ##
   # Instantiate an instance of MineStat and poll the specified server for information
-  def initialize(address, port = DEFAULT_TCP_PORT, timeout = DEFAULT_TIMEOUT, request_type = Request::NONE)
+  def initialize(address, port = DEFAULT_TCP_PORT, timeout = DEFAULT_TIMEOUT, request_type = Request::NONE, debug = false)
     @address = address    # address of server
     @port = port          # TCP/UDP port of server
     @online               # online or offline?
@@ -101,6 +101,7 @@ class MineStat
     @request_type         # protocol version
     @connection_status    # status of connection ("Success", "Fail", "Timeout", or "Unknown")
     @try_all = false      # try all protocols?
+    @debug = debug        # debug mode
 
     @try_all = true if request_type == Request::NONE
     resolve_srv(address, port)
@@ -115,6 +116,7 @@ class MineStat
       @address = res.target.to_s # SRV target
       @port = res.port.to_i      # SRV port
     rescue => exception          # primarily catch Resolv::ResolvError and revert if unable to resolve SRV record(s)
+      $stderr.puts exception if @debug
       @address = address
       @port = port
     end
@@ -205,7 +207,7 @@ class MineStat
     rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH
       return Retval::CONNFAIL
     rescue => exception
-      #$stderr.puts exception
+      $stderr.puts exception if @debug
       return Retval::UNKNOWN
     end
     return Retval::SUCCESS
@@ -235,8 +237,8 @@ class MineStat
         end
       end
     rescue
-    #rescue => exception
-      #$stderr.puts exception
+    rescue => exception
+      $stderr.puts exception if @debug
       return Retval::UNKNOWN
     end
 
@@ -310,7 +312,7 @@ class MineStat
     rescue Timeout::Error
       return Retval::TIMEOUT
     rescue => exception
-      $stderr.puts exception
+      $stderr.puts exception if @debug
       return Retval::UNKNOWN
     end
     if retval == Retval::SUCCESS
@@ -352,7 +354,7 @@ class MineStat
     rescue Timeout::Error
       return Retval::TIMEOUT
     rescue => exception
-      $stderr.puts exception
+      $stderr.puts exception if @debug
       return Retval::UNKNOWN
     end
     if retval == Retval::SUCCESS
@@ -409,7 +411,7 @@ class MineStat
     rescue Timeout::Error
       return Retval::TIMEOUT
     rescue => exception
-      $stderr.puts exception
+      $stderr.puts exception if @debug
       return Retval::UNKNOWN
     end
     if retval == Retval::SUCCESS
@@ -483,7 +485,7 @@ class MineStat
     rescue JSON::ParserError
       return Retval::UNKNOWN
     rescue => exception
-      $stderr.puts exception
+      $stderr.puts exception if @debug
       return Retval::UNKNOWN
     end
     if retval == Retval::SUCCESS
@@ -505,7 +507,7 @@ class MineStat
         break if json_data.length >= json_len
       end
     rescue => exception
-      $stderr.puts exception
+      $stderr.puts exception if @debug
     end
     return json_data
   end
@@ -571,7 +573,7 @@ class MineStat
     rescue Timeout::Error
       return Retval::TIMEOUT
     rescue => exception
-      $stderr.puts exception
+      $stderr.puts exception if @debug
       return Retval::UNKNOWN
     end
     if retval == Retval::SUCCESS
@@ -637,4 +639,7 @@ class MineStat
 
   # Returns whether or not all ping protocols should be attempted
   attr_reader :try_all
+
+  # Whether or not debug mode is enabled
+  attr_reader :debug
 end
