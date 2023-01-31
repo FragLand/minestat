@@ -1,4 +1,5 @@
 .gradle/
+.yardoc/
 *.class
 *.pyc
 __pycache__/
@@ -6,6 +7,7 @@ bin/
 blib/
 build/
 dist/
+doc/
 Makefile
 Minecraft-ServerStatus-*.tar.gz
 minestat.egg-info/
@@ -19,11 +21,11 @@ tests/
 # Ignore Python virtual environments
 venv/
 
-# Ignore all compiled c# files
+# Ignore all compiled C# files
 *.exe
 *.dll
 
-#Visual Studio Files
+# Visual Studio files
 .vs/
 **/bin/Debug/
 **/bin/Release/
