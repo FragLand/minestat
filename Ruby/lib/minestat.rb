@@ -848,6 +848,10 @@ class MineStat
   # @since 0.1.2
   attr_reader :latency
 
+  # TCP/UDP timeout in seconds
+  # @since 0.1.2
+  attr_accessor :timeout
+
   # Protocol used to request data from a Minecraft server
   attr_reader :request_type
 
