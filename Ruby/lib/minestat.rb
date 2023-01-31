@@ -237,9 +237,10 @@ class MineStat
     return Retval::SUCCESS
   end
 
-  # Populates object fields after connecting
-  def parse_data(delimiter, is_beta = false)
+  # Validates server response based on beginning of the packet
+  def check_response()
     data = nil
+    retval = nil
     begin
       if @request_type == "Bedrock/Pocket Edition"
         if @server.recv(1, Socket::MSG_PEEK).unpack('C').first == 0x1C # unconnected pong packet
@@ -248,7 +249,7 @@ class MineStat
           @server.close
         else
           @server.close
-          return Retval::UNKNOWN
+          retval = Retval::UNKNOWN
         end
       elsif @request_type == "UT3/GS4 Query"
         if @server.recv(1, Socket::MSG_PEEK).unpack('C').first == 0x00 # stat packet
@@ -265,19 +266,23 @@ class MineStat
           @server.close
         else
           @server.close
-          return Retval::UNKNOWN
+          retval = Retval::UNKNOWN
         end
       end
-    rescue
     rescue => exception
       $stderr.puts exception if @debug
-      return Retval::UNKNOWN
+      return nil, Retval::UNKNOWN
     end
+    retval = Retval::UNKNOWN if data == nil || data.empty?
+    return data, retval
+  end
 
-    if data == nil || data.empty?
-      return Retval::UNKNOWN
-    end
+  # Populates object fields after connecting
+  def parse_data(delimiter, is_beta = false)
+    data, retval = check_response()
+    return retval if retval == Retval::UNKNOWN
 
+    server_info = nil
     if @request_type == "UT3/GS4 Query"
       server_info = data.split("\x00\x00\x01player_\x00\x00")
     else
