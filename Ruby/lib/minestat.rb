@@ -107,6 +107,7 @@ class MineStat
     @stripped_motd        # message of the day without formatting
     @current_players      # current number of players online
     @max_players          # maximum player capacity
+    @player_list          # list of players (UT3/GS4 query only)
     @plugin_list          # list of plugins (UT3/GS4 query only)
     @protocol             # protocol level
     @json_data            # JSON data for 1.7 queries
@@ -308,6 +309,7 @@ class MineStat
       end
     elsif @request_type == "UT3/GS4 Query"
       if server_info != nil
+        @player_list = server_info[1].split(delimiter) unless server_info[1].nil? || server_info[1].empty?
         server_info = Hash[*server_info[0].split(delimiter).flatten(1)]
         @version = server_info["version"]
         @motd = server_info["hostname"]
@@ -723,6 +725,9 @@ class MineStat
 
   # Returns the maximum player count
   attr_reader :max_players
+
+  # List of players
+  attr_reader :player_list
 
   # List of plugins
   attr_reader :plugin_list
