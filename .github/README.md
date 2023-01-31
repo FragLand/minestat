@@ -245,7 +245,7 @@ ms = MineStat.new("minecraft.frag.land", 25565)
 puts "Minecraft server status of #{ms.address} on port #{ms.port}:"
 if ms.online
   puts "Server is online running version #{ms.version} with #{ms.current_players} out of #{ms.max_players} players."
-  puts "Game mode: #{ms.mode}" if ms.request_type == "Bedrock/Pocket Edition"
+  puts "Game mode: #{ms.mode}" if ms.mode
   puts "Message of the day: #{ms.motd}"
   puts "Message of the day without formatting: #{ms.stripped_motd}"
   puts "Latency: #{ms.latency}ms"
