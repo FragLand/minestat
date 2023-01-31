@@ -22,81 +22,112 @@ require 'resolv'
 require 'socket'
 require 'timeout'
 
-##
-# Provides a ruby interface for polling Minecraft server status.
+# @author Lloyd Dilley
+
+# Provides a Ruby interface for polling the status of Minecraft servers
 class MineStat
   # MineStat version
   VERSION = "3.0.0"
+
   # Number of values expected from server
   NUM_FIELDS = 6
-  # Number of values expected from a 1.8b/1.3 server
+
+  # Number of values expected from a 1.8b - 1.3 server
   NUM_FIELDS_BETA = 3
+
   # Maximum number of bytes a varint can be
   MAX_VARINT_SIZE = 5
+
   # Default TCP port
   DEFAULT_TCP_PORT = 25565
+
   # Bedrock/Pocket Edition default UDP port
   DEFAULT_BEDROCK_PORT = 19132
+
   # Default TCP/UDP timeout in seconds
   DEFAULT_TIMEOUT = 5
+
   # Bedrock/Pocket Edition packet offset in bytes (1 + 8 + 8 + 16 + 2)
-  # Unconnected pong (0x1C) = 1 byte
-  # Timestamp as a long = 8 bytes
-  # Server GUID as a long = 8 bytes
-  # Magic number = 16 bytes
-  # String ID length = 2 bytes
+  #   Unconnected pong (0x1C) = 1 byte
+  #   Timestamp as a long = 8 bytes
+  #   Server GUID as a long = 8 bytes
+  #   Magic number = 16 bytes
+  #   String ID length = 2 bytes
   BEDROCK_PACKET_OFFSET = 35
+
   # UT3/GS4 query handshake packet size in bytes (1 + 4 + 13)
   #   Handshake (0x09) = 1 byte
   #   Session ID = 4 bytes
   #   Challenge token = variable null-terminated string up to 13 bytes(?)
   QUERY_HANDSHAKE_SIZE = 18
+
   # UT3/GS4 query handshake packet offset for challenge token in bytes (1 + 4)
   #  Handshake (0x09) = 1 byte
   #  Session ID = 4 bytes
   QUERY_HANDSHAKE_OFFSET = 5
+
   # UT3/GS4 query full stat packet offset in bytes (1 + 4 + 11)
   #   Stat (0x00) = 1 byte
   #   Session ID = 4 bytes
   #   Padding = 11 bytes
   QUERY_STAT_OFFSET = 16
 
-  ##
-  # Stores constants that represent the results of a server ping
+  # These constants represent the result of a server request
   module Retval
     # The server ping completed successfully
     SUCCESS = 0
+
     # The server ping failed due to a connection error
     CONNFAIL = -1
+
     # The server ping failed due to a connection time out
     TIMEOUT = -2
+
     # The server ping failed for an unknown reason
     UNKNOWN = -3
   end
 
-  ##
-  # Stores constants that represent the different kinds of server
-  # list pings/requests that a Minecraft server might expect when
-  # being polled for status information.
+  # These constants represent the various protocols used when requesting server data
   module Request
     # Try everything
     NONE = -1
+
     # Server versions 1.8b to 1.3
     BETA = 0
+
     # Server versions 1.4 to 1.5
     LEGACY = 1
+
     # Server version 1.6
     EXTENDED = 2
+
     # Server versions 1.7 to latest
     JSON = 3
+
     # Bedrock/Pocket Edition
     BEDROCK = 4
+
     # Unreal Tournament 3/GameSpy 4 query
     QUERY = 5
   end
 
-  ##
-  # Instantiate an instance of MineStat and poll the specified server for information
+  # Instantiates a MineStat object and polls the specified server for information
+  # @param address [String] Minecraft server address
+  # @param port [Integer] Minecraft server TCP or UDP port
+  # @param timeout [Integer] TCP/UDP timeout in seconds
+  # @param request_type [Request] Protocol used to poll a Minecraft server
+  # @param debug [Boolean] Enable or disable error output
+  # @return [MineStat] A MineStat object
+  # @example Simply connect to an address
+  #   ms = MineStat.new("minecraft.frag.land")
+  # @example Connect to an address on a certain TCP or UDP port
+  #   ms = MineStat.new("minecraft.frag.land", 25567)
+  # @example Same as above example and additionally includes a timeout in seconds
+  #   ms = MineStat.new("minecraft.frag.land", 25567, 3)
+  # @example Same as above example and additionally includes an explicit protocol to use
+  #   ms = MineStat.new("minecraft.frag.land", 25567, 3, MineStat::Request::QUERY)
+  # @example Connect to a Bedrock server and enable debug mode
+  #   ms = MineStat.new("minecraft.frag.land", 19132, 3, MineStat::Request::BEDROCK, true)
   def initialize(address, port = DEFAULT_TCP_PORT, timeout = DEFAULT_TIMEOUT, request_type = Request::NONE, debug = false)
     @address = address    # address of server
     @port = port          # TCP/UDP port of server
@@ -123,10 +154,13 @@ class MineStat
 
     @try_all = true if request_type == Request::NONE
     resolve_srv(address, port)
-    set_connection_status(attempt_protocols())
+    set_connection_status(attempt_protocols(request_type))
   end
 
   # Attempts to resolve SRV records
+  # @param address [String] Minecraft server address
+  # @param port [Integer] Minecraft server TCP or UDP port
+  # @return [Boolean] Whether or not SRV resolution was successful
   def resolve_srv(address, port)
     begin
       resolver = Resolv::DNS.new
@@ -137,11 +171,15 @@ class MineStat
       $stderr.puts exception if @debug
       @address = address
       @port = port
+      return false
     end
+    return true
   end
 
   # Attempts the use of various protocols
-  def attempt_protocols()
+  # @param request_type [Request] Protocol used to poll a Minecraft server
+  # @return [Retval] Return value
+  def attempt_protocols(request_type)
     case request_type
       when Request::BETA
         retval = beta_request()
@@ -188,6 +226,7 @@ class MineStat
   end
 
   # Sets connection status
+  # @param retval [Retval] Return value
   def set_connection_status(retval)
     @connection_status = "Success" if @online || retval == Retval::SUCCESS
     @connection_status = "Fail" if retval == Retval::CONNFAIL
@@ -214,12 +253,11 @@ class MineStat
     @stripped_motd = @stripped_motd.gsub(/§./, "")
   end
 
-  ##
   # Establishes a connection to the Minecraft server
   def connect()
     begin
-      if @request_type == Request::BEDROCK || @request_type == "Bedrock/Pocket Edition"
-        @port = DEFAULT_BEDROCK_PORT if @port == DEFAULT_TCP_PORT && @try_all
+      if @request_type == Request::BEDROCK || @request_type == "Bedrock/Pocket Edition" || @request_type == "UT3/GS4 Query"
+        @port = DEFAULT_BEDROCK_PORT if @port == DEFAULT_TCP_PORT && @request_type != "UT3/GS4 Query" && @try_all
         start_time = Time.now
         @server = UDPSocket.new
         @server.connect(@address, @port)
@@ -238,6 +276,7 @@ class MineStat
   end
 
   # Validates server response based on beginning of the packet
+  # @return [String, Retval] Raw data received from a Minecraft server and the return value
   def check_response()
     data = nil
     retval = nil
@@ -277,7 +316,9 @@ class MineStat
     return data, retval
   end
 
-  # Populates object fields after connecting
+  # Populates object fields after retrieving data from a Minecraft server
+  # @param delimiter [String] Delimiter used to split a string into an array
+  # @param is_beta [Boolean] Whether or not the Minecraft server is using version 1.8b to 1.3
   def parse_data(delimiter, is_beta = false)
     data, retval = check_response()
     return retval if retval == Retval::UNKNOWN
@@ -348,17 +389,19 @@ class MineStat
     return Retval::SUCCESS
   end
 
-  ##
-  # 1.8 beta through 1.3 servers communicate as follows for a ping request:
-  # 1. Client sends \xFE (server list ping)
-  # 2. Server responds with:
-  #   2a. \xFF (kick packet)
-  #   2b. data length
-  #   2c. 3 fields delimited by \u00A7 (section symbol)
-  # The 3 fields, in order, are:
-  #   * message of the day
-  #   * current players
-  #   * max players
+  # 1.8b - 1.3 (SLP request)
+  # @note
+  #   1. Client sends 0xFE (server list ping)
+  #   2. Server responds with:
+  #     2a. 0xFF (kick packet)
+  #     2b. data length
+  #     2c. 3 fields delimited by \u00A7 (section symbol)
+  #   The 3 fields, in order, are:
+  #     * message of the day
+  #     * current players
+  #     * max players
+  # @return [Retval] Return value
+  # @see https://wiki.vg/Server_List_Ping#Beta_1.8_to_1.3
   def beta_request()
     retval = nil
     begin
@@ -382,25 +425,27 @@ class MineStat
     return retval
   end
 
-  ##
-  # 1.4 and 1.5 servers communicate as follows for a ping request:
-  # 1. Client sends:
-  #   1a. \xFE (server list ping)
-  #   1b. \x01 (server list ping payload)
-  # 2. Server responds with:
-  #   2a. \xFF (kick packet)
-  #   2b. data length
-  #   2c. 6 fields delimited by \x00 (null)
-  # The 6 fields, in order, are:
-  #   * the section symbol and 1
-  #   * protocol version
-  #   * server version
-  #   * message of the day
-  #   * current players
-  #   * max players
+  # 1.4 and 1.5 (SLP request)
+  # @note
+  #   1. Client sends:
+  #     1a. 0xFE (server list ping)
+  #     1b. 0x01 (server list ping payload)
+  #   2. Server responds with:
+  #     2a. 0xFF (kick packet)
+  #     2b. data length
+  #     2c. 6 fields delimited by 0x00 (null)
+  #   The 6 fields, in order, are:
+  #     * the section symbol and 1
+  #     * protocol version
+  #     * server version
+  #     * message of the day
+  #     * current players
+  #     * max players
   #
-  # The protocol version corresponds with the server version and can be the
-  # same for different server versions.
+  #   The protocol version corresponds with the server version and can be the
+  #   same for different server versions.
+  # @return [Retval] Return value
+  # @see https://wiki.vg/Server_List_Ping#1.4_to_1.5
   def legacy_request()
     retval = nil
     begin
@@ -424,33 +469,35 @@ class MineStat
     return retval
   end
 
-  ##
-  # 1.6 servers communicate as follows for a ping request:
-  # 1. Client sends:
-  #   1a. \xFE (server list ping)
-  #   1b. \x01 (server list ping payload)
-  #   1c. \xFA (plugin message)
-  #   1d. \x00\x0B (11 which is the length of "MC|PingHost")
-  #   1e. "MC|PingHost" encoded as a UTF-16BE string
-  #   1f. length of remaining data as a short: remote address (encoded as UTF-16BE) + 7
-  #   1g. arbitrary 1.6 protocol version (\x4E for example for 78)
-  #   1h. length of remote address as a short
-  #   1i. remote address encoded as a UTF-16BE string
-  #   1j. remote port as an int
-  # 2. Server responds with:
-  #   2a. \xFF (kick packet)
-  #   2b. data length
-  #   2c. 6 fields delimited by \x00 (null)
-  # The 6 fields, in order, are:
-  #   * the section symbol and 1
-  #   * protocol version
-  #   * server version
-  #   * message of the day
-  #   * current players
-  #   * max players
+  # 1.6 (SLP request)
+  # @note
+  #   1. Client sends:
+  #     1a. 0xFE (server list ping)
+  #     1b. 0x01 (server list ping payload)
+  #     1c. 0xFA (plugin message)
+  #     1d. 0x00 0x0B (11 which is the length of "MC|PingHost")
+  #     1e. "MC|PingHost" encoded as a UTF-16BE string
+  #     1f. length of remaining data as a short: remote address (encoded as UTF-16BE) + 7
+  #     1g. arbitrary 1.6 protocol version (0x4E for example for 78)
+  #     1h. length of remote address as a short
+  #     1i. remote address encoded as a UTF-16BE string
+  #     1j. remote port as an int
+  #   2. Server responds with:
+  #     2a. 0xFF (kick packet)
+  #     2b. data length
+  #     2c. 6 fields delimited by 0x00 (null)
+  #   The 6 fields, in order, are:
+  #     * the section symbol and 1
+  #     * protocol version
+  #     * server version
+  #     * message of the day
+  #     * current players
+  #     * max players
   #
   # The protocol version corresponds with the server version and can be the
   # same for different server versions.
+  # @return [Retval] Return value
+  # @see https://wiki.vg/Server_List_Ping#1.6
   def extended_legacy_request()
     retval = nil
     begin
@@ -481,22 +528,24 @@ class MineStat
     return retval
   end
 
-  ##
-  # 1.7 to current servers communicate as follows for a ping request:
-  # 1. Client sends:
-  #   1a. \x00 (handshake packet containing the fields specified below)
-  #   1b. \x00 (request)
-  # The handshake packet contains the following fields respectively:
-  #     1. protocol version as a varint (\x00 suffices)
-  #     2. remote address as a string
-  #     3. remote port as an unsigned short
-  #     4. state as a varint (should be 1 for status)
-  # 2. Server responds with:
-  #   2a. \x00 (JSON response)
-  # An example JSON string contains:
-  # {'players': {'max': 20, 'online': 0},
-  # 'version': {'protocol': 404, 'name': '1.13.2'},
-  # 'description': {'text': 'A Minecraft Server'}}
+  # >=1.7 (SLP request)
+  # @note
+  #   1. Client sends:
+  #     1a. 0x00 (handshake packet containing the fields specified below)
+  #     1b. 0x00 (request)
+  #   The handshake packet contains the following fields respectively:
+  #       1. protocol version as a varint (0x00 suffices)
+  #       2. remote address as a string
+  #       3. remote port as an unsigned short
+  #       4. state as a varint (should be 1 for status)
+  #   2. Server responds with:
+  #     2a. 0x00 (JSON response)
+  #   An example JSON string contains:
+  #     {'players': {'max': 20, 'online': 0},
+  #     'version': {'protocol': 404, 'name': '1.13.2'},
+  #     'description': {'text': 'A Minecraft Server'}}
+  # @return [Retval] Return value
+  # @see https://wiki.vg/Server_List_Ping#Current_.281.7.2B.29
   def json_request()
     retval = nil
     begin
@@ -556,6 +605,8 @@ class MineStat
   end
 
   # Reads JSON data from the socket
+  # @param json_len [Integer] Length of the JSON data received from the Minecraft server
+  # @return [String] JSON data received from the Mincraft server
   def recv_json(json_len)
     json_data = ""
     begin
@@ -572,7 +623,9 @@ class MineStat
     return json_data
   end
 
-  # Returns value of varint type
+  # Decodes the value of a varint type
+  # @return [Integer] Value decoded from a varint type
+  # @see https://en.wikipedia.org/wiki/LEB128
   def unpack_varint()
     vint = 0
     i = 0
@@ -587,33 +640,35 @@ class MineStat
     return vint
   end
 
-  ##
-  # Bedrock/Pocket Edition servers communicate as follows for an unconnected ping request:
-  # 1. Client sends:
-  #   1a. \x01 (unconnected ping packet containing the fields specified below)
-  #   1b. current time as a long
-  #   1c. magic number
-  #   1d. client GUID as a long
-  # 2. Server responds with:
-  #   2a. \x1c (unconnected pong packet containing the follow fields)
-  #   2b. current time as a long
-  #   2c. server GUID as a long
-  #   2d. 16-bit magic number
-  #   2e. server ID string length
-  #   2f. server ID as a string
-  # The fields from the pong response, in order, are:
-  #   * edition
-  #   * MotD line 1
-  #   * protocol version
-  #   * version name
-  #   * current player count
-  #   * maximum player count
-  #   * unique server ID
-  #   * MotD line 2
-  #   * game mode as a string
-  #   * game mode as a numeric
-  #   * IPv4 port number
-  #   * IPv6 port number
+  # Bedrock/Pocket Edition (unconnected ping request)
+  # @note
+  #   1. Client sends:
+  #     1a. 0x01 (unconnected ping packet containing the fields specified below)
+  #     1b. current time as a long
+  #     1c. magic number
+  #     1d. client GUID as a long
+  #   2. Server responds with:
+  #     2a. 0x1c (unconnected pong packet containing the follow fields)
+  #     2b. current time as a long
+  #     2c. server GUID as a long
+  #     2d. 16-bit magic number
+  #     2e. server ID string length
+  #     2f. server ID as a string
+  #   The fields from the pong response, in order, are:
+  #     * edition
+  #     * MotD line 1
+  #     * protocol version
+  #     * version name
+  #     * current player count
+  #     * maximum player count
+  #     * unique server ID
+  #     * MotD line 2
+  #     * game mode as a string
+  #     * game mode as a numeric
+  #     * IPv4 port number
+  #     * IPv6 port number
+  # @return [Retval] Return value
+  # @see https://wiki.vg/Raknet_Protocol#Unconnected_Ping
   def bedrock_request()
     retval = nil
     begin
@@ -643,6 +698,7 @@ class MineStat
   end
 
   # Unreal Tournament 3/GameSpy 4 (UT3/GS4) query protocol
+  # @note
   #   1. Client sends:
   #     1a. 0xFE 0xFD (query identifier)
   #     1b. 0x09 (handshake)
@@ -665,6 +721,8 @@ class MineStat
   #         hostname, game type, game ID, version, plugin list, map, current players, max players, port, address
   #     4f. padding (10 bytes)
   #     4g. list of null-terminated strings containing player names
+  # @return [Retval] Return value
+  # @see https://wiki.vg/Query
   def query_request()
     retval = nil
     begin
@@ -684,7 +742,7 @@ class MineStat
           payload += [challenge_token.rstrip.to_i].pack('l>').force_encoding('ASCII-8BIT')
           payload += "\x00\x00\x00\x00".force_encoding('ASCII-8BIT')
           @server.write(payload)
-          @server.flush
+          @server.flush          
         else
           return Retval::UNKNOWN
         end
@@ -702,70 +760,83 @@ class MineStat
     return retval
   end
 
-  # Returns the Minecraft server IP
+  # Address (hostname or IP address) of the Minecraft server
   attr_reader :address
 
-  # Returns the Minecraft server TCP port
+  # Port (TCP or UDP) of the Minecraft server
   attr_reader :port
 
-  # Returns a boolean describing whether the server is online or offline
+  # Whether or not the Minecraft server is online
   attr_reader :online
 
-  # Returns the Minecraft version that the server is running
+  # Minecraft server version
   attr_reader :version
 
-  # Returns the game mode (Bedrock/Pocket Edition only)
+  # Game mode
+  # @note Bedrock/Pocket Edition only
+  # @since 2.2.0
   attr_reader :mode
 
-  # Returns the full version of the MotD
-  #
-  # If you just want the MotD text, use stripped_motd
+  # Full message of the day (MotD)
+  # @note If only the plain text MotD is relevant, use {#stripped_motd}
+  # @see #stripped_motd
   attr_reader :motd
 
-  # Returns just the plain text contained within the MotD
+  # Plain text contained within the message of the day (MotD)
+  # @note If the full MotD is desired, use {#motd}
+  # @see #motd
   attr_reader :stripped_motd
 
-  # Returns the current player count
+  # Current player count
   attr_reader :current_players
 
-  # Returns the maximum player count
+  # Maximum player limit
   attr_reader :max_players
 
   # List of players
+  # @note UT3/GS4 query only
+  # @since 3.0.0
   attr_reader :player_list
 
   # List of plugins
+  # @note UT3/GS4 query only
+  # @since 3.0.0
   attr_reader :plugin_list
 
-  # Returns the protocol level
-  #
-  # This is arbitrary and varies by Minecraft version.
-  # However, multiple Minecraft versions can share the same
-  # protocol level
+  # Protocol level
+  # @note This is arbitrary and varies by Minecraft version (may also be shared by multiple Minecraft versions)
   attr_reader :protocol
 
-  # Returns the complete JSON response data for queries to Minecraft
-  # servers with a version greater than or equal to 1.7
+  # Complete JSON response data
+  # @note Received using SLP 1.7 (JSON) queries
+  # @since 0.3.0
   attr_reader :json_data
 
-  # Returns the base64-encoded favicon from JSON 1.7 queries
+  # Base64-encoded favicon
+  # @note Received using SLP 1.7 (JSON) queries
+  # @since 2.2.2
   attr_reader :favicon_b64
 
-  # Returns the decoded favicon from JSON 1.7 queries
+  # Decoded favicon
+  # @note Received using SLP 1.7 (JSON) queries
+  # @since 2.2.2
   attr_reader :favicon
 
-  # Returns the ping time to the server in ms
+  # Ping time to the server in milliseconds (ms)
+  # @since 0.1.2
   attr_reader :latency
 
-  # Returns the protocol version
+  # Protocol used to request data from a Minecraft server
   attr_reader :request_type
 
-  # Returns the connection status
+  # Connection status
+  # @since 2.2.2
   attr_reader :connection_status
 
-  # Returns whether or not all ping protocols should be attempted
+  # Whether or not all protocols should be attempted
   attr_reader :try_all
 
   # Whether or not debug mode is enabled
+  # @since 3.0.0
   attr_reader :debug
 end
