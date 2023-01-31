@@ -107,6 +107,7 @@ class MineStat
     @stripped_motd        # message of the day without formatting
     @current_players      # current number of players online
     @max_players          # maximum player capacity
+    @plugin_list          # list of plugins (UT3/GS4 query only)
     @protocol             # protocol level
     @json_data            # JSON data for 1.7 queries
     @favicon_b64          # base64-encoded favicon possibly contained in JSON 1.7 responses
@@ -313,6 +314,12 @@ class MineStat
         strip_motd
         @current_players = server_info["numplayers"].to_i
         @max_players = server_info["maxplayers"].to_i
+        unless server_info["plugins"].nil? || server_info["plugins"].empty?
+          # Vanilla servers do not send a list of plugins.
+          # Bukkit and derivatives send plugins in the form: Paper on 1.19.3-R0.1-SNAPSHOT: Essentials 2.19.7; EssentialsChat 2.19.7
+          @plugin_list = server_info["plugins"].split(':')
+          @plugin_list = @plugin_list[1].split(';').collect(&:strip) if @plugin_list.size > 1
+        end
         @online = true
       else
         return Retval::UNKNOWN
@@ -716,6 +723,9 @@ class MineStat
 
   # Returns the maximum player count
   attr_reader :max_players
+
+  # List of plugins
+  attr_reader :plugin_list
 
   # Returns the protocol level
   #
