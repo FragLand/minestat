@@ -46,6 +46,20 @@ class MineStat
   # Magic number = 16 bytes
   # String ID length = 2 bytes
   BEDROCK_PACKET_OFFSET = 35
+  # UT3/GS4 query handshake packet size in bytes (1 + 4 + 13)
+  #   Handshake (0x09) = 1 byte
+  #   Session ID = 4 bytes
+  #   Challenge token = variable null-terminated string up to 13 bytes(?)
+  QUERY_HANDSHAKE_SIZE = 18
+  # UT3/GS4 query handshake packet offset for challenge token in bytes (1 + 4)
+  #  Handshake (0x09) = 1 byte
+  #  Session ID = 4 bytes
+  QUERY_HANDSHAKE_OFFSET = 5
+  # UT3/GS4 query full stat packet offset in bytes (1 + 4 + 11)
+  #   Stat (0x00) = 1 byte
+  #   Session ID = 4 bytes
+  #   Padding = 11 bytes
+  QUERY_STAT_OFFSET = 16
 
   ##
   # Stores constants that represent the results of a server ping
@@ -77,6 +91,8 @@ class MineStat
     JSON = 3
     # Bedrock/Pocket Edition
     BEDROCK = 4
+    # Unreal Tournament 3/GameSpy 4 query
+    QUERY = 5
   end
 
   ##
@@ -135,6 +151,8 @@ class MineStat
         retval = json_request()
       when Request::BEDROCK
         retval = bedrock_request()
+      when Request::QUERY
+        retval = query_request()
       else
         # Attempt various ping requests in a particular order. If the
         # connection fails, there is no reason to continue with subsequent
@@ -158,6 +176,10 @@ class MineStat
         # Bedrock/Pocket Edition
         unless @online || retval == Retval::SUCCESS
           retval = bedrock_request()
+        end
+        # UT3/GS4 query
+        unless @online || retval == Retval::SUCCESS
+          retval = query_request()
         end
     end
     return retval
@@ -226,6 +248,14 @@ class MineStat
           @server.close
           return Retval::UNKNOWN
         end
+      elsif @request_type == "UT3/GS4 Query"
+        if @server.recv(1, Socket::MSG_PEEK).unpack('C').first == 0x00 # stat packet
+          data = @server.recv(4096)[QUERY_STAT_OFFSET..-1]
+          @server.close
+        else
+          @server.close
+          retval = Retval::UNKNOWN
+        end
       else # SLP
         if @server.read(1).unpack('C').first == 0xFF # kick packet (255)
           len = @server.read(2).unpack('n').first
@@ -246,7 +276,11 @@ class MineStat
       return Retval::UNKNOWN
     end
 
-    server_info = data.split(delimiter)
+    if @request_type == "UT3/GS4 Query"
+      server_info = data.split("\x00\x00\x01player_\x00\x00")
+    else
+      server_info = data.split(delimiter)
+    end
     if is_beta
       if server_info != nil && server_info.length >= NUM_FIELDS_BETA
         @version = ">=1.8b/1.3" # since server does not return version, set it
@@ -267,6 +301,18 @@ class MineStat
         strip_motd
         @current_players = server_info[4].to_i
         @max_players = server_info[5].to_i
+        @online = true
+      else
+        return Retval::UNKNOWN
+      end
+    elsif @request_type == "UT3/GS4 Query"
+      if server_info != nil
+        server_info = Hash[*server_info[0].split(delimiter).flatten(1)]
+        @version = server_info["version"]
+        @motd = server_info["hostname"]
+        strip_motd
+        @current_players = server_info["numplayers"].to_i
+        @max_players = server_info["maxplayers"].to_i
         @online = true
       else
         return Retval::UNKNOWN
@@ -569,6 +615,66 @@ class MineStat
         @server.write(payload)
         @server.flush
         retval = parse_data("\x3B") # semicolon
+      end
+    rescue Timeout::Error
+      return Retval::TIMEOUT
+    rescue => exception
+      $stderr.puts exception if @debug
+      return Retval::UNKNOWN
+    end
+    if retval == Retval::SUCCESS
+      set_connection_status(retval)
+    end
+    return retval
+  end
+
+  # Unreal Tournament 3/GameSpy 4 (UT3/GS4) query protocol
+  #   1. Client sends:
+  #     1a. 0xFE 0xFD (query identifier)
+  #     1b. 0x09 (handshake)
+  #     1c. arbitrary session ID (4 bytes)
+  #   2. Server responds with:
+  #     2a. 0x09 (handshake)
+  #     2b. session ID (4 bytes)
+  #     2c. challenge token (variable null-terminated string)
+  #   3. Client sends:
+  #     3a. 0xFE 0xFD (query identifier)
+  #     3b. 0x00 (stat)
+  #     3c. arbitrary session ID (4 bytes)
+  #     3d. challenge token (32-bit integer in network byte order)
+  #     3e. padding (4 bytes -- 0x00 0x00 0x00 0x00); omit padding for basic stat (which does not supply the version)
+  #   4. Server responds with:
+  #     4a. 0x00 (stat)
+  #     4b. session ID (4 bytes)
+  #     4c. padding (11 bytes)
+  #     4e. key/value pairs of multiple null-terminated strings containing the fields below:
+  #         hostname, game type, game ID, version, plugin list, map, current players, max players, port, address
+  #     4f. padding (10 bytes)
+  #     4g. list of null-terminated strings containing player names
+  def query_request()
+    retval = nil
+    begin
+      Timeout::timeout(@timeout) do
+        @request_type = "UT3/GS4 Query"
+        retval = connect()
+        return retval unless retval == Retval::SUCCESS
+        payload = "\xFE\xFD\x09\x0B\x03\x03\x0F"
+        @server.write(payload)
+        @server.flush
+        if @server.recv(1, Socket::MSG_PEEK).unpack('C').first == 0x09 # query handshake packet
+          session_id = @server.recv(QUERY_HANDSHAKE_OFFSET, Socket::MSG_PEEK)[1..-1].unpack('l>')
+          challenge_token = @server.recv(QUERY_HANDSHAKE_SIZE)[QUERY_HANDSHAKE_OFFSET..-1]
+          payload = "\xFE\xFD\x00\x0B\x03\x03\x0F".force_encoding('ASCII-8BIT')
+          # Use the full stat below by stripping the null terminator from the challenge token and padding the end
+          # of the payload  with "\x00\x00\x00\x00". The basic stat response does not include the server version.
+          payload += [challenge_token.rstrip.to_i].pack('l>').force_encoding('ASCII-8BIT')
+          payload += "\x00\x00\x00\x00".force_encoding('ASCII-8BIT')
+          @server.write(payload)
+          @server.flush
+        else
+          return Retval::UNKNOWN
+        end
+        retval = parse_data("\x00") # null
       end
     rescue Timeout::Error
       return Retval::TIMEOUT
