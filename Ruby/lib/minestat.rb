@@ -31,12 +31,15 @@ class MineStat
 
   # Number of values expected from server
   NUM_FIELDS = 6
+  private_constant :NUM_FIELDS
 
   # Number of values expected from a 1.8b - 1.3 server
   NUM_FIELDS_BETA = 3
+  private_constant :NUM_FIELDS_BETA
 
   # Maximum number of bytes a varint can be
   MAX_VARINT_SIZE = 5
+  private_constant :MAX_VARINT_SIZE
 
   # Default TCP port
   DEFAULT_TCP_PORT = 25565
@@ -54,23 +57,27 @@ class MineStat
   #   Magic number = 16 bytes
   #   String ID length = 2 bytes
   BEDROCK_PACKET_OFFSET = 35
+  private_constant :BEDROCK_PACKET_OFFSET
 
   # UT3/GS4 query handshake packet size in bytes (1 + 4 + 13)
   #   Handshake (0x09) = 1 byte
   #   Session ID = 4 bytes
   #   Challenge token = variable null-terminated string up to 13 bytes(?)
   QUERY_HANDSHAKE_SIZE = 18
+  private_constant :QUERY_HANDSHAKE_SIZE
 
   # UT3/GS4 query handshake packet offset for challenge token in bytes (1 + 4)
   #  Handshake (0x09) = 1 byte
   #  Session ID = 4 bytes
   QUERY_HANDSHAKE_OFFSET = 5
+  private_constant :QUERY_HANDSHAKE_OFFSET
 
   # UT3/GS4 query full stat packet offset in bytes (1 + 4 + 11)
   #   Stat (0x00) = 1 byte
   #   Session ID = 4 bytes
   #   Padding = 11 bytes
   QUERY_STAT_OFFSET = 16
+  private_constant :QUERY_STAT_OFFSET
 
   # These constants represent the result of a server request
   module Retval
@@ -175,6 +182,7 @@ class MineStat
     end
     return true
   end
+  private :resolve_srv
 
   # Attempts the use of various protocols
   # @param request_type [Request] Protocol used to poll a Minecraft server
@@ -224,6 +232,7 @@ class MineStat
     end
     return retval
   end
+  private :attempt_protocols
 
   # Sets connection status
   # @param retval [Retval] Return value
@@ -233,6 +242,7 @@ class MineStat
     @connection_status = "Timeout" if retval == Retval::TIMEOUT
     @connection_status = "Unknown" if retval == Retval::UNKNOWN
   end
+  private :set_connection_status
 
   # Strips message of the day formatting characters
   def strip_motd()
@@ -252,6 +262,7 @@ class MineStat
     @stripped_motd = @stripped_motd.force_encoding('UTF-8')
     @stripped_motd = @stripped_motd.gsub(/§./, "")
   end
+  private :strip_motd
 
   # Establishes a connection to the Minecraft server
   def connect()
@@ -274,6 +285,7 @@ class MineStat
     end
     return Retval::SUCCESS
   end
+  private :connect
 
   # Validates server response based on beginning of the packet
   # @return [String, Retval] Raw data received from a Minecraft server and the return value
@@ -315,6 +327,7 @@ class MineStat
     retval = Retval::UNKNOWN if data == nil || data.empty?
     return data, retval
   end
+  private :check_response
 
   # Populates object fields after retrieving data from a Minecraft server
   # @param delimiter [String] Delimiter used to split a string into an array
@@ -388,6 +401,7 @@ class MineStat
     end
     return Retval::SUCCESS
   end
+  private :parse_data
 
   # 1.8b - 1.3 (SLP request)
   # @note
@@ -424,6 +438,7 @@ class MineStat
     end
     return retval
   end
+  private :beta_request
 
   # 1.4 and 1.5 (SLP request)
   # @note
@@ -468,6 +483,7 @@ class MineStat
     end
     return retval
   end
+  private :legacy_request
 
   # 1.6 (SLP request)
   # @note
@@ -527,6 +543,7 @@ class MineStat
     end
     return retval
   end
+  private :extended_legacy_request
 
   # >=1.7 (SLP request)
   # @note
@@ -603,6 +620,7 @@ class MineStat
     end
     return retval
   end
+  private :json_request
 
   # Reads JSON data from the socket
   # @param json_len [Integer] Length of the JSON data received from the Minecraft server
@@ -622,6 +640,7 @@ class MineStat
     end
     return json_data
   end
+  private :recv_json
 
   # Decodes the value of a varint type
   # @return [Integer] Value decoded from a varint type
@@ -639,6 +658,7 @@ class MineStat
     end
     return vint
   end
+  private :unpack_varint
 
   # Bedrock/Pocket Edition (unconnected ping request)
   # @note
@@ -696,6 +716,7 @@ class MineStat
     end
     return retval
   end
+  private :bedrock_request
 
   # Unreal Tournament 3/GameSpy 4 (UT3/GS4) query protocol
   # @note
@@ -759,6 +780,7 @@ class MineStat
     end
     return retval
   end
+  private :query_request
 
   # Address (hostname or IP address) of the Minecraft server
   attr_reader :address
