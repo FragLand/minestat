@@ -168,6 +168,7 @@ class MineStat
   # @param address [String] Minecraft server address
   # @param port [Integer] Minecraft server TCP or UDP port
   # @return [Boolean] Whether or not SRV resolution was successful
+  # @since 2.3.0
   def resolve_srv(address, port)
     begin
       resolver = Resolv::DNS.new
@@ -415,6 +416,7 @@ class MineStat
   #     * current players
   #     * max players
   # @return [Retval] Return value
+  # @since 0.2.1
   # @see https://wiki.vg/Server_List_Ping#Beta_1.8_to_1.3
   def beta_request()
     retval = nil
@@ -513,6 +515,7 @@ class MineStat
   # The protocol version corresponds with the server version and can be the
   # same for different server versions.
   # @return [Retval] Return value
+  # @since 0.2.0
   # @see https://wiki.vg/Server_List_Ping#1.6
   def extended_legacy_request()
     retval = nil
@@ -562,6 +565,7 @@ class MineStat
   #     'version': {'protocol': 404, 'name': '1.13.2'},
   #     'description': {'text': 'A Minecraft Server'}}
   # @return [Retval] Return value
+  # @since 0.3.0
   # @see https://wiki.vg/Server_List_Ping#Current_.281.7.2B.29
   def json_request()
     retval = nil
@@ -688,6 +692,7 @@ class MineStat
   #     * IPv4 port number
   #     * IPv6 port number
   # @return [Retval] Return value
+  # @since 2.2.0
   # @see https://wiki.vg/Raknet_Protocol#Unconnected_Ping
   def bedrock_request()
     retval = nil
@@ -743,6 +748,7 @@ class MineStat
   #     4f. padding (10 bytes)
   #     4g. list of null-terminated strings containing player names
   # @return [Retval] Return value
+  # @since 3.0.0
   # @see https://wiki.vg/Query
   def query_request()
     retval = nil
@@ -845,7 +851,7 @@ class MineStat
   attr_reader :favicon
 
   # Ping time to the server in milliseconds (ms)
-  # @since 0.1.2
+  # @since 0.2.1
   attr_reader :latency
 
   # TCP/UDP timeout in seconds
