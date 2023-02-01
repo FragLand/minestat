@@ -10,4 +10,5 @@ Gem::Specification.new do |spec|
   spec.license = "GPL-3.0"
   spec.files = ["lib/minestat.rb", "example.rb", ".yardopts"]
   spec.extra_rdoc_files = Dir["ChangeLog.md", "License.txt", "ReadMe.md"]
+  spec.required_ruby_version = ">= 2.2.0"
 end
