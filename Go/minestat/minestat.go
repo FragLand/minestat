@@ -20,13 +20,17 @@
 
 package minestat
 
-import "net"
-import "strconv"
-import "strings"
-import "time"
-import "golang.org/x/text/encoding/unicode"
+import (
+	"fmt"
+	"net"
+	"strconv"
+	"strings"
+	"time"
 
-const VERSION string = "2.0.0"     // MineStat version
+	"golang.org/x/text/encoding/unicode"
+)
+
+const VERSION string = "2.1.0"     // MineStat version
 const NUM_FIELDS uint8 = 6         // number of values expected from server
 const NUM_FIELDS_BETA uint8 = 3    // number of values expected from a 1.8b/1.3 server
 const DEFAULT_TCP_PORT = 25565     // default TCP port
@@ -125,12 +129,12 @@ func Init(given_address string, optional_params ...uint16) {
     // SLP 1.7
     if retval != RETURN_CONNFAIL {
       retval = json_request()
-    }
+    }*/
 
     // Bedrock/Pocket Edition
     if !Online && retval != RETURN_SUCCESS {
       retval = bedrock_request()
-    }*/
+    }
   }
 }
 
@@ -301,7 +305,47 @@ func json_request() Status_code {
   return RETURN_UNKNOWN
 }
 
-// ToDo: Implement me.
+
 func bedrock_request() Status_code {
-  return RETURN_UNKNOWN
+  bedrockPort := Port
+  if bedrockPort == DEFAULT_TCP_PORT {
+    bedrockPort = DEFAULT_BEDROCK_PORT
+    // should be changed, because it doesn't support the port being 25565, best for now
+    //fixing this would require a major rewrite
+  }
+
+  conn, err := net.Dial("udp", Address + ":" + strconv.FormatUint(uint64(bedrockPort), 10))
+  Server_socket = conn
+  if err != nil {
+    fmt.Println(err)
+  }
+
+  request := []byte("\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\x00\xfe\xfe\xfe\xfe\xfd\xfd\xfd\xfd\x124Vx")
+  conn.Write(request)
+
+  buffer := make([]byte, 1024)
+  pLen, err := conn.Read(buffer)
+  if err != nil {
+    return RETURN_UNKNOWN
+  }
+
+  conn.Close()
+
+  rawRes := buffer[:pLen]
+  strRes := string(rawRes[35:])
+  splitRes := strings.Split(strRes, ";")
+
+  Online = true
+  Motd = splitRes[1]
+
+  current_players, _ := strconv.ParseUint(splitRes[4], 10, 32)
+	max_players, _ := strconv.ParseUint(splitRes[5], 10, 32)
+  Current_players = uint32(current_players)
+  Max_players = uint32(max_players)
+
+  Version = splitRes[3]
+  Protocol = "Bedrock SLP v" + splitRes[2]
+  // there are a view more values returned by the server
+  // also using them would require a quit large rewrite of the existing codebase
+  return RETURN_SUCCESS
 }
