@@ -21,9 +21,12 @@ import json
 import socket
 import struct
 import re
-from time import time, perf_counter
+import dns.resolver
+
 from enum import Enum
+from time import time, perf_counter
 from typing import Union, Optional
+
 
 class ConnStatus(Enum):
   """
@@ -144,7 +147,7 @@ Contains possible SLP (Server List Ping) protocols.
   """
 
 class MineStat:
-  VERSION = "2.4.3"             # MineStat version
+  VERSION = "2.4.4"             # MineStat version
   DEFAULT_TCP_PORT = 25565      # default TCP port for SLP queries
   DEFAULT_BEDROCK_PORT = 19132  # default UDP port for Bedrock/MCPE servers
   DEFAULT_TIMEOUT = 5           # default TCP timeout in seconds
@@ -152,15 +155,22 @@ class MineStat:
   def __init__(self, address: str, port: int = 0, timeout: int = DEFAULT_TIMEOUT, query_protocol: SlpProtocols = SlpProtocols.ALL) -> None:
     self.address: str = address
     """hostname or IP address of the Minecraft server"""
+
     autoport: bool = False
     if port == 0:
       autoport = True
+
       if query_protocol is SlpProtocols.BEDROCK_RAKNET:
-        self.port = self.DEFAULT_BEDROCK_PORT
+        port = self._resolve_srv_record(self.address, proto="udp")
+        if port == 0:
+          port = self.DEFAULT_BEDROCK_PORT
+
       else:
-        self.port = self.DEFAULT_TCP_PORT
-    else:
-      self.port: int = port
+        port = self._resolve_srv_record(self.address)
+        if port == 0:
+          port = self.DEFAULT_TCP_PORT
+
+    self.port: int = port
     """port number the Minecraft server accepts connections on"""
     self.online: bool = False
     """online or offline?"""
@@ -186,6 +196,8 @@ class MineStat:
     """decoded favicon data"""
     self.gamemode: Optional[str] = None
     """Bedrock specific: The current game mode (Creative/Survival/Adventure)"""
+    self.srv_record: Optional[bool] = None
+    """wether the server has a SRV record"""
     self.connection_status: Optional[ConnStatus] = None
     """Status of connection ("SUCCESS", "CONNFAIL", "TIMEOUT", or "UNKNOWN")"""
 
@@ -222,7 +234,10 @@ class MineStat:
 
     # Minecraft Bedrock/Pocket/Education Edition (MCPE/MCEE)
     if autoport:
-      self.port = self.DEFAULT_BEDROCK_PORT
+      self.port = self._resolve_srv_record(self.address, proto="udp")
+      if self.port == 0:
+        self.port = self.DEFAULT_BEDROCK_PORT
+
     result = self.bedrock_raknet_query()
     self.connection_status = result
 
@@ -230,7 +245,9 @@ class MineStat:
       return
 
     if autoport:
-      self.port = self.DEFAULT_TCP_PORT
+      self.port = self._resolve_srv_record(self.address)
+      if self.port == 0:
+        self.port = self.DEFAULT_TCP_PORT
 
     # Minecraft 1.4 & 1.5 (legacy SLP)
     result = self.legacy_query()
@@ -273,6 +290,57 @@ class MineStat:
           stripped_motd += MineStat.motd_strip_formatting(sub)
 
     return stripped_motd
+
+  @staticmethod
+  def __ip_check(addr: str) -> bool:
+    """
+    Method to check if given address is an ip address or a hostname.
+    Does not support ipv6!
+
+    Returns True when the given address is an ip address.
+    """
+    is_ip: bool = True
+    if addr.count(".") == 3:
+      for octet in addr.split("."):
+        try:
+          # check if our octet can be parsed to an integer
+          octet = int(octet)
+          # check if our octet is between 0 and 255
+          if not octet <= 255 and octet >= 0:
+            is_ip = False
+            break
+        
+        # catch ValueError (caused when trying to parse an invalid string to an integer)
+        except ValueError:
+          is_ip = False
+
+    else:
+      is_ip = False
+      return is_ip
+
+  def _resolve_srv_record(self, addr: str, proto: str = "tcp") -> int:
+    """
+    Method to resolve a SRV record from a given address.
+    The protocol can be either "tcp" for Minecraft Java servers or "udp" for Minecraft Bedrock servers.
+    """
+    if self.__ip_check(addr):
+      self.srv_record = False
+      # address is an ip address
+      return 0
+
+    else:
+      srv_prefix: str = f"_minecraft._{proto}."#
+      try:
+        srv_record: dns.rdtypes.IN.SRV.SRV = dns.resolver.resolve(srv_prefix + addr, "SRV")[0] # only use the first SRV record returned
+        srv_port: int = int(srv_record.port)
+        self.srv_record = True
+
+      # There are so many possible exception that could occur at this point
+      except Exception:
+        srv_port = 0
+        self.srv_record = False
+
+      return srv_port
 
   def bedrock_raknet_query(self) -> ConnStatus:
     """
