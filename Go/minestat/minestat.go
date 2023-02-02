@@ -151,12 +151,10 @@ func connect() Status_code {
   // A workaround for this issue is to use an IP address instead of a hostname or FQDN.
   start_time := time.Now()
   if Request_type == REQUEST_BEDROCK {
-    if Port_set {
-      conn, err = net.DialTimeout("udp", Address + ":" + strconv.FormatUint(uint64(Port), 10), time.Duration(Timeout) * time.Second)
-    } else {
+    if !Port_set {
       Port = DEFAULT_BEDROCK_PORT
-      conn, err = net.DialTimeout("udp", Address + ":" + strconv.FormatUint(uint64(Port), 10), time.Duration(Timeout) * time.Second)
     }
+    conn, err = net.DialTimeout("udp", Address + ":" + strconv.FormatUint(uint64(Port), 10), time.Duration(Timeout) * time.Second)
   } else {
     conn, err = net.DialTimeout("tcp", Address + ":" + strconv.FormatUint(uint64(Port), 10), time.Duration(Timeout) * time.Second)
   }
@@ -356,7 +354,10 @@ func bedrock_request() Status_code {
   }
 
   request := []byte("\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\x00\xfe\xfe\xfe\xfe\xfd\xfd\xfd\xfd\x124Vx")
-  Server_socket.Write(request)
+  _, err := Server_socket.Write(request)
+  if err != nil {
+    return RETURN_UNKNOWN
+  }
 
   buffer := make([]byte, 1024)
   pLen, err := Server_socket.Read(buffer)
