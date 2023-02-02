@@ -232,9 +232,9 @@ func parse_data(delimiter string, is_beta ...bool) Status_code {
 /*
    1.8b/1.3
    1.8 beta through 1.3 servers communicate as follows for a ping request:
-   1. Client sends \xFE (server list ping)
+   1. Client sends 0xFE (server list ping)
    2. Server responds with:
-     2a. \xFF (kick packet)
+     2a. 0xFF (kick packet)
      2b. data length
      2c. 3 fields delimited by \u00A7 (section symbol)
    The 3 fields, in order, are: message of the day, current players, and max players
@@ -263,12 +263,12 @@ func beta_request() Status_code {
    1.4/1.5
    1.4 and 1.5 servers communicate as follows for a ping request:
    1. Client sends:
-     1a. \xFE (server list ping)
-     1b. \x01 (server list ping payload)
+     1a. 0xFE (server list ping)
+     1b. 0x01 (server list ping payload)
    2. Server responds with:
-     2a. \xFF (kick packet)
+     2a. 0xFF (kick packet)
      2b. data length
-     2c. 6 fields delimited by \x00 (null)
+     2c. 6 fields delimited by 0x00 (null)
    The 6 fields, in order, are: the section symbol and 1, protocol version,
    server version, message of the day, current players, and max players.
    The protocol version corresponds with the server version and can be the
