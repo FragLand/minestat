@@ -1,6 +1,6 @@
 /*
  * minestat.go - A Minecraft server status checker
- * Copyright (C) 2016, 2022 Lloyd Dilley
+ * Copyright (C) 2016, 2023 Lloyd Dilley, 2023 Sch8ill
  * http://www.dilley.me/
  *
  * This program is free software; you can redistribute it and/or modify
