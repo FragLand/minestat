@@ -29,7 +29,7 @@ import (
 	"golang.org/x/text/encoding/unicode"
 )
 
-const VERSION string = "2.1.0"     // MineStat version
+const VERSION string = "2.1.1"     // MineStat version
 const NUM_FIELDS uint8 = 6         // number of values expected from server
 const NUM_FIELDS_BETA uint8 = 3    // number of values expected from a 1.8b/1.3 server
 const DEFAULT_TCP_PORT = 25565     // default TCP port
