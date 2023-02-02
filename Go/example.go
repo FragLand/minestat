@@ -8,6 +8,9 @@ func main() {
   fmt.Printf("Minecraft server status of %s on port %d:\n", minestat.Address, minestat.Port)
   if minestat.Online {
     fmt.Printf("Server is online running version %s with %d out of %d players.\n", minestat.Version, minestat.Current_players, minestat.Max_players)
+    if len(minestat.Game_mode) > 0 {
+      fmt.Printf("Game mode: %s\n", minestat.Game_mode)
+    }
     fmt.Printf("Message of the day: %s\n", minestat.Motd)
     fmt.Printf("Latency: %dms\n", minestat.Latency)
     fmt.Printf("Connected using protocol: %s\n", minestat.Protocol)
