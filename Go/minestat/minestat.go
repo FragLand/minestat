@@ -62,7 +62,7 @@ var Version string          // server version
 var Motd string             // message of the day
 var Current_players uint32  // current number of players online
 var Max_players uint32      // maximum player capacity
-var Latency time.Duration   // ping time to server in milliseconds
+var Latency int64           // ping time to server in milliseconds
 var Timeout uint8           // TCP/UDP timeout in seconds
 var Protocol string         // friendly name of protocol
 var Request_type uint8      // protocol version
@@ -144,8 +144,7 @@ func connect() Status_code {
   // A workaround for this issue is to use an IP address instead of a hostname or FQDN.
   start_time := time.Now()
   conn, err := net.DialTimeout("tcp", Address + ":" + strconv.FormatUint(uint64(Port), 10), time.Duration(Timeout) * time.Second)
-  Latency = time.Since(start_time)
-  Latency = Latency.Round(time.Millisecond)
+  Latency = time.Since(start_time).Milliseconds()
   if err != nil {
     if strings.Contains(err.Error(), "timeout") {
       return RETURN_TIMEOUT
