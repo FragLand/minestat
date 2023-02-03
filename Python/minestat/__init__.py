@@ -316,7 +316,7 @@ class MineStat:
 
     else:
       is_ip = False
-      return is_ip
+    return is_ip
 
   def _resolve_srv_record(self, addr: str, proto: str = "tcp") -> int:
     """
