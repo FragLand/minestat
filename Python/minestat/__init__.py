@@ -26,7 +26,7 @@ import dns.resolver
 
 from enum import Enum
 from time import time, perf_counter
-from typing import Union, Optional
+from typing import Union, Optional, Tuple
 
 
 class ConnStatus(Enum):
@@ -308,7 +308,7 @@ class MineStat:
     except ValueError:
       return False
 
-  def _resolve_srv_record(self, addr: str) -> Union[str, int]:
+  def _resolve_srv_record(self, addr: str) -> Tuple[str, int]:
     """
     Method to resolve a SRV record from a given address.
     The protocol can be either "tcp" for Minecraft Java servers or "udp" for Minecraft Bedrock servers.
