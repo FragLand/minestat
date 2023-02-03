@@ -1,6 +1,6 @@
 /*
  * minestat.go - A Minecraft server status checker
- * Copyright (C) 2016, 2022 Lloyd Dilley
+ * Copyright (C) 2016, 2023 Lloyd Dilley, 2023 Sch8ill
  * http://www.dilley.me/
  *
  * This program is free software; you can redistribute it and/or modify
@@ -21,7 +21,6 @@
 package minestat
 
 import (
-	"fmt"
 	"net"
 	"strconv"
 	"strings"
@@ -30,7 +29,7 @@ import (
 	"golang.org/x/text/encoding/unicode"
 )
 
-const VERSION string = "2.1.0"     // MineStat version
+const VERSION string = "2.1.1"     // MineStat version
 const NUM_FIELDS uint8 = 6         // number of values expected from server
 const NUM_FIELDS_BETA uint8 = 3    // number of values expected from a 1.8b/1.3 server
 const DEFAULT_TCP_PORT = 25565     // default TCP port
@@ -60,14 +59,16 @@ var Port uint16             // server TCP port
 var Online bool             // online or offline?
 var Version string          // server version
 var Motd string             // message of the day
+var Game_mode string        // game mode (Bedrock/Pocket Edition only)
 var Current_players uint32  // current number of players online
 var Max_players uint32      // maximum player capacity
-var Latency time.Duration   // ping time to server in milliseconds
+var Latency int64           // ping time to server in milliseconds
 var Timeout uint8           // TCP/UDP timeout in seconds
 var Protocol string         // friendly name of protocol
 var Request_type uint8      // protocol version
 var Connection_status uint8 // status of connection
 var Server_socket net.Conn  // server socket
+var Port_set bool           // was a port number provided to Init()?
 
 // Initialize data and server connection
 func Init(given_address string, optional_params ...uint16) {
@@ -83,14 +84,18 @@ func Init(given_address string, optional_params ...uint16) {
   Port = DEFAULT_TCP_PORT
   Timeout = DEFAULT_TIMEOUT
   Request_type = uint8(REQUEST_NONE)
+  Port_set = false
 
   if len(optional_params) == 1 {
     Port = optional_params[0]
+    Port_set = true
   } else if len(optional_params) == 2 {
     Port = optional_params[0]
+    Port_set = true
     Timeout = uint8(optional_params[1])
   } else if len(optional_params) >= 3 {
     Port = optional_params[0]
+    Port_set = true
     Timeout = uint8(optional_params[1])
     Request_type = uint8(optional_params[2])
   }
@@ -140,12 +145,20 @@ func Init(given_address string, optional_params ...uint16) {
 
 // Establishes a connection to the Minecraft server
 func connect() Status_code {
+  var conn net.Conn
+  var err error
   // Latency may report a misleading value of >1s due to name resolution delay when using net.Dial().
   // A workaround for this issue is to use an IP address instead of a hostname or FQDN.
   start_time := time.Now()
-  conn, err := net.DialTimeout("tcp", Address + ":" + strconv.FormatUint(uint64(Port), 10), time.Duration(Timeout) * time.Second)
-  Latency = time.Since(start_time)
-  Latency = Latency.Round(time.Millisecond)
+  if Request_type == REQUEST_BEDROCK {
+    if !Port_set {
+      Port = DEFAULT_BEDROCK_PORT
+    }
+    conn, err = net.DialTimeout("udp", Address + ":" + strconv.FormatUint(uint64(Port), 10), time.Duration(Timeout) * time.Second)
+  } else {
+    conn, err = net.DialTimeout("tcp", Address + ":" + strconv.FormatUint(uint64(Port), 10), time.Duration(Timeout) * time.Second)
+  }
+  Latency = time.Since(start_time).Milliseconds()
   if err != nil {
     if strings.Contains(err.Error(), "timeout") {
       return RETURN_TIMEOUT
@@ -233,9 +246,9 @@ func parse_data(delimiter string, is_beta ...bool) Status_code {
 /*
    1.8b/1.3
    1.8 beta through 1.3 servers communicate as follows for a ping request:
-   1. Client sends \xFE (server list ping)
+   1. Client sends 0xFE (server list ping)
    2. Server responds with:
-     2a. \xFF (kick packet)
+     2a. 0xFF (kick packet)
      2b. data length
      2c. 3 fields delimited by \u00A7 (section symbol)
    The 3 fields, in order, are: message of the day, current players, and max players
@@ -264,12 +277,12 @@ func beta_request() Status_code {
    1.4/1.5
    1.4 and 1.5 servers communicate as follows for a ping request:
    1. Client sends:
-     1a. \xFE (server list ping)
-     1b. \x01 (server list ping payload)
+     1a. 0xFE (server list ping)
+     1b. 0x01 (server list ping payload)
    2. Server responds with:
-     2a. \xFF (kick packet)
+     2a. 0xFF (kick packet)
      2b. data length
-     2c. 6 fields delimited by \x00 (null)
+     2c. 6 fields delimited by 0x00 (null)
    The 6 fields, in order, are: the section symbol and 1, protocol version,
    server version, message of the day, current players, and max players.
    The protocol version corresponds with the server version and can be the
@@ -305,31 +318,55 @@ func json_request() Status_code {
   return RETURN_UNKNOWN
 }
 
-
+/*
+   Bedrock/Pocket Edition servers communicate as follows for an unconnected ping request:
+   1. Client sends:
+     1a. 0x01 (unconnected ping packet containing the fields specified below)
+     1b. current time as a long
+     1c. magic number
+     1d. client GUID as a long
+   2. Server responds with:
+     2a. 0x1c (unconnected pong packet containing the follow fields)
+     2b. current time as a long
+     2c. server GUID as a long
+     2d. 16-bit magic number
+     2e. server ID string length
+     2f. server ID as a string
+   The fields from the pong response, in order, are:
+     - edition
+     - MotD line 1
+     - protocol version
+     - version name
+     - current player count
+     - maximum player count
+     - unique server ID
+     - MotD line 2
+     - game mode as a string
+     - game mode as a numeric
+     - IPv4 port number
+     - IPv6 port number
+*/
 func bedrock_request() Status_code {
-  bedrockPort := Port
-  if bedrockPort == DEFAULT_TCP_PORT {
-    bedrockPort = DEFAULT_BEDROCK_PORT
-    // should be changed, because it doesn't support the port being 25565, best for now
-    //fixing this would require a major rewrite
-  }
-
-  conn, err := net.Dial("udp", Address + ":" + strconv.FormatUint(uint64(bedrockPort), 10))
-  Server_socket = conn
-  if err != nil {
-    fmt.Println(err)
+  Request_type = REQUEST_BEDROCK
+  retval := connect()
+  if retval != RETURN_SUCCESS {
+    return retval
   }
 
   request := []byte("\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\x00\xfe\xfe\xfe\xfe\xfd\xfd\xfd\xfd\x124Vx")
-  conn.Write(request)
-
-  buffer := make([]byte, 1024)
-  pLen, err := conn.Read(buffer)
+  _, err := Server_socket.Write(request)
   if err != nil {
     return RETURN_UNKNOWN
   }
 
-  conn.Close()
+  buffer := make([]byte, 1024)
+  pLen, err := Server_socket.Read(buffer)
+  if err != nil {
+    return RETURN_UNKNOWN
+  }
+
+  // ToDo: Parse data and close socket in parse_data()
+  Server_socket.Close()
 
   rawRes := buffer[:pLen]
   strRes := string(rawRes[35:])
@@ -343,9 +380,17 @@ func bedrock_request() Status_code {
   Current_players = uint32(current_players)
   Max_players = uint32(max_players)
 
-  Version = splitRes[3]
-  Protocol = "Bedrock SLP v" + splitRes[2]
-  // there are a view more values returned by the server
-  // also using them would require a quit large rewrite of the existing codebase
+  if len(splitRes) >= 8 {
+    Version = splitRes[3] + " " + splitRes[7] + " (" + splitRes[0] + ")"
+  } else {
+    Version = splitRes[3] + " (" + splitRes[0] + ")"
+  }
+
+  if len(splitRes) >= 9 {
+    Game_mode = splitRes[8]
+  }
+
+  Protocol = "Bedrock v" + splitRes[2]
+
   return RETURN_SUCCESS
 }
