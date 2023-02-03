@@ -143,10 +143,23 @@ func Init(given_address string, optional_params ...uint16) {
   }
 }
 
+// Attempts to resolve SRV records
+func lookup_srv() {
+  _, records, err := net.LookupSRV("minecraft", "tcp", Address)
+  if err != nil {
+    return
+  }
+  // Strip trailing period from returned SRV target if one exists.
+  Address = strings.TrimSuffix(records[0].Target, ".")
+  Port = records[0].Port
+}
+
 // Establishes a connection to the Minecraft server
 func connect() Status_code {
   var conn net.Conn
   var err error
+
+  lookup_srv()
   // Latency may report a misleading value of >1s due to name resolution delay when using net.Dial().
   // A workaround for this issue is to use an IP address instead of a hostname or FQDN.
   start_time := time.Now()
