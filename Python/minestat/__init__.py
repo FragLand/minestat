@@ -21,6 +21,7 @@ import json
 import socket
 import struct
 import re
+import ipaddress
 import dns.resolver
 
 from enum import Enum
@@ -161,14 +162,15 @@ class MineStat:
       autoport = True
 
       if query_protocol is SlpProtocols.BEDROCK_RAKNET:
-        port = self._resolve_srv_record(self.address, proto="udp")
-        if port == 0:
-          port = self.DEFAULT_BEDROCK_PORT
+        port = self.DEFAULT_BEDROCK_PORT
 
       else:
-        port = self._resolve_srv_record(self.address)
+        addr, port = self._resolve_srv_record(self.address)
         if port == 0:
           port = self.DEFAULT_TCP_PORT
+
+        else:
+          self.address = addr
 
     self.port: int = port
     """port number the Minecraft server accepts connections on"""
@@ -234,9 +236,7 @@ class MineStat:
 
     # Minecraft Bedrock/Pocket/Education Edition (MCPE/MCEE)
     if autoport:
-      self.port = self._resolve_srv_record(self.address, proto="udp")
-      if self.port == 0:
-        self.port = self.DEFAULT_BEDROCK_PORT
+      self.port = self.DEFAULT_BEDROCK_PORT
 
     result = self.bedrock_raknet_query()
     self.connection_status = result
@@ -245,9 +245,12 @@ class MineStat:
       return
 
     if autoport:
-      self.port = self._resolve_srv_record(self.address)
+      addr, self.port = self._resolve_srv_record(self.address)
       if self.port == 0:
         self.port = self.DEFAULT_TCP_PORT
+
+      else:
+        self.address = addr
 
     # Minecraft 1.4 & 1.5 (legacy SLP)
     result = self.legacy_query()
@@ -294,53 +297,39 @@ class MineStat:
   @staticmethod
   def __ip_check(addr: str) -> bool:
     """
-    Method to check if given address is an ip address or a hostname.
-    Does not support ipv6!
-
-    Returns True when the given address is an ip address.
+    Method to check if given address is an ip address or a hostname. Supports IPv4 and IPv6 addresses.
+    
+    :returns: True when the given address is an ip address.
     """
-    is_ip: bool = True
-    if addr.count(".") == 3:
-      for octet in addr.split("."):
-        try:
-          # check if our octet can be parsed to an integer
-          octet = int(octet)
-          # check if our octet is between 0 and 255
-          if not octet <= 255 and octet >= 0:
-            is_ip = False
-            break
-        
-        # catch ValueError (caused when trying to parse an invalid string to an integer)
-        except ValueError:
-          is_ip = False
+    try:
+      ipaddress.ip_address(addr)
+      return True
+    # catch ValueError (caused when trying to parse an invalid IP address)
+    except ValueError:
+      return False
 
-    else:
-      is_ip = False
-      return is_ip
-
-  def _resolve_srv_record(self, addr: str, proto: str = "tcp") -> int:
+  def _resolve_srv_record(self, addr: str) -> Union[str, int]:
     """
     Method to resolve a SRV record from a given address.
     The protocol can be either "tcp" for Minecraft Java servers or "udp" for Minecraft Bedrock servers.
     """
     if self.__ip_check(addr):
-      self.srv_record = False
       # address is an ip address
-      return 0
+      self.srv_record = False
+      return "", 0
 
     else:
-      srv_prefix: str = f"_minecraft._{proto}."#
+      srv_prefix: str = f"_minecraft._tcp."
       try:
         srv_record: dns.rdtypes.IN.SRV.SRV = dns.resolver.resolve(srv_prefix + addr, "SRV")[0] # only use the first SRV record returned
         srv_port: int = int(srv_record.port)
+        srv_host: str = str(srv_record.target).rstrip(".")
         self.srv_record = True
+        return srv_host, srv_port
 
-      # There are so many possible exception that could occur at this point
       except Exception:
-        srv_port = 0
         self.srv_record = False
-
-      return srv_port
+        return "", 0
 
   def bedrock_raknet_query(self) -> ConnStatus:
     """
