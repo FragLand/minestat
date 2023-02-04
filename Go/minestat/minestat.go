@@ -58,6 +58,8 @@ const (
 
 var Address string          // server hostname or IP address
 var Port uint16             // server TCP port
+var SRV_address string      // server address from DNS SRV record
+var SRV_port uint16         // server TCP port from DNS SRV record
 var Online bool             // online or offline?
 var Version string          // server version
 var Motd string             // message of the day
@@ -85,6 +87,8 @@ func Init(given_address string, optional_params ...uint16) {
   Connection_status = 7
   Address = given_address
   Port = DEFAULT_TCP_PORT
+  SRV_address = ""
+  SRV_port = 0
   Timeout = DEFAULT_TIMEOUT
   Request_type = uint8(REQUEST_NONE)
   Port_set = false
@@ -166,8 +170,8 @@ func lookup_srv() {
     return
   }
   // Strip trailing period from returned SRV target if one exists.
-  Address = strings.TrimSuffix(records[0].Target, ".")
-  Port = records[0].Port
+  SRV_address = strings.TrimSuffix(records[0].Target, ".")
+  SRV_port = records[0].Port
 }
 
 // Establishes a connection to the Minecraft server
@@ -185,7 +189,11 @@ func connect() Status_code {
     }
     conn, err = net.DialTimeout("udp", Address + ":" + strconv.FormatUint(uint64(Port), 10), time.Duration(Timeout) * time.Second)
   } else {
-    conn, err = net.DialTimeout("tcp", Address + ":" + strconv.FormatUint(uint64(Port), 10), time.Duration(Timeout) * time.Second)
+    if len(SRV_address) > 0 {
+      conn, err = net.DialTimeout("tcp", SRV_address + ":" + strconv.FormatUint(uint64(SRV_port), 10), time.Duration(Timeout) * time.Second)
+    } else {
+      conn, err = net.DialTimeout("tcp", Address + ":" + strconv.FormatUint(uint64(Port), 10), time.Duration(Timeout) * time.Second)
+    }
   }
   Latency = time.Since(start_time).Milliseconds()
   if err != nil {
