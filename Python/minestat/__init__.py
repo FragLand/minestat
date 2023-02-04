@@ -320,7 +320,7 @@ class MineStat:
   def __ip_check(addr: str) -> bool:
     """
     Method to check if given address is an ip address or a hostname. Supports IPv4 and IPv6 addresses.
-    
+
     :returns: True when the given address is an ip address.
     """
     try:
