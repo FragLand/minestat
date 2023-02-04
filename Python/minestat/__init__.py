@@ -153,7 +153,25 @@ class MineStat:
   DEFAULT_BEDROCK_PORT = 19132  # default UDP port for Bedrock/MCPE servers
   DEFAULT_TIMEOUT = 5           # default TCP timeout in seconds
 
-  def __init__(self, address: str, port: int = 0, timeout: int = DEFAULT_TIMEOUT, query_protocol: SlpProtocols = SlpProtocols.ALL) -> None:
+  def __init__(self,
+               address: str,
+               port: int = 0,
+               timeout: int = DEFAULT_TIMEOUT,
+               query_protocol: SlpProtocols = SlpProtocols.ALL,
+               resolve_srv: Optional[bool] = None) -> None:
+    """
+    minestat - The Minecraft status checker. Supports Minecraft Java edition and Bedrock/Education/PE servers.
+
+    :param address: Hostname or IP address of the Minecraft server.
+    :param port: Optional port of the Minecraft server. Defaults to auto detection (25565 for Java Edition, 19132 for Bedrock/MCPE).
+    :param timeout: Optional timeout in seconds for each connection attempt. Defaults to 5 seconds.
+    :param query_protocol: Optional protocol to use. See minestat.SlpProtocols for available choices. Defaults to auto detection.
+    :param resolve_srv: Optional, whether to resolve Minecraft SRV records. Requires dnspython to be installed.
+    """
+
+    self.__resolve_srv: Optional[bool] = resolve_srv
+    """Whether to resolved SRV records"""
+
     self.address: str = address
     """hostname or IP address of the Minecraft server"""
 
@@ -310,26 +328,53 @@ class MineStat:
 
   def _resolve_srv_record(self, addr: str) -> Tuple[str, int]:
     """
-    Method to resolve a SRV record from a given address.
-    The protocol can be either "tcp" for Minecraft Java servers or "udp" for Minecraft Bedrock servers.
+    Method to resolve a Minecraft Java edition SRV record from a given address.
+
+    Behaviour is dependent on the parameter `resolve_srv`.
+    If the user didn't explicitly choose do disable or enable SRV resolution, resolution is tried but will not raise an
+    exception if dnspython is not installed, instead displaying only a warning.
+    If the user explicitly choose to enable SRV resolution and dnspython is not available, an Error is raised.
+    If the user explicitly choose to disable SRV resoltion, it is skipped.
     """
+    # Check if we should resolve SRV records
+    if self.__resolve_srv is False:
+      return "", 0
+
+    # Check if addr is an IP address
     if self.__ip_check(addr):
       # address is an ip address
       self.srv_record = False
       return "", 0
 
-    else:
-      srv_prefix: str = f"_minecraft._tcp."
-      try:
-        srv_record: dns.rdtypes.IN.SRV.SRV = dns.resolver.resolve(srv_prefix + addr, "SRV")[0] # only use the first SRV record returned
-        srv_port: int = int(srv_record.port)
-        srv_host: str = str(srv_record.target).rstrip(".")
-        self.srv_record = True
-        return srv_host, srv_port
+    # Check if required dependency dnspython is installed
+    try:
+      import dns.resolver
+    except ImportError as e:
+      error_text: str = "SRV resolution was attempted without having dependency 'dnspython' installed. " \
+                        "Either explicitly disable SRV resolution with the parameter 'resolve_srv' " \
+                        "set to False in minestat.MineStat, or install 'dnspython'."
 
-      except Exception:
-        self.srv_record = False
+      # Parameter resolve_srv is unset, warn and skip resolution
+      if self.__resolve_srv is None:
+        import warnings
+        warnings.warn(error_text + "\nSRV resolution will be skipped.")
         return "", 0
+
+      # Parameter resolve_srv is True, error out
+      raise RuntimeError(error_text) from e
+
+    srv_prefix: str = f"_minecraft._tcp."
+    try:
+
+      srv_record: dns.rdtypes.IN.SRV.SRV = dns.resolver.resolve(srv_prefix + addr, "SRV")[0]  # only use the first SRV record returned
+      srv_port: int = int(srv_record.port)
+      srv_host: str = str(srv_record.target).rstrip(".")
+      self.srv_record = True
+      return srv_host, srv_port
+
+    except Exception:
+      self.srv_record = False
+      return "", 0
 
   def bedrock_raknet_query(self) -> ConnStatus:
     """
