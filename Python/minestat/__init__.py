@@ -148,7 +148,7 @@ Contains possible SLP (Server List Ping) protocols.
   """
 
 class MineStat:
-  VERSION = "2.5.0"             # MineStat version
+  VERSION = "2.5.1"             # MineStat version
   DEFAULT_TCP_PORT = 25565      # default TCP port for SLP queries
   DEFAULT_BEDROCK_PORT = 19132  # default UDP port for Bedrock/MCPE servers
   DEFAULT_TIMEOUT = 5           # default TCP timeout in seconds
