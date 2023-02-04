@@ -5,6 +5,12 @@ MineStat is a Minecraft server status checker library for Python, supporting a w
 - Java Edition since Minecraft version Beta 1.8 (September 2011),
 - Bedrock Edition starting with Minecraft version 0.14 (March 2018), maybe earlier.
 
+Supports [Minecraft SRV record resolution](https://minecraft.fandom.com/wiki/Tutorials/Setting_up_a_server#The_SRV_record),
+which requires the package [`dnspython`](https://pypi.org/project/dnspython/).
+This mechanism allows server operators to use a custom port or host without the player having to type it.
+One common server utilizing this feature example is `2b2t`: The actual server is at `connect.2b2t.org`, while users simply use `2bt2.org`.
+MineStat supports querying both, if `dnspython` is installed.
+
 ### Python example
 
 [![PyPI](https://img.shields.io/pypi/v/minestat?color=green&label=PyPI%20package&style=plastic)](https://pypi.org/project/minestat/)
