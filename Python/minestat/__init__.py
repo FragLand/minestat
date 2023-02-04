@@ -21,9 +21,13 @@ import json
 import socket
 import struct
 import re
-from time import time, perf_counter
+import ipaddress
+import dns.resolver
+
 from enum import Enum
-from typing import Union, Optional
+from time import time, perf_counter
+from typing import Union, Optional, Tuple
+
 
 class ConnStatus(Enum):
   """
@@ -144,7 +148,7 @@ Contains possible SLP (Server List Ping) protocols.
   """
 
 class MineStat:
-  VERSION = "2.4.3"             # MineStat version
+  VERSION = "2.5.0"             # MineStat version
   DEFAULT_TCP_PORT = 25565      # default TCP port for SLP queries
   DEFAULT_BEDROCK_PORT = 19132  # default UDP port for Bedrock/MCPE servers
   DEFAULT_TIMEOUT = 5           # default TCP timeout in seconds
@@ -152,15 +156,23 @@ class MineStat:
   def __init__(self, address: str, port: int = 0, timeout: int = DEFAULT_TIMEOUT, query_protocol: SlpProtocols = SlpProtocols.ALL) -> None:
     self.address: str = address
     """hostname or IP address of the Minecraft server"""
+
     autoport: bool = False
     if port == 0:
       autoport = True
+
       if query_protocol is SlpProtocols.BEDROCK_RAKNET:
-        self.port = self.DEFAULT_BEDROCK_PORT
+        port = self.DEFAULT_BEDROCK_PORT
+
       else:
-        self.port = self.DEFAULT_TCP_PORT
-    else:
-      self.port: int = port
+        addr, port = self._resolve_srv_record(self.address)
+        if port == 0:
+          port = self.DEFAULT_TCP_PORT
+
+        else:
+          self.address = addr
+
+    self.port: int = port
     """port number the Minecraft server accepts connections on"""
     self.online: bool = False
     """online or offline?"""
@@ -186,6 +198,8 @@ class MineStat:
     """decoded favicon data"""
     self.gamemode: Optional[str] = None
     """Bedrock specific: The current game mode (Creative/Survival/Adventure)"""
+    self.srv_record: Optional[bool] = None
+    """wether the server has a SRV record"""
     self.connection_status: Optional[ConnStatus] = None
     """Status of connection ("SUCCESS", "CONNFAIL", "TIMEOUT", or "UNKNOWN")"""
 
@@ -223,6 +237,7 @@ class MineStat:
     # Minecraft Bedrock/Pocket/Education Edition (MCPE/MCEE)
     if autoport:
       self.port = self.DEFAULT_BEDROCK_PORT
+
     result = self.bedrock_raknet_query()
     self.connection_status = result
 
@@ -230,7 +245,12 @@ class MineStat:
       return
 
     if autoport:
-      self.port = self.DEFAULT_TCP_PORT
+      addr, self.port = self._resolve_srv_record(self.address)
+      if self.port == 0:
+        self.port = self.DEFAULT_TCP_PORT
+
+      else:
+        self.address = addr
 
     # Minecraft 1.4 & 1.5 (legacy SLP)
     result = self.legacy_query()
@@ -273,6 +293,43 @@ class MineStat:
           stripped_motd += MineStat.motd_strip_formatting(sub)
 
     return stripped_motd
+
+  @staticmethod
+  def __ip_check(addr: str) -> bool:
+    """
+    Method to check if given address is an ip address or a hostname. Supports IPv4 and IPv6 addresses.
+    
+    :returns: True when the given address is an ip address.
+    """
+    try:
+      ipaddress.ip_address(addr)
+      return True
+    # catch ValueError (caused when trying to parse an invalid IP address)
+    except ValueError:
+      return False
+
+  def _resolve_srv_record(self, addr: str) -> Tuple[str, int]:
+    """
+    Method to resolve a SRV record from a given address.
+    The protocol can be either "tcp" for Minecraft Java servers or "udp" for Minecraft Bedrock servers.
+    """
+    if self.__ip_check(addr):
+      # address is an ip address
+      self.srv_record = False
+      return "", 0
+
+    else:
+      srv_prefix: str = f"_minecraft._tcp."
+      try:
+        srv_record: dns.rdtypes.IN.SRV.SRV = dns.resolver.resolve(srv_prefix + addr, "SRV")[0] # only use the first SRV record returned
+        srv_port: int = int(srv_record.port)
+        srv_host: str = str(srv_record.target).rstrip(".")
+        self.srv_record = True
+        return srv_host, srv_port
+
+      except Exception:
+        self.srv_record = False
+        return "", 0
 
   def bedrock_raknet_query(self) -> ConnStatus:
     """
