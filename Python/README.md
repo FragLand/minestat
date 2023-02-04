@@ -1,7 +1,9 @@
 MineStat
 ========
 
-MineStat is a Minecraft server status checker.
+MineStat is a Minecraft server status checker library for Python, supporting a wide range of Minecraft servers:
+- Java Edition since Minecraft version Beta 1.8 (September 2011),
+- Bedrock Edition starting with Minecraft version 0.14 (March 2018), maybe earlier.
 
 ### Python example
 
@@ -25,6 +27,28 @@ if ms.online:
   print('Connected using protocol: %s' % ms.slp_protocol)
 else:
   print('Server is offline!')
+```
+
+#### Available parameters
+The following parameters exist for the `MineStat` object:
+
+- `address`: str,
+  - Hostname or IP address of the Minecraft server.
+- `port`: int = 0,
+  - Optional port of the Minecraft server. Defaults to auto detection (25565 for Java Edition, 19132 for Bedrock/MCPE).
+- `timeout`: int = DEFAULT_TIMEOUT,
+  - Optional timeout in seconds for each connection attempt. Defaults to 5 seconds.
+- `query_protocol`: SlpProtocols = SlpProtocols.ALL,
+  - Optional protocol to use. See minestat.SlpProtocols for available choices. Defaults to auto detection.
+- `resolve_srv`: Optional[bool] = None
+  - Optional, whether to resolve Minecraft SRV records. Requires dnspython to be installed.
+
+
+Minimal example with port auto-detection:
+```python
+import minestat
+ms = minestat.MineStat('minecraft.frag.land')
+print(f"Is online? {ms.online=}")
 ```
 
 #### Available attributes
