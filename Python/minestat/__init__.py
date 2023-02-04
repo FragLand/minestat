@@ -22,8 +22,6 @@ import socket
 import struct
 import re
 import ipaddress
-import dns.resolver
-
 from enum import Enum
 from time import time, perf_counter
 from typing import Union, Optional, Tuple
@@ -53,6 +51,7 @@ Contains possible connection states.
 
   UNKNOWN = -3
   """The connection was established, but the server spoke an unknown/unsupported SLP protocol."""
+
 
 class SlpProtocols(Enum):
   """
@@ -147,6 +146,7 @@ Contains possible SLP (Server List Ping) protocols.
   *Available since Minecraft Beta 1.8*
   """
 
+
 class MineStat:
   VERSION = "2.5.1"             # MineStat version
   DEFAULT_TCP_PORT = 25565      # default TCP port for SLP queries
@@ -176,7 +176,7 @@ class MineStat:
     """hostname or IP address of the Minecraft server"""
 
     autoport: bool = False
-    if port == 0:
+    if not port:
       autoport = True
 
       if query_protocol is SlpProtocols.BEDROCK_RAKNET:
@@ -184,7 +184,7 @@ class MineStat:
 
       else:
         addr, port = self._resolve_srv_record(self.address)
-        if port == 0:
+        if not port or not addr:
           port = self.DEFAULT_TCP_PORT
 
         else:
@@ -264,7 +264,7 @@ class MineStat:
 
     if autoport:
       addr, self.port = self._resolve_srv_record(self.address)
-      if self.port == 0:
+      if not self.port:
         self.port = self.DEFAULT_TCP_PORT
 
       else:
@@ -406,7 +406,7 @@ class MineStat:
     # Packet ID - 0x01
     req_data = bytearray([0x01])
     # current unix timestamp in ms as signed long (64-bit) LE-encoded
-    req_data += struct.pack("<q", int(time()*1000))
+    req_data += struct.pack("<q", int(time() * 1000))
     # RakNet MAGIC (0x00ffff00fefefefefdfdfdfd12345678)
     req_data += RAKNET_MAGIC
     # Client GUID - as signed long (64-bit) LE-encoded
@@ -477,7 +477,7 @@ class MineStat:
     self.max_players = int(payload["max_players"])
     try:
       self.version = payload["version"] + " " + payload["motd_2"] + " (" + payload["edition"] + ")"
-    except KeyError: # older Bedrock server versions do not respond with the secondary MotD.
+    except KeyError:  # older Bedrock server versions do not respond with the secondary MotD.
       self.version = payload["version"] + " (" + payload["edition"] + ")"
 
     self.motd = payload["motd_1"]
@@ -485,7 +485,7 @@ class MineStat:
 
     try:
       self.gamemode = payload["gamemode"]
-    except KeyError: # older Bedrock server versions do not respond with the game mode.
+    except KeyError:  # older Bedrock server versions do not respond with the game mode.
       self.gamemode = None
 
     return ConnStatus.SUCCESS
