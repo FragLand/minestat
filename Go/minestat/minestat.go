@@ -116,6 +116,8 @@ func Init(given_address string, optional_params ...uint16) {
     }
   }
 
+  lookup_srv()
+
   var retval Status_code
   if Request_type == REQUEST_BETA {
     retval = beta_request()
@@ -178,8 +180,6 @@ func lookup_srv() {
 func connect() Status_code {
   var conn net.Conn
   var err error
-
-  lookup_srv()
   // Latency may report a misleading value of >1s due to name resolution delay when using net.Dial().
   // A workaround for this issue is to use an IP address instead of a hostname or FQDN.
   start_time := time.Now()
