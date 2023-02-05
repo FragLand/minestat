@@ -21,15 +21,17 @@
 package minestat
 
 import (
-	"net"
-	"strconv"
-	"strings"
-	"time"
+  "fmt"
+  "net"
+  "os"
+  "strconv"
+  "strings"
+  "time"
 
-	"golang.org/x/text/encoding/unicode"
+  "golang.org/x/text/encoding/unicode"
 )
 
-const VERSION string = "2.1.1"     // MineStat version
+const VERSION string = "2.2.0"     // MineStat version
 const NUM_FIELDS uint8 = 6         // number of values expected from server
 const NUM_FIELDS_BETA uint8 = 3    // number of values expected from a 1.8b/1.3 server
 const DEFAULT_TCP_PORT = 25565     // default TCP port
@@ -56,6 +58,9 @@ const (
 
 var Address string          // server hostname or IP address
 var Port uint16             // server TCP port
+var Srv_address string      // server address from DNS SRV record
+var Srv_port uint16         // server TCP port from DNS SRV record
+var Srv_enabled bool        // perform SRV lookups?
 var Online bool             // online or offline?
 var Version string          // server version
 var Motd string             // message of the day
@@ -69,6 +74,7 @@ var Request_type uint8      // protocol version
 var Connection_status uint8 // status of connection
 var Server_socket net.Conn  // server socket
 var Port_set bool           // was a port number provided to Init()?
+var Debug bool              // debug mode
 
 // Initialize data and server connection
 func Init(given_address string, optional_params ...uint16) {
@@ -82,9 +88,13 @@ func Init(given_address string, optional_params ...uint16) {
   Connection_status = 7
   Address = given_address
   Port = DEFAULT_TCP_PORT
+  Srv_address = ""
+  Srv_port = 0
+  Srv_enabled = true
   Timeout = DEFAULT_TIMEOUT
   Request_type = uint8(REQUEST_NONE)
   Port_set = false
+  Debug = false
 
   if len(optional_params) == 1 {
     Port = optional_params[0]
@@ -93,12 +103,36 @@ func Init(given_address string, optional_params ...uint16) {
     Port = optional_params[0]
     Port_set = true
     Timeout = uint8(optional_params[1])
-  } else if len(optional_params) >= 3 {
+  } else if len(optional_params) == 3 {
     Port = optional_params[0]
     Port_set = true
     Timeout = uint8(optional_params[1])
     Request_type = uint8(optional_params[2])
+  } else if len(optional_params) == 4 {
+    Port = optional_params[0]
+    Port_set = true
+    Timeout = uint8(optional_params[1])
+    Request_type = uint8(optional_params[2])
+    if uint8(optional_params[3]) == 1 {
+      Debug = true
+    }
+  } else if len(optional_params) >= 5 {
+    Port = optional_params[0]
+    Port_set = true
+    Timeout = uint8(optional_params[1])
+    Request_type = uint8(optional_params[2])
+    if uint8(optional_params[3]) == 1 {
+      Debug = true
+    }
+    if uint8(optional_params[4]) == 0 {
+      Srv_enabled = false
+    }
   }
+
+  if Srv_enabled {
+    lookup_srv()
+  }
+
   var retval Status_code
   if Request_type == REQUEST_BETA {
     retval = beta_request()
@@ -143,6 +177,20 @@ func Init(given_address string, optional_params ...uint16) {
   }
 }
 
+// Attempts to resolve SRV records
+func lookup_srv() {
+  _, records, err := net.LookupSRV("minecraft", "tcp", Address)
+  if err != nil {
+    if Debug {
+      fmt.Fprintf(os.Stderr, "lookup_srv(): %s", err)
+    }
+    return
+  }
+  // Strip trailing period from returned SRV target if one exists.
+  Srv_address = strings.TrimSuffix(records[0].Target, ".")
+  Srv_port = records[0].Port
+}
+
 // Establishes a connection to the Minecraft server
 func connect() Status_code {
   var conn net.Conn
@@ -156,10 +204,17 @@ func connect() Status_code {
     }
     conn, err = net.DialTimeout("udp", Address + ":" + strconv.FormatUint(uint64(Port), 10), time.Duration(Timeout) * time.Second)
   } else {
-    conn, err = net.DialTimeout("tcp", Address + ":" + strconv.FormatUint(uint64(Port), 10), time.Duration(Timeout) * time.Second)
+    if len(Srv_address) > 0 {
+      conn, err = net.DialTimeout("tcp", Srv_address + ":" + strconv.FormatUint(uint64(Srv_port), 10), time.Duration(Timeout) * time.Second)
+    } else {
+      conn, err = net.DialTimeout("tcp", Address + ":" + strconv.FormatUint(uint64(Port), 10), time.Duration(Timeout) * time.Second)
+    }
   }
   Latency = time.Since(start_time).Milliseconds()
   if err != nil {
+    if Debug {
+      fmt.Fprintf(os.Stderr, "connect(): %s", err)
+    }
     if strings.Contains(err.Error(), "timeout") {
       return RETURN_TIMEOUT
     }
@@ -174,6 +229,9 @@ func parse_data(delimiter string, is_beta ...bool) Status_code {
   kick_packet := make([]byte, 1)
   _, err := Server_socket.Read(kick_packet)
   if err != nil {
+    if Debug {
+      fmt.Fprintf(os.Stderr, "parse_data(): %s", err)
+    }
     return RETURN_UNKNOWN
   }
   if kick_packet[0] != 255 {
@@ -184,12 +242,18 @@ func parse_data(delimiter string, is_beta ...bool) Status_code {
   msg_len := make([]byte, 2)
   _, err = Server_socket.Read(msg_len)
   if err != nil {
+    if Debug {
+      fmt.Fprintf(os.Stderr, "parse_data(): %s", err)
+    }
     return RETURN_UNKNOWN
   }
 
   raw_data := make([]byte, msg_len[1] * 2)
   _, err = Server_socket.Read(raw_data)
   if err != nil {
+    if Debug {
+      fmt.Fprintf(os.Stderr, "parse_data(): %s", err)
+    }
     return RETURN_UNKNOWN
   }
   Server_socket.Close()
@@ -210,10 +274,16 @@ func parse_data(delimiter string, is_beta ...bool) Status_code {
       Motd = data[0]
       current_players, err := strconv.ParseUint(data[1], 10, 32)
       if err != nil {
+        if Debug {
+          fmt.Fprintf(os.Stderr, "parse_data(): %s", err)
+        }
         return RETURN_UNKNOWN
       }
       max_players, err := strconv.ParseUint(data[2], 10, 32)
       if err != nil {
+        if Debug {
+          fmt.Fprintf(os.Stderr, "parse_data(): %s", err)
+        }
         return RETURN_UNKNOWN
       }
       Current_players = uint32(current_players)
@@ -228,10 +298,16 @@ func parse_data(delimiter string, is_beta ...bool) Status_code {
       Motd = data[3]
       current_players, err := strconv.ParseUint(data[4], 10, 32)
       if err != nil {
+        if Debug {
+          fmt.Fprintf(os.Stderr, "parse_data(): %s", err)
+        }
         return RETURN_UNKNOWN
       }
       max_players, err := strconv.ParseUint(data[5], 10, 32)
       if err != nil {
+        if Debug {
+          fmt.Fprintf(os.Stderr, "parse_data(): %s", err)
+        }
         return RETURN_UNKNOWN
       }
       Current_players = uint32(current_players)
@@ -262,6 +338,9 @@ func beta_request() Status_code {
   // Perform handshake
   _, err := Server_socket.Write([]byte("\xFE"))
   if err != nil {
+    if Debug {
+      fmt.Fprintf(os.Stderr, "beta_request(): %s", err)
+    }
     return RETURN_UNKNOWN
   }
 
@@ -297,6 +376,9 @@ func legacy_request() Status_code {
   // Perform handshake
   _, err := Server_socket.Write([]byte("\xFE\x01"))
   if err != nil {
+    if Debug {
+      fmt.Fprintf(os.Stderr, "legacy_request(): %s", err)
+    }
     return RETURN_UNKNOWN
   }
 
@@ -356,12 +438,18 @@ func bedrock_request() Status_code {
   request := []byte("\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\x00\xfe\xfe\xfe\xfe\xfd\xfd\xfd\xfd\x124Vx")
   _, err := Server_socket.Write(request)
   if err != nil {
+    if Debug {
+      fmt.Fprintf(os.Stderr, "bedrock_request(): %s", err)
+    }
     return RETURN_UNKNOWN
   }
 
   buffer := make([]byte, 1024)
   pLen, err := Server_socket.Read(buffer)
   if err != nil {
+    if Debug {
+      fmt.Fprintf(os.Stderr, "bedrock_request(): %s", err)
+    }
     return RETURN_UNKNOWN
   }
 
@@ -376,7 +464,7 @@ func bedrock_request() Status_code {
   Motd = splitRes[1]
 
   current_players, _ := strconv.ParseUint(splitRes[4], 10, 32)
-	max_players, _ := strconv.ParseUint(splitRes[5], 10, 32)
+  max_players, _ := strconv.ParseUint(splitRes[5], 10, 32)
   Current_players = uint32(current_players)
   Max_players = uint32(max_players)
 
