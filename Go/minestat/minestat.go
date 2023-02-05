@@ -58,8 +58,9 @@ const (
 
 var Address string          // server hostname or IP address
 var Port uint16             // server TCP port
-var SRV_address string      // server address from DNS SRV record
-var SRV_port uint16         // server TCP port from DNS SRV record
+var Srv_address string      // server address from DNS SRV record
+var Srv_port uint16         // server TCP port from DNS SRV record
+var Srv_enabled bool        // perform SRV lookups?
 var Online bool             // online or offline?
 var Version string          // server version
 var Motd string             // message of the day
@@ -87,8 +88,9 @@ func Init(given_address string, optional_params ...uint16) {
   Connection_status = 7
   Address = given_address
   Port = DEFAULT_TCP_PORT
-  SRV_address = ""
-  SRV_port = 0
+  Srv_address = ""
+  Srv_port = 0
+  Srv_enabled = true
   Timeout = DEFAULT_TIMEOUT
   Request_type = uint8(REQUEST_NONE)
   Port_set = false
@@ -106,7 +108,7 @@ func Init(given_address string, optional_params ...uint16) {
     Port_set = true
     Timeout = uint8(optional_params[1])
     Request_type = uint8(optional_params[2])
-  } else if len(optional_params) >= 4 {
+  } else if len(optional_params) == 4 {
     Port = optional_params[0]
     Port_set = true
     Timeout = uint8(optional_params[1])
@@ -114,9 +116,22 @@ func Init(given_address string, optional_params ...uint16) {
     if uint8(optional_params[3]) == 1 {
       Debug = true
     }
+  } else if len(optional_params) >= 5 {
+    Port = optional_params[0]
+    Port_set = true
+    Timeout = uint8(optional_params[1])
+    Request_type = uint8(optional_params[2])
+    if uint8(optional_params[3]) == 1 {
+      Debug = true
+    }
+    if uint8(optional_params[4]) == 0 {
+      Srv_enabled = false
+    }
   }
 
-  lookup_srv()
+  if Srv_enabled {
+    lookup_srv()
+  }
 
   var retval Status_code
   if Request_type == REQUEST_BETA {
@@ -172,8 +187,8 @@ func lookup_srv() {
     return
   }
   // Strip trailing period from returned SRV target if one exists.
-  SRV_address = strings.TrimSuffix(records[0].Target, ".")
-  SRV_port = records[0].Port
+  Srv_address = strings.TrimSuffix(records[0].Target, ".")
+  Srv_port = records[0].Port
 }
 
 // Establishes a connection to the Minecraft server
@@ -189,8 +204,8 @@ func connect() Status_code {
     }
     conn, err = net.DialTimeout("udp", Address + ":" + strconv.FormatUint(uint64(Port), 10), time.Duration(Timeout) * time.Second)
   } else {
-    if len(SRV_address) > 0 {
-      conn, err = net.DialTimeout("tcp", SRV_address + ":" + strconv.FormatUint(uint64(SRV_port), 10), time.Duration(Timeout) * time.Second)
+    if len(Srv_address) > 0 {
+      conn, err = net.DialTimeout("tcp", Srv_address + ":" + strconv.FormatUint(uint64(Srv_port), 10), time.Duration(Timeout) * time.Second)
     } else {
       conn, err = net.DialTimeout("tcp", Address + ":" + strconv.FormatUint(uint64(Port), 10), time.Duration(Timeout) * time.Second)
     }
