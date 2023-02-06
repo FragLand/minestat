@@ -135,50 +135,50 @@ class MineStat
   #   ms = MineStat.new("minecraft.frag.land", 25567, 3, MineStat::Request::QUERY)
   # @example Connect to a Bedrock server and enable debug mode
   #   ms = MineStat.new("minecraft.frag.land", 19132, 3, MineStat::Request::BEDROCK, true)
-  def initialize(address, port = DEFAULT_TCP_PORT, timeout = DEFAULT_TIMEOUT, request_type = Request::NONE, debug = false)
-    @address = address    # address of server
-    @port = port          # TCP/UDP port of server
-    @online               # online or offline?
-    @version              # server version
-    @mode                 # game mode (Bedrock/Pocket Edition only)
-    @motd                 # message of the day
-    @stripped_motd        # message of the day without formatting
-    @current_players      # current number of players online
-    @max_players          # maximum player capacity
-    @player_list          # list of players (UT3/GS4 query only)
-    @plugin_list          # list of plugins (UT3/GS4 query only)
-    @protocol             # protocol level
-    @json_data            # JSON data for 1.7 queries
-    @favicon_b64          # base64-encoded favicon possibly contained in JSON 1.7 responses
-    @favicon              # decoded favicon data
-    @latency              # ping time to server in milliseconds
-    @timeout = timeout    # TCP/UDP timeout
-    @server               # server socket
-    @request_type         # protocol version
-    @connection_status    # status of connection ("Success", "Fail", "Timeout", or "Unknown")
-    @try_all = false      # try all protocols?
-    @debug = debug        # debug mode
+  def initialize(address, port = DEFAULT_TCP_PORT, timeout = DEFAULT_TIMEOUT, request_type = Request::NONE, debug = false, srv_enabled = true)
+    @address = address         # address of server
+    @port = port               # TCP/UDP port of server
+    @srv_address               # server address from DNS SRV record
+    @srv_port                  # server TCP port from DNS SRV record
+    @online                    # online or offline?
+    @version                   # server version
+    @mode                      # game mode (Bedrock/Pocket Edition only)
+    @motd                      # message of the day
+    @stripped_motd             # message of the day without formatting
+    @current_players           # current number of players online
+    @max_players               # maximum player capacity
+    @player_list               # list of players (UT3/GS4 query only)
+    @plugin_list               # list of plugins (UT3/GS4 query only)
+    @protocol                  # protocol level
+    @json_data                 # JSON data for 1.7 queries
+    @favicon_b64               # base64-encoded favicon possibly contained in JSON 1.7 responses
+    @favicon                   # decoded favicon data
+    @latency                   # ping time to server in milliseconds
+    @timeout = timeout         # TCP/UDP timeout
+    @server                    # server socket
+    @request_type              # protocol version
+    @connection_status         # status of connection ("Success", "Fail", "Timeout", or "Unknown")
+    @try_all = false           # try all protocols?
+    @debug = debug             # debug mode
+    @srv_enabled = srv_enabled # enable SRV resolution?
 
     @try_all = true if request_type == Request::NONE
-    resolve_srv(address, port)
+    resolve_srv(address) if @srv_enabled
     set_connection_status(attempt_protocols(request_type))
   end
 
-  # Attempts to resolve SRV records
+  # Attempts to resolve DNS SRV records
   # @param address [String] Minecraft server address
-  # @param port [Integer] Minecraft server TCP or UDP port
   # @return [Boolean] Whether or not SRV resolution was successful
   # @since 2.3.0
-  def resolve_srv(address, port)
+  def resolve_srv(address)
     begin
       resolver = Resolv::DNS.new
       res = resolver.getresource("_minecraft._tcp.#{@address}", Resolv::DNS::Resource::IN::SRV)
-      @address = res.target.to_s # SRV target
-      @port = res.port.to_i      # SRV port
-    rescue => exception          # primarily catch Resolv::ResolvError and revert if unable to resolve SRV record(s)
+      @srv_address = res.target.to_s # SRV target
+      @srv_port = res.port.to_i      # SRV port
+    rescue => exception              # primarily catch Resolv::ResolvError and revert if unable to resolve SRV record(s)
       $stderr.puts exception if @debug
-      @address = address
-      @port = port
       return false
     end
     return true
@@ -275,7 +275,11 @@ class MineStat
         @server.connect(@address, @port)
       else
         start_time = Time.now
-        @server = TCPSocket.new(@address, @port)
+        if @srv_enabled
+          @server = TCPSocket.new(@srv_address, @srv_port)
+        else
+          @server = TCPSocket.new(@address, @port)
+        end
       end
       @latency = ((Time.now - start_time) * 1000).round
     rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH
@@ -795,6 +799,12 @@ class MineStat
   # Port (TCP or UDP) of the Minecraft server
   attr_reader :port
 
+  # Address of the Minecraft server from a DNS SRV record
+  attr_reader :srv_address
+
+  # TCP port of the Minecraft server from a DNS SRV record
+  attr_reader :srv_port
+
   # Whether or not the Minecraft server is online
   attr_reader :online
 
@@ -872,4 +882,7 @@ class MineStat
   # Whether or not debug mode is enabled
   # @since 3.0.0
   attr_reader :debug
+
+  # Whether or not DNS SRV resolution is enabled
+  attr_reader :srv_enabled
 end
