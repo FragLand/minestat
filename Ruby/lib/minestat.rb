@@ -116,6 +116,10 @@ class MineStat
 
     # Unreal Tournament 3/GameSpy 4 query
     QUERY = 5
+
+    # SLP only
+    # @since 3.0.1
+    SLP = 6
   end
 
   # Instantiates a MineStat object and polls the specified server for information
@@ -222,6 +226,7 @@ class MineStat
         unless retval == Retval::CONNFAIL
           retval = json_request()
         end
+        return retval if request_type == Request::SLP
         # Bedrock/Pocket Edition
         unless @online || retval == Retval::SUCCESS
           retval = bedrock_request()
