@@ -18,7 +18,7 @@ To install the gem: `gem install minestat`
 ```ruby
 require 'minestat'
 
-ms = MineStat.new("minecraft.frag.land", 25565)
+ms = MineStat.new("frag.land")
 puts "Minecraft server status of #{ms.address} on port #{ms.port}:"
 if ms.online
   puts "Server is online running version #{ms.version} with #{ms.current_players} out of #{ms.max_players} players."
@@ -36,23 +36,27 @@ end
 
 To simply connect to an address:
 ```ruby
-ms = MineStat.new("minecraft.frag.land")
+ms = MineStat.new("frag.land")
 ```
 Connect to an address on a certain TCP or UDP port:
 ```ruby
-ms = MineStat.new("minecraft.frag.land", 25567)
+ms = MineStat.new("frag.land", 25565)
 ```
 Same as above example and additionally includes a timeout in seconds:
 ```ruby
-ms = MineStat.new("minecraft.frag.land", 25567, 3)
+ms = MineStat.new("frag.land", 25565, 3)
 ```
 Same as above example and additionally includes an explicit protocol to use:
 ```ruby
-ms = MineStat.new("minecraft.frag.land", 25567, 3, MineStat::Request::QUERY)
+ms = MineStat.new("frag.land", 25565, 3, MineStat::Request::QUERY)
 ```
 Connect to a Bedrock server and enable debug mode:
 ```ruby
 ms = MineStat.new("minecraft.frag.land", 19132, 3, MineStat::Request::BEDROCK, true)
+```
+Attempt all SLP protocols, disable debug mode, and disable DNS SRV resolution:
+```ruby
+ms = MineStat.new("minecraft.frag.land", 25565, 3, MineStat::Request::SLP, false, false)
 ```
 
 ### Support

@@ -2,7 +2,7 @@ require 'minestat'
 
 # Below is an example using the MineStat class.
 # If server is offline, other instance members will be nil.
-ms = MineStat.new("minecraft.frag.land")
+ms = MineStat.new("frag.land")
 # Bedrock/Pocket Edition explicit query example with debug enabled
 #ms = MineStat.new("minecraft.frag.land", 19132, 5, MineStat::Request::BEDROCK, true)
 puts "Minecraft server status of #{ms.address} on port #{ms.port}:"

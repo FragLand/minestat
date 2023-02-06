@@ -1,6 +1,6 @@
 Gem::Specification.new do |spec|
   spec.name = "minestat"
-  spec.version = "3.0.0"
+  spec.version = "3.0.1"
   spec.authors = ["Lloyd Dilley"]
   spec.email = ["minecraft@frag.land"]
   spec.summary = "Minecraft server status checker"

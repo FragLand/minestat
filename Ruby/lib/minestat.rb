@@ -27,7 +27,7 @@ require 'timeout'
 # Provides a Ruby interface for polling the status of Minecraft servers
 class MineStat
   # MineStat version
-  VERSION = "3.0.0"
+  VERSION = "3.0.1"
 
   # Number of values expected from server
   NUM_FIELDS = 6
@@ -116,6 +116,10 @@ class MineStat
 
     # Unreal Tournament 3/GameSpy 4 query
     QUERY = 5
+
+    # SLP only
+    # @since 3.0.1
+    SLP = 6
   end
 
   # Instantiates a MineStat object and polls the specified server for information
@@ -126,59 +130,60 @@ class MineStat
   # @param debug [Boolean] Enable or disable error output
   # @return [MineStat] A MineStat object
   # @example Simply connect to an address
-  #   ms = MineStat.new("minecraft.frag.land")
+  #   ms = MineStat.new("frag.land")
   # @example Connect to an address on a certain TCP or UDP port
-  #   ms = MineStat.new("minecraft.frag.land", 25567)
+  #   ms = MineStat.new("frag.land", 25565)
   # @example Same as above example and additionally includes a timeout in seconds
-  #   ms = MineStat.new("minecraft.frag.land", 25567, 3)
+  #   ms = MineStat.new("frag.land", 25565, 3)
   # @example Same as above example and additionally includes an explicit protocol to use
-  #   ms = MineStat.new("minecraft.frag.land", 25567, 3, MineStat::Request::QUERY)
+  #   ms = MineStat.new("frag.land", 25565, 3, MineStat::Request::QUERY)
   # @example Connect to a Bedrock server and enable debug mode
   #   ms = MineStat.new("minecraft.frag.land", 19132, 3, MineStat::Request::BEDROCK, true)
-  def initialize(address, port = DEFAULT_TCP_PORT, timeout = DEFAULT_TIMEOUT, request_type = Request::NONE, debug = false)
-    @address = address    # address of server
-    @port = port          # TCP/UDP port of server
-    @online               # online or offline?
-    @version              # server version
-    @mode                 # game mode (Bedrock/Pocket Edition only)
-    @motd                 # message of the day
-    @stripped_motd        # message of the day without formatting
-    @current_players      # current number of players online
-    @max_players          # maximum player capacity
-    @player_list          # list of players (UT3/GS4 query only)
-    @plugin_list          # list of plugins (UT3/GS4 query only)
-    @protocol             # protocol level
-    @json_data            # JSON data for 1.7 queries
-    @favicon_b64          # base64-encoded favicon possibly contained in JSON 1.7 responses
-    @favicon              # decoded favicon data
-    @latency              # ping time to server in milliseconds
-    @timeout = timeout    # TCP/UDP timeout
-    @server               # server socket
-    @request_type         # protocol version
-    @connection_status    # status of connection ("Success", "Fail", "Timeout", or "Unknown")
-    @try_all = false      # try all protocols?
-    @debug = debug        # debug mode
+  # @example Attempt all SLP protocols, disable debug mode, and disable DNS SRV resolution
+  #   ms = MineStat.new("minecraft.frag.land", 25565, 3, MineStat::Request::SLP, false, false)
+  def initialize(address, port = DEFAULT_TCP_PORT, timeout = DEFAULT_TIMEOUT, request_type = Request::NONE, debug = false, srv_enabled = true)
+    @address = address         # address of server
+    @port = port               # TCP/UDP port of server
+    @srv_address               # server address from DNS SRV record
+    @srv_port                  # server TCP port from DNS SRV record
+    @online                    # online or offline?
+    @version                   # server version
+    @mode                      # game mode (Bedrock/Pocket Edition only)
+    @motd                      # message of the day
+    @stripped_motd             # message of the day without formatting
+    @current_players           # current number of players online
+    @max_players               # maximum player capacity
+    @player_list               # list of players (UT3/GS4 query only)
+    @plugin_list               # list of plugins (UT3/GS4 query only)
+    @protocol                  # protocol level
+    @json_data                 # JSON data for 1.7 queries
+    @favicon_b64               # base64-encoded favicon possibly contained in JSON 1.7 responses
+    @favicon                   # decoded favicon data
+    @latency                   # ping time to server in milliseconds
+    @timeout = timeout         # TCP/UDP timeout
+    @server                    # server socket
+    @request_type              # protocol version
+    @connection_status         # status of connection ("Success", "Fail", "Timeout", or "Unknown")
+    @try_all = false           # try all protocols?
+    @debug = debug             # debug mode
+    @srv_enabled = srv_enabled # enable SRV resolution?
 
     @try_all = true if request_type == Request::NONE
-    resolve_srv(address, port)
+    resolve_srv() if @srv_enabled
     set_connection_status(attempt_protocols(request_type))
   end
 
-  # Attempts to resolve SRV records
-  # @param address [String] Minecraft server address
-  # @param port [Integer] Minecraft server TCP or UDP port
+  # Attempts to resolve DNS SRV records
   # @return [Boolean] Whether or not SRV resolution was successful
   # @since 2.3.0
-  def resolve_srv(address, port)
+  def resolve_srv()
     begin
       resolver = Resolv::DNS.new
       res = resolver.getresource("_minecraft._tcp.#{@address}", Resolv::DNS::Resource::IN::SRV)
-      @address = res.target.to_s # SRV target
-      @port = res.port.to_i      # SRV port
-    rescue => exception          # primarily catch Resolv::ResolvError and revert if unable to resolve SRV record(s)
-      $stderr.puts exception if @debug
-      @address = address
-      @port = port
+      @srv_address = res.target.to_s # SRV target
+      @srv_port = res.port.to_i      # SRV port
+    rescue => exception              # primarily catch Resolv::ResolvError and revert if unable to resolve SRV record(s)
+      $stderr.puts "resolve_srv(): #{exception}" if @debug
       return false
     end
     return true
@@ -222,6 +227,7 @@ class MineStat
         unless retval == Retval::CONNFAIL
           retval = json_request()
         end
+        return retval if request_type == Request::SLP
         # Bedrock/Pocket Edition
         unless @online || retval == Retval::SUCCESS
           retval = bedrock_request()
@@ -275,13 +281,18 @@ class MineStat
         @server.connect(@address, @port)
       else
         start_time = Time.now
-        @server = TCPSocket.new(@address, @port)
+        if @srv_enabled
+          @server = TCPSocket.new(@srv_address, @srv_port)
+        else
+          @server = TCPSocket.new(@address, @port)
+        end
       end
       @latency = ((Time.now - start_time) * 1000).round
     rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH
+      $stderr.puts "connect(): Host unreachable or connection refused" if @debug
       return Retval::CONNFAIL
     rescue => exception
-      $stderr.puts exception if @debug
+      $stderr.puts "connect(): #{exception}" if @debug
       return Retval::UNKNOWN
     end
     return Retval::SUCCESS
@@ -322,7 +333,7 @@ class MineStat
         end
       end
     rescue => exception
-      $stderr.puts exception if @debug
+      $stderr.puts "check_response(): #{exception}" if @debug
       return nil, Retval::UNKNOWN
     end
     retval = Retval::UNKNOWN if data == nil || data.empty?
@@ -347,7 +358,7 @@ class MineStat
       if server_info != nil && server_info.length >= NUM_FIELDS_BETA
         @version = ">=1.8b/1.3" # since server does not return version, set it
         @motd = server_info[0]
-        strip_motd
+        strip_motd()
         @current_players = server_info[1].to_i
         @max_players = server_info[2].to_i
         @online = true
@@ -360,7 +371,7 @@ class MineStat
         @version = "#{server_info[3]} #{server_info[7]} (#{server_info[0]})"
         @mode = server_info[8]
         @motd = server_info[1]
-        strip_motd
+        strip_motd()
         @current_players = server_info[4].to_i
         @max_players = server_info[5].to_i
         @online = true
@@ -373,7 +384,7 @@ class MineStat
         server_info = Hash[*server_info[0].split(delimiter).flatten(1)]
         @version = server_info["version"]
         @motd = server_info["hostname"]
-        strip_motd
+        strip_motd()
         @current_players = server_info["numplayers"].to_i
         @max_players = server_info["maxplayers"].to_i
         unless server_info["plugins"].nil? || server_info["plugins"].empty?
@@ -392,7 +403,7 @@ class MineStat
         @protocol = server_info[1].to_i # contains the protocol version (51 for 1.9 or 78 for 1.6.4 for example)
         @version = server_info[2]
         @motd = server_info[3]
-        strip_motd
+        strip_motd()
         @current_players = server_info[4].to_i
         @max_players = server_info[5].to_i
         @online = true
@@ -429,9 +440,10 @@ class MineStat
         retval = parse_data("\u00A7", true) # section symbol
       end
     rescue Timeout::Error
+      $stderr.puts "beta_request(): Connection timed out" if @debug
       return Retval::TIMEOUT
     rescue => exception
-      $stderr.puts exception if @debug
+      $stderr.puts "beta_request(): #{exception}" if @debug
       return Retval::UNKNOWN
     end
     if retval == Retval::SUCCESS
@@ -474,9 +486,10 @@ class MineStat
         retval = parse_data("\x00") # null
       end
     rescue Timeout::Error
+      $stderr.puts "legacy_request(): Connection timed out" if @debug
       return Retval::TIMEOUT
     rescue => exception
-      $stderr.puts exception if @debug
+      $stderr.puts "legacy_request(): #{exception}" if @debug
       return Retval::UNKNOWN
     end
     if retval == Retval::SUCCESS
@@ -535,9 +548,10 @@ class MineStat
         retval = parse_data("\x00") # null
       end
     rescue Timeout::Error
+      $stderr.puts "extended_legacy_request(): Connection timed out" if @debug
       return Retval::TIMEOUT
     rescue => exception
-      $stderr.puts exception if @debug
+      $stderr.puts "extended_legacy_request(): #{exception}" if @debug
       return Retval::UNKNOWN
     end
     if retval == Retval::SUCCESS
@@ -596,7 +610,7 @@ class MineStat
         @protocol = json_data['version']['protocol'].to_i
         @version = json_data['version']['name']
         @motd = json_data['description']
-        strip_motd
+        strip_motd()
         @current_players = json_data['players']['online'].to_i
         @max_players = json_data['players']['max'].to_i
         @favicon_b64 = json_data['favicon']
@@ -611,11 +625,13 @@ class MineStat
         end
       end
     rescue Timeout::Error
+      $stderr.puts "json_request(): Connection timed out" if @debug
       return Retval::TIMEOUT
     rescue JSON::ParserError
+      $stderr.puts "json_request(): JSON parse error" if @debug
       return Retval::UNKNOWN
     rescue => exception
-      $stderr.puts exception if @debug
+      $stderr.puts "json_request(): #{exception}" if @debug
       return Retval::UNKNOWN
     end
     if retval == Retval::SUCCESS
@@ -640,7 +656,7 @@ class MineStat
         break if json_data.length >= json_len
       end
     rescue => exception
-      $stderr.puts exception if @debug
+      $stderr.puts "recv_json(): #{exception}" if @debug
     end
     return json_data
   end
@@ -711,9 +727,10 @@ class MineStat
         retval = parse_data("\x3B") # semicolon
       end
     rescue Timeout::Error
+      $stderr.puts "bedrock_request(): Connection timed out" if @debug
       return Retval::TIMEOUT
     rescue => exception
-      $stderr.puts exception if @debug
+      $stderr.puts "bedrock_request(): #{exception}" if @debug
       return Retval::UNKNOWN
     end
     if retval == Retval::SUCCESS
@@ -777,9 +794,10 @@ class MineStat
         retval = parse_data("\x00") # null
       end
     rescue Timeout::Error
+      $stderr.puts "query_request(): Connection timed out" if @debug
       return Retval::TIMEOUT
     rescue => exception
-      $stderr.puts exception if @debug
+      $stderr.puts "query_request(): #{exception}" if @debug
       return Retval::UNKNOWN
     end
     if retval == Retval::SUCCESS
@@ -794,6 +812,14 @@ class MineStat
 
   # Port (TCP or UDP) of the Minecraft server
   attr_reader :port
+
+  # Address of the Minecraft server from a DNS SRV record
+  # @since 3.0.1
+  attr_reader :srv_address
+
+  # TCP port of the Minecraft server from a DNS SRV record
+  # @since 3.0.1
+  attr_reader :srv_port
 
   # Whether or not the Minecraft server is online
   attr_reader :online
@@ -872,4 +898,8 @@ class MineStat
   # Whether or not debug mode is enabled
   # @since 3.0.0
   attr_reader :debug
+
+  # Whether or not DNS SRV resolution is enabled
+  # @since 3.0.1
+  attr_reader :srv_enabled
 end
