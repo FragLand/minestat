@@ -1,6 +1,6 @@
 ## 3.0.1 (February 5, 2023)
 - Added configurable DNS SRV resolution
-- Added request type to attempt all SLP protocols
+- Added request type that attempts all SLP protocols
 - Improved debug messages
 
 ## 3.0.0 (January 31, 2023)
