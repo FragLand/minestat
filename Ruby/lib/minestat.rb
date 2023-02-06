@@ -130,15 +130,17 @@ class MineStat
   # @param debug [Boolean] Enable or disable error output
   # @return [MineStat] A MineStat object
   # @example Simply connect to an address
-  #   ms = MineStat.new("minecraft.frag.land")
+  #   ms = MineStat.new("frag.land")
   # @example Connect to an address on a certain TCP or UDP port
-  #   ms = MineStat.new("minecraft.frag.land", 25567)
+  #   ms = MineStat.new("frag.land", 25565)
   # @example Same as above example and additionally includes a timeout in seconds
-  #   ms = MineStat.new("minecraft.frag.land", 25567, 3)
+  #   ms = MineStat.new("frag.land", 25565, 3)
   # @example Same as above example and additionally includes an explicit protocol to use
-  #   ms = MineStat.new("minecraft.frag.land", 25567, 3, MineStat::Request::QUERY)
+  #   ms = MineStat.new("frag.land", 25565, 3, MineStat::Request::QUERY)
   # @example Connect to a Bedrock server and enable debug mode
   #   ms = MineStat.new("minecraft.frag.land", 19132, 3, MineStat::Request::BEDROCK, true)
+  # @example Attempt all SLP protocols, disable debug mode, and disable DNS SRV resolution
+  #   ms = MineStat.new("minecraft.frag.land", 25565, 3, MineStat::Request::SLP, false, false)
   def initialize(address, port = DEFAULT_TCP_PORT, timeout = DEFAULT_TIMEOUT, request_type = Request::NONE, debug = false, srv_enabled = true)
     @address = address         # address of server
     @port = port               # TCP/UDP port of server
