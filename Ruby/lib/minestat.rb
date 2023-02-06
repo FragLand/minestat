@@ -808,9 +808,11 @@ class MineStat
   attr_reader :port
 
   # Address of the Minecraft server from a DNS SRV record
+  # @since 3.0.1
   attr_reader :srv_address
 
   # TCP port of the Minecraft server from a DNS SRV record
+  # @since 3.0.1
   attr_reader :srv_port
 
   # Whether or not the Minecraft server is online
@@ -892,5 +894,6 @@ class MineStat
   attr_reader :debug
 
   # Whether or not DNS SRV resolution is enabled
+  # @since 3.0.1
   attr_reader :srv_enabled
 end
