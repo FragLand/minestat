@@ -169,15 +169,14 @@ class MineStat
     @srv_enabled = srv_enabled # enable SRV resolution?
 
     @try_all = true if request_type == Request::NONE
-    resolve_srv(address) if @srv_enabled
+    resolve_srv() if @srv_enabled
     set_connection_status(attempt_protocols(request_type))
   end
 
   # Attempts to resolve DNS SRV records
-  # @param address [String] Minecraft server address
   # @return [Boolean] Whether or not SRV resolution was successful
   # @since 2.3.0
-  def resolve_srv(address)
+  def resolve_srv()
     begin
       resolver = Resolv::DNS.new
       res = resolver.getresource("_minecraft._tcp.#{@address}", Resolv::DNS::Resource::IN::SRV)
@@ -359,7 +358,7 @@ class MineStat
       if server_info != nil && server_info.length >= NUM_FIELDS_BETA
         @version = ">=1.8b/1.3" # since server does not return version, set it
         @motd = server_info[0]
-        strip_motd
+        strip_motd()
         @current_players = server_info[1].to_i
         @max_players = server_info[2].to_i
         @online = true
@@ -372,7 +371,7 @@ class MineStat
         @version = "#{server_info[3]} #{server_info[7]} (#{server_info[0]})"
         @mode = server_info[8]
         @motd = server_info[1]
-        strip_motd
+        strip_motd()
         @current_players = server_info[4].to_i
         @max_players = server_info[5].to_i
         @online = true
@@ -385,7 +384,7 @@ class MineStat
         server_info = Hash[*server_info[0].split(delimiter).flatten(1)]
         @version = server_info["version"]
         @motd = server_info["hostname"]
-        strip_motd
+        strip_motd()
         @current_players = server_info["numplayers"].to_i
         @max_players = server_info["maxplayers"].to_i
         unless server_info["plugins"].nil? || server_info["plugins"].empty?
@@ -404,7 +403,7 @@ class MineStat
         @protocol = server_info[1].to_i # contains the protocol version (51 for 1.9 or 78 for 1.6.4 for example)
         @version = server_info[2]
         @motd = server_info[3]
-        strip_motd
+        strip_motd()
         @current_players = server_info[4].to_i
         @max_players = server_info[5].to_i
         @online = true
@@ -611,7 +610,7 @@ class MineStat
         @protocol = json_data['version']['protocol'].to_i
         @version = json_data['version']['name']
         @motd = json_data['description']
-        strip_motd
+        strip_motd()
         @current_players = json_data['players']['online'].to_i
         @max_players = json_data['players']['max'].to_i
         @favicon_b64 = json_data['favicon']
