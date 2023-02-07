@@ -4,21 +4,175 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      # Check for updates to GitHub Actions every week
       interval: "weekly"
+      day: "sunday"
+      time: "00:00"
+      timezone: "Etc/UTC"
+    assignees:
+      - "ldilley"
+      - "mindsolve"
+    reviewers:
+      - "ldilley"
+      - "mindsolve"
     labels:
       - "package management"
 
-  - package-ecosystem: "pip"
-    directory: "/Python"
+  - package-ecosystem: "nuget"
+    directory: "/CSharp"
     schedule:
       interval: "weekly"
+      day: "sunday"
+      time: "00:00"
+      timezone: "Etc/UTC"
+    assignees:
+      - "ldilley"
+      - "mindsolve"
+    reviewers:
+      - "ldilley"
+      - "mindsolve"
     labels:
-      - "lang: Python"
+      - "lang: C#"
+
+  - package-ecosystem: "gomod"
+    directory: "/Go"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "00:00"
+      timezone: "Etc/UTC"
+    assignees:
+      - "ldilley"
+      - "mindsolve"
+    reviewers:
+      - "ldilley"
+      - "mindsolve"
+    labels:
+      - "lang: Go"
 
   - package-ecosystem: "gradle"
     directory: "/Java"
     schedule:
       interval: "weekly"
+      day: "sunday"
+      time: "00:00"
+      timezone: "Etc/UTC"
+    assignees:
+      - "ldilley"
+      - "mindsolve"
+    reviewers:
+      - "ldilley"
+      - "mindsolve"
     labels:
       - "lang: Java"
+
+  - package-ecosystem: "maven"
+    directory: "/Java"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "00:00"
+      timezone: "Etc/UTC"
+    assignees:
+      - "ldilley"
+      - "mindsolve"
+    reviewers:
+      - "ldilley"
+      - "mindsolve"
+    labels:
+      - "lang: Java"
+
+  - package-ecosystem: "npm"
+    directory: "/JavaScript"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "00:00"
+      timezone: "Etc/UTC"
+    assignees:
+      - "ldilley"
+      - "mindsolve"
+    reviewers:
+      - "ldilley"
+      - "mindsolve"
+    labels:
+      - "lang: JavaScript"
+
+  - package-ecosystem: "composer"
+    directory: "/PHP"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "00:00"
+      timezone: "Etc/UTC"
+    assignees:
+      - "ldilley"
+      - "mindsolve"
+    reviewers:
+      - "ldilley"
+      - "mindsolve"
+    labels:
+      - "lang: PHP"
+
+  - package-ecosystem: "nuget"
+    directory: "/PowerShell"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "00:00"
+      timezone: "Etc/UTC"
+    assignees:
+      - "ldilley"
+      - "mindsolve"
+    reviewers:
+      - "ldilley"
+      - "mindsolve"
+    labels:
+      - "lang: PowerShell"
+
+  - package-ecosystem: "pip"
+    directory: "/Python"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "00:00"
+      timezone: "Etc/UTC"
+    assignees:
+      - "ldilley"
+      - "mindsolve"
+    reviewers:
+      - "ldilley"
+      - "mindsolve"
+    labels:
+      - "lang: Python"
+
+  - package-ecosystem: "bundler"
+    directory: "/Ruby"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "00:00"
+      timezone: "Etc/UTC"
+    assignees:
+      - "ldilley"
+      - "mindsolve"
+    reviewers:
+      - "ldilley"
+      - "mindsolve"
+    labels:
+      - "lang: Ruby"
+
+  - package-ecosystem: "cargo"
+    directory: "/Rust"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "00:00"
+      timezone: "Etc/UTC"
+    assignees:
+      - "ldilley"
+      - "mindsolve"
+    reviewers:
+      - "ldilley"
+      - "mindsolve"
+    labels:
+      - "lang: Rust"
