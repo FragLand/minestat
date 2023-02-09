@@ -64,7 +64,6 @@ module.exports =
           if(data != null && data != '')
           {
             var server_info = data.toString().split("\x00\x00\x00");
-            let res = {};
             if(server_info != null && server_info.length >= NUM_FIELDS)
             {
               res.online = true;
@@ -78,6 +77,7 @@ module.exports =
               res.online = false;
             }
           }
+          console.log(res)
           callback(res);
           client.end();
         });
