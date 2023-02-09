@@ -70,8 +70,8 @@ module.exports =
                         res.online = true;
                         res.version = server_info[2].replace(/\u0000/g,'');
                         res.motd = server_info[3].replace(/\u0000/g,'');
-                        res.current_players = server_info[4].replace(/\u0000/g,'');
-                        res.max_players = server_info[5].replace(/\u0000/g,'');
+                        res.current_players = Number(server_info[4].replace(/\u0000/g,''));
+                        res.max_players = Number(server_info[5].replace(/\u0000/g,''));
                     }
                     else
                     {
