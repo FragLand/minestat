@@ -35,6 +35,7 @@ let res = {};
 
 module.exports =
     {
+      VERSION: VERSION
       init: function(address, port, timeout, callback)
       {
         res.address = address;
@@ -112,7 +113,7 @@ module.exports =
           }
           */
 
-          callback();
+          callback(err);
 
           // Uncomment the line below for more details pertaining to network errors.
           //console.log(err);
