@@ -77,7 +77,6 @@ module.exports =
               res.online = false;
             }
           }
-          console.log(res)
           callback(res);
           client.end();
         });
