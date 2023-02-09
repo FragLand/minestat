@@ -21,6 +21,7 @@ import json
 import socket
 import struct
 import re
+import random
 import ipaddress
 from enum import Enum
 from time import time, perf_counter
@@ -62,6 +63,12 @@ Contains possible SLP (Server List Ping) protocols.
   Attempts to connect to a remote server using all available protocols until an acceptable response
   is received or until failure.
 
+- `Query`: The Query / GameSpot4 / UT3 protocol for Mincraft Java servers.
+  Needs to be enabled on the Minecraft server.
+  Query is similar to SLP but additionally returns more technical related data.
+
+  *Available since Minecraft 1.9*
+
 - `BEDROCK_RAKNET`: The Minecraft Bedrock/Education edition protocol.
 
   *Available for all Minecraft Bedrock versions, not compatible with Java edition.*
@@ -100,6 +107,16 @@ Contains possible SLP (Server List Ping) protocols.
   Attempt to use all protocols.
   """
 
+  Query = 6
+  """
+  The Query / GameSpot4 / UT3 protocol for Mincraft Java servers.
+  Needs to be enabled on the Minecraft server.
+
+  Query is similar to SLP but additionally returns more technical related data.
+
+  *Available since Minecraft 1.9*
+  """
+  
   BEDROCK_RAKNET = 4
   """
   The Bedrock SLP-equivalent using the RakNet `Unconnected Ping` packet.
@@ -200,6 +217,8 @@ class MineStat:
     """online or offline?"""
     self.version: Optional[str] = None
     """server version"""
+    self.plugins: Optional[list[str]] = None
+    """list of plugins returned by the Query protcol, may be empty"""
     self.motd: Optional[str] = None
     """message of the day, unchanged server response (including formatting codes/JSON)"""
     self.stripped_motd: Optional[str] = None
@@ -208,6 +227,10 @@ class MineStat:
     """current number of players online"""
     self.max_players: Optional[int] = None
     """maximum player capacity"""
+    self.player_list: Optional[list[str]] = None
+    """list of online players, may be empty even if "current_players" is over 0"""
+    self.map: Optional[str] = None
+    """the name of the map the server is running on, only supported by the Query protocol"""
     self.latency: Optional[int] = None
     """ping time to server in milliseconds"""
     self.timeout: int = timeout
@@ -246,6 +269,8 @@ class MineStat:
         result = self.json_query()
       elif query_protocol is SlpProtocols.BEDROCK_RAKNET:
         result = self.bedrock_raknet_query()
+      elif query_protocol is SlpProtocols.Query:
+        result = self.fullstat_query()
       self.connection_status = result
 
       return
@@ -492,6 +517,161 @@ class MineStat:
     except KeyError:  # older Bedrock server versions do not respond with the game mode.
       self.gamemode = None
 
+    return ConnStatus.SUCCESS
+
+  def fullstat_query(self) -> ConnStatus:
+    """
+    Method for querying a Minecraft Java server using the fullstat Query / GameSpot4 / UT3 protocol.
+    Needs to be enabled on the Minecraft server using:
+
+    "enable-query=true"
+
+    in the servers "server.properties" file.
+
+    This method ONLY supports full stat querys.
+    Documentation for this protocol: https://wiki.vg/Query
+    """
+    # protocol:
+    #   send handshake request
+    #   receive challenge token
+    #   send full stat request
+    #   receive status data
+
+    # Create UDP socket and set timeout
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.settimeout(self.timeout)
+
+    # padding that is prefixes to every packet
+    magic = b"\xFE\xFD"
+
+    # packettypes for the multiple packets send by the client
+    handshake_packettype = struct.pack("!B", 9)
+    stat_packettype = struct.pack("!B", 0)
+
+    # generate session id
+    session_id_int = random.randint(0, 2147483648) & 0x0F0F0F0F
+    session_id_bytes = struct.pack('>l', session_id_int)
+
+    # handshake packet:
+    #   contains 0xFE0xFD as a prefix
+    #   contains type of the packet, 9 for hanshaking in this case (encoded in Bytes as a big-endian)
+    #   contains session id (is generated randomly at the begining)
+
+    # construct the handshake packet
+    handshake_packet = magic + handshake_packettype + session_id_bytes
+
+    # send packet to server
+    sock.sendto(handshake_packet, (self.address, self.port))
+
+    try:
+      # receive the handshake response
+      handshake_res = sock.recv(24)
+
+      # extract the challenge token from the server. The beginning of the packet can be ignored.
+      challenge_token = handshake_res[5:]
+
+      # pack the challenge token into a big-endian long (int32)
+      challenge_token_bytes = struct.pack('>l', int(challenge_token[:-1]))
+
+      # full stat request packet:
+      #   contains 0xFE0xFD as a prefix
+      #   contains type of the packet, 0 for hanshaking in this case (encoded as a big-endian integer)
+      #   contains session id (is generated randomly at the beginning)
+      #   contains challenge token (received during the handshake)
+      #   contains 0x00 0x00 0x00 0x00 as padding (a basic stat request does not include these bytes)
+
+      # construct the request packet
+      req_packet = magic + stat_packettype + session_id_bytes + challenge_token_bytes + b"\x00\x00\x00\x00"
+
+      # send packet to server
+      sock.sendto(req_packet, (self.address, self.port))
+
+      # receive requested status data
+      raw_res = sock.recv(4096)
+
+      # close the socket
+      sock.close()
+
+    except socket.timeout:
+      return ConnStatus.TIMEOUT
+    except (ConnectionResetError, ConnectionAbortedError):
+      return ConnStatus.UNKNOWN
+    except OSError:
+      return ConnStatus.CONNFAIL
+    finally:
+      sock.close()
+
+    return self.__parse_query_payload(raw_res)
+
+  def __parse_query_payload(self, raw_res) -> ConnStatus:
+    """
+    Helper method for parsing the reponse from a full stat query request.
+
+    See https://wiki.vg/Query for details.
+    """
+    try:
+      # remove uneccessary padding
+      res = raw_res[11:]
+
+      # split stats from players
+      raw_stats, raw_players = res.split(b"\x00\x00\x01player_\x00\x00")
+
+      # split stats into individual elements and remove unnecessary elements
+      stats = raw_stats.split(b"\x00")[2:]
+    
+      stat_values = []
+      key = True
+      # the list conatins the key to the value and the value right in the element behind it
+      for element in stats:
+        if key:
+          key = False
+
+        else:
+          key = True
+          stat_values.append(element)
+
+      # extract motd
+      self.motd = stat_values[0].decode("utf-8")
+
+      # query does not support formatted motd's
+      self.stripped_motd = self.motd
+
+      # the next two values are not used because they are alwas the same (gameid and gametype)
+
+      # extract version
+      self.version = stat_values[3].decode("utf-8")
+
+      # extract list of plugins
+      raw_plugins = stat_values[4].decode("utf-8")
+      if not raw_plugins == "":
+        # the plugins are seperated by " ;"
+        self.plugins = raw_plugins.split(" ;")
+        # there may be information about the server software in the first plugin element
+        # example: ["Paper on 1.19.3: AnExampleMod 7.3", "AnotherExampleMod 4.2", ...]
+        # more information on https://wiki.vg/Query
+        if ":" in self.plugins[0]:
+          self.version, self.plugins[0] = self.plugins[0].split(": ")
+
+      # extract the name of the map the server is running on
+      self.map = stat_values[5].decode("utf-8")
+
+      # extract number of players and max allowed players
+      self.current_players = int(stat_values[6])
+      self.max_players = int(stat_values[7])
+
+      # There are two values left, the ip and port the server socket is bound to, we are not using them though
+
+      # split players (seperated by 0x00)
+      players = raw_players.split(b"\x00")
+
+      # decode players and sort out empty elements
+      self.player_list = [player.decode("utf-8") for player in players[:-2] if player != b""]
+
+    except Exception:
+      return ConnStatus.UNKNOWN
+
+    self.online = True
+    self.slp_protocol = SlpProtocols.Query
     return ConnStatus.SUCCESS
 
   def json_query(self) -> ConnStatus:
