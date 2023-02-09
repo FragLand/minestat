@@ -31,13 +31,13 @@ motd = null;               // message of the day
 current_players = null;    // current number of players online
 max_players = null;        // maximum player capacity
 latency = null;            // ping time to server in milliseconds
-let res = {};
 
 module.exports =
     {
       VERSION: VERSION
       init: function(address, port, timeout, callback)
       {
+        let res = {};
         res.address = address;
         res.port = port;
         res.online = false;
