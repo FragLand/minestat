@@ -107,7 +107,7 @@ Contains possible SLP (Server List Ping) protocols.
   Attempt to use all protocols.
   """
 
-  Query = 6
+  QUERY = 6
   """
   The Query / GameSpot4 / UT3 protocol for Mincraft Java servers.
   Needs to be enabled on the Minecraft server.
@@ -165,7 +165,7 @@ Contains possible SLP (Server List Ping) protocols.
 
 
 class MineStat:
-  VERSION = "2.5.1"
+  VERSION = "2.6.0"
   """The MineStat version"""
   DEFAULT_TCP_PORT = 25565
   """default TCP port for SLP queries"""
@@ -269,7 +269,7 @@ class MineStat:
         result = self.json_query()
       elif query_protocol is SlpProtocols.BEDROCK_RAKNET:
         result = self.bedrock_raknet_query()
-      elif query_protocol is SlpProtocols.Query:
+      elif query_protocol is SlpProtocols.QUERY:
         result = self.fullstat_query()
       self.connection_status = result
 
@@ -558,7 +558,9 @@ class MineStat:
     #   contains session id (is generated randomly at the begining)
 
     # construct the handshake packet
-    handshake_packet = magic + handshake_packettype + session_id_bytes
+    handshake_packet = magic 
+    handshake_packet += handshake_packettype 
+    handshake_packet += session_id_bytes
 
     # send packet to server
     sock.sendto(handshake_packet, (self.address, self.port))
@@ -568,10 +570,10 @@ class MineStat:
       handshake_res = sock.recv(24)
 
       # extract the challenge token from the server. The beginning of the packet can be ignored.
-      challenge_token = handshake_res[5:]
+      challenge_token = handshake_res[5:].rstrip(b'\00')
 
       # pack the challenge token into a big-endian long (int32)
-      challenge_token_bytes = struct.pack('>l', int(challenge_token[:-1]))
+      challenge_token_bytes = struct.pack('>l', int(challenge_token))
 
       # full stat request packet:
       #   contains 0xFE0xFD as a prefix
@@ -581,7 +583,11 @@ class MineStat:
       #   contains 0x00 0x00 0x00 0x00 as padding (a basic stat request does not include these bytes)
 
       # construct the request packet
-      req_packet = magic + stat_packettype + session_id_bytes + challenge_token_bytes + b"\x00\x00\x00\x00"
+      req_packet = magic
+      req_packet += stat_packettype
+      req_packet += session_id_bytes
+      req_packet += challenge_token_bytes
+      req_packet += b"\x00\x00\x00\x00"
 
       # send packet to server
       sock.sendto(req_packet, (self.address, self.port))
@@ -605,9 +611,11 @@ class MineStat:
 
   def __parse_query_payload(self, raw_res) -> ConnStatus:
     """
-    Helper method for parsing the reponse from a full stat query request.
+    Helper method for parsing the reponse from a query request.
 
     See https://wiki.vg/Query for details.
+
+    This implementation does not parse every value returned by the query protocol.
     """
     try:
       # remove uneccessary padding
@@ -616,50 +624,56 @@ class MineStat:
       # split stats from players
       raw_stats, raw_players = res.split(b"\x00\x00\x01player_\x00\x00")
 
-      # split stats into individual elements and remove unnecessary elements
-      stats = raw_stats.split(b"\x00")[2:]
-    
-      stat_values = []
-      key = True
-      # the list conatins the key to the value and the value right in the element behind it
-      for element in stats:
-        if key:
-          key = False
+      # split stat keys and values into individual elements and remove unnecessary padding
+      stat_list = raw_stats.split(b"\x00")[2:]
 
+      # move keys and values into a dictonary, the keys are also decoded
+      key = True
+      stats = {}
+      for index, key_name in enumerate(stat_list):
+        if key:
+          stats[key_name.decode("utf-8")] = stat_list[index + 1]
+          key = False
         else:
           key = True
-          stat_values.append(element)
 
-      # extract motd
-      self.motd = stat_values[0].decode("utf-8")
+      # extract motd, the motd is named "hostname" in the Query protocol
+      if "hostname" in stats:
+        self.motd = stats["hostname"].decode("iso_8859_1")
 
-      # query does not support formatted motd's
-      self.stripped_motd = self.motd
+      # the "MOTD" key is used in a basic stats query reponse
+      elif "MOTD" in stats:
+        self.motd = stats["MOTD"].decode("iso_8859_1")
 
-      # the next two values are not used because they are alwas the same (gameid and gametype)
+      if self.motd != None:
+        # remove potential formatting
+        self.stripped_motd = self.motd_strip_formatting(self.motd)
 
-      # extract version
-      self.version = stat_values[3].decode("utf-8")
+      # extract the servers Minecraft version
+      if "version" in stats:
+        self.version = stats["version"].decode("utf-8")
 
       # extract list of plugins
-      raw_plugins = stat_values[4].decode("utf-8")
-      if not raw_plugins == "":
-        # the plugins are seperated by " ;"
-        self.plugins = raw_plugins.split(" ;")
-        # there may be information about the server software in the first plugin element
-        # example: ["Paper on 1.19.3: AnExampleMod 7.3", "AnotherExampleMod 4.2", ...]
-        # more information on https://wiki.vg/Query
-        if ":" in self.plugins[0]:
-          self.version, self.plugins[0] = self.plugins[0].split(": ")
+      if "plugins" in stats:
+        raw_plugins = stats["plugins"].decode("utf-8")
+        if not raw_plugins == "":
+          # the plugins are separated by " ;"
+          self.plugins = raw_plugins.split(" ;")
+          # there may be information about the server software in the first plugin element
+          # example: ["Paper on 1.19.3: AnExampleMod 7.3", "AnotherExampleMod 4.2", ...]
+          # more information on https://wiki.vg/Query
+          if ":" in self.plugins[0]:
+            self.version, self.plugins[0] = self.plugins[0].split(": ")
 
       # extract the name of the map the server is running on
-      self.map = stat_values[5].decode("utf-8")
+      if "map" in stats:
+        self.map = stats["map"].decode("utf-8")
 
-      # extract number of players and max allowed players
-      self.current_players = int(stat_values[6])
-      self.max_players = int(stat_values[7])
-
-      # There are two values left, the ip and port the server socket is bound to, we are not using them though
+      # extract number of online and maximum allowed players
+      if "numplayers" in stats:
+        self.current_players = int(stats["numplayers"])
+      if "numplayers" in stats:
+        self.max_players = int(stats["maxplayers"])
 
       # split players (seperated by 0x00)
       players = raw_players.split(b"\x00")
@@ -671,7 +685,7 @@ class MineStat:
       return ConnStatus.UNKNOWN
 
     self.online = True
-    self.slp_protocol = SlpProtocols.Query
+    self.slp_protocol = SlpProtocols.QUERY
     return ConnStatus.SUCCESS
 
   def json_query(self) -> ConnStatus:
