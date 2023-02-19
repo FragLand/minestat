@@ -63,7 +63,7 @@ Contains possible SLP (Server List Ping) protocols.
   Attempts to connect to a remote server using all available protocols until an acceptable response
   is received or until failure.
 
-- `Query`: The Query / GameSpot4 / UT3 protocol for Mincraft Java servers.
+- `QUERY`: The Query / GameSpot4 / UT3 protocol for Mincraft Java servers.
   Needs to be enabled on the Minecraft server.
   Query is similar to SLP but additionally returns more technical related data.
 
@@ -116,7 +116,7 @@ Contains possible SLP (Server List Ping) protocols.
 
   *Available since Minecraft 1.9*
   """
-  
+
   BEDROCK_RAKNET = 4
   """
   The Bedrock SLP-equivalent using the RakNet `Unconnected Ping` packet.
@@ -558,8 +558,8 @@ class MineStat:
     #   contains session id (is generated randomly at the begining)
 
     # construct the handshake packet
-    handshake_packet = magic 
-    handshake_packet += handshake_packettype 
+    handshake_packet = magic
+    handshake_packet += handshake_packettype
     handshake_packet += session_id_bytes
 
     # send packet to server
