@@ -27,7 +27,7 @@ require 'timeout'
 # Provides a Ruby interface for polling the status of Minecraft servers
 class MineStat
   # MineStat version
-  VERSION = "3.0.1"
+  VERSION = "3.0.2"
 
   # Number of values expected from server
   NUM_FIELDS = 6
@@ -905,5 +905,6 @@ class MineStat
   attr_reader :srv_enabled
 
   # Whether or not DNS SRV resolution was successful
+  # @since 3.0.2
   attr_reader :srv_succeeded
 end
