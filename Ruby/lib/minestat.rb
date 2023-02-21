@@ -167,9 +167,10 @@ class MineStat
     @try_all = false           # try all protocols?
     @debug = debug             # debug mode
     @srv_enabled = srv_enabled # enable SRV resolution?
+    @srv_succeeded = false     # SRV resolution successful?
 
     @try_all = true if request_type == Request::NONE
-    resolve_srv() if @srv_enabled
+    @srv_suceeded = resolve_srv() if @srv_enabled
     set_connection_status(attempt_protocols(request_type))
   end
 
@@ -281,7 +282,7 @@ class MineStat
         @server.connect(@address, @port)
       else
         start_time = Time.now
-        if @srv_enabled
+        if @srv_enabled && @srv_succeeded
           @server = TCPSocket.new(@srv_address, @srv_port)
         else
           @server = TCPSocket.new(@address, @port)
@@ -902,4 +903,7 @@ class MineStat
   # Whether or not DNS SRV resolution is enabled
   # @since 3.0.1
   attr_reader :srv_enabled
+
+  # Whether or not DNS SRV resolution was successful
+  attr_reader :srv_succeeded
 end
