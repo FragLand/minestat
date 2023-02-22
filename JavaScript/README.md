@@ -5,7 +5,7 @@ MineStat is a Minecraft server status checker.
 
 ### JavaScript example
 ```javascript
-var ms = require('minestat.js');
+var ms = require('minestat');
 ms.init('minecraft.frag.land', 25565, function(result)
 {
   console.log("Minecraft server status of " + result.address + " on port " + result.port + ":");
