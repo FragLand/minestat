@@ -37,7 +37,7 @@ module.exports =
     VERSION: VERSION,
     init: function(address, port, timeout, callback)
     {
-      let res = {};
+      var res = {};
       res.address = address;
       res.port = port;
       res.online = false;
