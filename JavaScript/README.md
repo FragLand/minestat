@@ -8,16 +8,17 @@ MineStat is a Minecraft server status checker.
 var ms = require('minestat');
 ms.init('minecraft.frag.land', 25565, function(result)
 {
-  console.log("Minecraft server status of " + ms.address + " on port " + ms.port + ":");
-  if(ms.online)
+  console.log("Minecraft server status of " + result.address + " on port " + result.port + ":");
+  if(result.online)
   {
-    console.log("Server is online running version " + ms.version + " with " + ms.current_players + " out of " + ms.max_players + " players.");
-    console.log("Message of the day: " + ms.motd);
-    console.log("Latency: " + ms.latency + "ms");
+    console.log("Server is online running version " + result.version + " with " + result.current_players + " out of " + result.max_players + " players.");
+    console.log("Message of the day: " + result.motd);
+    console.log("Latency: " + result.latency + "result");
   }
   else
   {
     console.log("Server is offline!");
   }
 });
+
 ```
