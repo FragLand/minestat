@@ -87,11 +87,23 @@ The following attributes are available on the `MineStat` object:
   - Time in milliseconds the server took to respond to the information request.
 - `slp_protocol`: minestat.SlpProtocol
   - Protocol used to retrieve information from the server.
-- `gamemode`: str (***Bedrock specific***)
-  - Gamemode currently active on the server (Creative/Survival/Adventure). None if the server is not a Bedrock server.
-- `favicon_b64`: str
-  - Base64-encoded favicon possibly contained in JSON 1.7 responses.
-- `favicon`: str
-  - Base64-decoded favicon data.
 - `connection_status`: minestat.ConnStatus
   - Status of connection ("SUCCESS", "CONNFAIL", "TIMEOUT", or "UNKNOWN").
+- `srv_record`: bool
+  - wether the server has a SRV record.
+
+#### Extra attributes
+The following attributes are not availabe with every protocol.
+
+- `player_list`: list[str] (***UT3/GS4 Query specific***)
+  - List of online players, may be empty even if `current_players` is over 0.
+- `plugins`: list[str] (***UT3/GS4 Query specific***)
+  - List of plugins returned by the Query protcol.
+- `map`: str (***UT3/GS4 Query specific***)
+  - The name of the map the server is running on.
+- `gamemode`: str (***Bedrock specific***)
+  - Gamemode currently active on the server (Creative/Survival/Adventure).
+- `favicon_b64`: str (***SLP 1.7/JSON specific***)
+  - Base64-encoded favicon.
+- `favicon`: str (***SLP 1.7/JSON specific***)
+  - Decoded favicon data.
