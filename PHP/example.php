@@ -1,7 +1,7 @@
 <?php
 require_once('minestat.php');
 
-$ms = new MineStat("minecraft.frag.land");
+$ms = new MineStat("frag.land");
 // Bedrock/Pocket Edition explicit query example
 //$ms = new MineStat("minecraft.frag.land", 19132, 5, MineStat::REQUEST_BEDROCK);
 printf("Minecraft server status of %s on port %s:<br>", $ms->get_address(), $ms->get_port());
