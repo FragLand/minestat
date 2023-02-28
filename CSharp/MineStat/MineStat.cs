@@ -482,6 +482,7 @@ namespace MineStatLib
         var descriptionElement = root.XPathSelectElement("//description");
         // JsonWriter needs a XmlDocument with the root element "root"
         XmlDocument motdJsonDocument = new XmlDocument();
+        motdJsonDocument.PreserveWhitespace = true;
         descriptionElement.Name = "root";
         motdJsonDocument.LoadXml(descriptionElement.ToString());
         MemoryStream tempMotdJsonStream = new MemoryStream();
