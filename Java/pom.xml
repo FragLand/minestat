@@ -65,7 +65,7 @@
       <!-- Build .class files -->
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.10.1</version>
+        <version>3.11.0</version>
         <configuration>
           <includes>
             <include>Example.java</include>
