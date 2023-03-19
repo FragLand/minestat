@@ -1,7 +1,7 @@
 <?php
 /*
  * minestat.php - A Minecraft server status checker
- * Copyright (C) 2014-2022 Lloyd Dilley
+ * Copyright (C) 2014-2023 Lloyd Dilley
  * http://www.dilley.me/
  *
  * This program is free software; you can redistribute it and/or modify
@@ -21,7 +21,7 @@
 
 class MineStat
 {
-  const VERSION = "2.3.1";            // MineStat version
+  const VERSION = "2.4.0";            // MineStat version
   const NUM_FIELDS = 6;               // number of values expected from server
   const NUM_FIELDS_BETA = 3;          // number of values expected from a 1.8b/1.3 server
   const MAX_VARINT_SIZE = 5;          // maximum number of bytes a varint can be
@@ -54,6 +54,8 @@ class MineStat
 
   private $address;                   // hostname or IP address of the Minecraft server
   private $port;                      // port number the Minecraft server accepts connections on
+  private $srv_address;               // server address from DNS SRV record
+  private $srv_port;                  // server TCP port from DNS SRV record
   private $online;                    // online or offline?
   private $version;                   // Minecraft server version
   private $mode;                      // game mode (Bedrock/Pocket Edition only)
@@ -71,8 +73,10 @@ class MineStat
   private $request_type;              // protocol version
   private $connection_status;         // status of connection ("Success", "Fail", "Timeout", or "Unknown")
   private $try_all;                   // try all protocols?
+  private $srv_enabled;               // enable SRV resolution?
+  private $srv_succeeded;             // SRV resolution successful?
 
-  public function __construct($address, $port = MineStat::DEFAULT_TCP_PORT, $timeout = MineStat::DEFAULT_TIMEOUT, $request_type = MineStat::REQUEST_NONE)
+  public function __construct($address, $port = MineStat::DEFAULT_TCP_PORT, $timeout = MineStat::DEFAULT_TIMEOUT, $request_type = MineStat::REQUEST_NONE, $srv_enabled = true)
   {
     $this->address = $address;
     $this->port = $port;
@@ -80,6 +84,11 @@ class MineStat
     $this->online = false;
     if($request_type == MineStat::REQUEST_NONE)
       $this->try_all = true;
+    $this->srv_enabled = $srv_enabled;
+    $this->srv_succeeded = false;
+
+    if($this->srv_enabled)
+      $this->srv_succeeded = $this->resolve_srv();
 
     switch($request_type)
     {
@@ -129,6 +138,10 @@ class MineStat
 
   public function get_port() { return $this->port; }
 
+  public function get_srv_address() { return $this->srv_address; }
+
+  public function get_srv_port() { return $this->srv_port; }
+
   public function is_online() { return $this->online; }
 
   public function get_version() { return $this->version; }
@@ -156,6 +169,36 @@ class MineStat
   public function get_request_type() { return $this->request_type; }
 
   public function get_connection_status() { return $this->connection_status; }
+
+  public function is_srv_enabled() { return $this->srv_enabled; }
+
+  public function is_srv_success() { return $this->srv_succeeded; }
+
+  /* Attempts to resolve DNS SRV records */
+  private function resolve_srv()
+  {
+    try
+    {
+      $result = dns_get_record("_minecraft._tcp." . $this->address, DNS_SRV);
+      if(!empty($result))
+      {
+        if(isset($result[0]['target']) && isset($result[0]['port']))
+        {
+          $this->srv_address = $result[0]['target'];
+          $this->srv_port = $result[0]['port'];
+          return true;
+        }
+        else
+          return false;
+      }
+      else
+        return false;
+    }
+    catch(Exception $e)
+    {
+      return false;
+    }
+  }
 
   /* Sets connection status */
   private function set_connection_status($retval)
@@ -212,7 +255,19 @@ class MineStat
     socket_set_nonblock($this->socket);
     $time = time();
     $start_time = microtime(true);
-    while(!@socket_connect($this->socket, $this->address, $this->port))
+    $connect_address;
+    $connect_port;
+    if($this->request_type != MineStat::REQUEST_BEDROCK && $this->request_type != "Bedrock/Pocket Edition" && $this->srv_enabled && $this->srv_succeeded)
+    {
+      $connect_address = $this->srv_address;
+      $connect_port = $this->srv_port;
+    }
+    else
+    {
+      $connect_address = $this->address;
+      $connect_port = $this->port;
+    }
+    while(!@socket_connect($this->socket, $connect_address, $connect_port))
     {
       if((time() - $time) >= $this->timeout)
       {
@@ -221,7 +276,7 @@ class MineStat
       }
       usleep(0);
     }
-    $result = @socket_connect($this->socket, $this->address, $this->port);
+    $result = @socket_connect($this->socket, $connect_address, $connect_port);
     $this->latency = round((microtime(true) - $start_time) * 1000);
     socket_set_block($this->socket);
     if($result === false && socket_last_error($this->socket) != SOCKET_EISCONN)
