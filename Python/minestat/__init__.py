@@ -798,7 +798,7 @@ class MineStat:
     self.max_players = payload_obj["players"]["max"]
     self.current_players = payload_obj["players"]["online"]
 
-    # There may is a "sample" field in the "players" object that contains a sample list of online players
+    # There may be a "sample" field in the "players" object that contains a sample list of online players
     if "sample" in payload_obj["players"]:
       self.player_list = [player["name"] for player in payload_obj["players"]["sample"]]
 
