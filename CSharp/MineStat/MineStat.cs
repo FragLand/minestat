@@ -43,7 +43,7 @@ namespace MineStatLib
     /// <summary>
     /// The MineStat library version.
     /// </summary>
-    public const string MineStatVersion = "3.1.1";
+    public const string MineStatVersion = "3.1.2";
     /// <summary>
     /// Default TCP timeout in seconds.
     /// </summary>
@@ -248,9 +248,11 @@ namespace MineStatLib
       {
         var json_data = rawmotd.Element("extra").Elements();
         foreach (var item in json_data)
-          stripped_motd += item.Element("text")?.Value;
+        {
+          stripped_motd += strip_motd_formatting(item);
+        }
       }
-      return strip_motd_formatting(stripped_motd);
+      return stripped_motd;
     }
 
     /// <summary>
