@@ -210,6 +210,8 @@ class MineStat:
 
         else:
           self.address = addr
+          # Don't change the port if set from SRV record
+          autoport = False
 
     self.port: int = port
     """port number the Minecraft server accepts connections on"""
