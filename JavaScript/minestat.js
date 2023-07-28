@@ -78,15 +78,14 @@ module.exports =
             res.online = false;
           }
         }
-        callback(res);
+        callback(undefined, res);
         client.end();
       });
 
       client.on('timeout', () =>
       {
-        callback();
+        callback(new Error('Client timed out during request'));
         client.end();
-        process.exit();
       });
 
       client.on('end', () =>

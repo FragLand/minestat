@@ -1,6 +1,11 @@
 var ms = require('minestat');
-ms.init('minecraft.frag.land', 25565, function(result)
+ms.init('minecraft.frag.land', 25565, function(error, result)
 {
+  if (error) {
+    console.log('The request timed out');
+    throw error;
+  }
+
   console.log("Minecraft server status of " + result.address + " on port " + result.port + ":");
   if(result.online)
   {
