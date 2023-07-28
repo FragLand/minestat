@@ -22,24 +22,15 @@
 
 const VERSION = "2.0.0";   // MineStat version
 const NUM_FIELDS = 6;      // number of values expected from server
-const DEFAULT_TIMEOUT = 5; // default TCP timeout in seconds
-address = null;
-port = null;
-online = null;             // online or offline?
-version = null;            // server version
-motd = null;               // message of the day
-current_players = null;    // current number of players online
-max_players = null;        // maximum player capacity
-latency = null;            // ping time to server in milliseconds
+const DEFAULT_TIMEOUT = 5000;
 
-function init(opts, callback)
+function func(opts, callback)
 {
+  const {address, port = 25565, timeout = DEFAULT_TIMEOUT} = opts;
   var res = {};
-  res.address = opts.address;
-  res.port = opts.port || 25565;
+  res.address = address;
+  res.port = port;
   res.online = false;
-
-  const timeout = opts.timeout || DEFAULT_TIMEOUT;
 
   const net = require('net');
   var start_time = new Date();
@@ -50,7 +41,7 @@ function init(opts, callback)
     client.write(buff);
   });
 
-  client.setTimeout(timeout * 1000);
+  client.setTimeout(timeout);
 
   client.on('data', (data) =>
   {
@@ -117,7 +108,7 @@ module.exports =
     init: async function(opts) {
       return new Promise(function(resolve, reject)
       {
-        init(opts, (error, result) => {
+        func(opts, (error, result) => {
           if (error) {
             reject(error);
           } else {
@@ -128,6 +119,6 @@ module.exports =
     },
     initSync: function(opts, callback)
     {
-      return init(opts, callback);
+      return func(opts, callback);
     }
   };
