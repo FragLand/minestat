@@ -32,7 +32,8 @@ current_players = null;    // current number of players online
 max_players = null;        // maximum player capacity
 latency = null;            // ping time to server in milliseconds
 
-const init = (opts, callback) => {
+function init(opts, callback)
+{
   var res = {};
   res.address = opts.address;
   res.port = opts.port || 25565;
@@ -114,7 +115,8 @@ module.exports =
   {
     VERSION: VERSION,
     init: async function(opts) {
-      return new Promise((resolve, reject) => {
+      return new Promise(function(resolve, reject)
+      {
         init(opts, (error, result) => {
           if (error) {
             reject(error);
@@ -124,7 +126,8 @@ module.exports =
         });
       });
     },
-    initSync: function(opts, callback) {
+    initSync: function(opts, callback)
+    {
       return init(opts, callback);
     }
   };
