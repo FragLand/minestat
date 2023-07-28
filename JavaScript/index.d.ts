@@ -30,9 +30,15 @@ declare module 'minestat' {
     (address: string, port: number, timeout: number, callback: Callback): void;
   }
 
+  interface AsyncInit {
+    (address: string, port: number): Promise<Stats>;
+    (address: string, port: number, timeout: number): Promise<Stats>;
+  }
+
   interface MineStat {
     VERSION: string;
-    init: InitFn;
+    init: AsyncInit;
+    initSync: InitFn;
   }
 
   const minestat: MineStat;
