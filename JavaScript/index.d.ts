@@ -25,15 +25,14 @@ declare module 'minestat' {
     (error: never, result: Stats): void;
   }
 
-  interface InitFn {
-    (address: string, port: number, callback: Callback): void;
-    (address: string, port: number, timeout: number, callback: Callback): void;
+  interface Options {
+    address: string;
+    port: number;
+    timeout?: number;
   }
 
-  interface AsyncInit {
-    (address: string, port: number): Promise<Stats>;
-    (address: string, port: number, timeout: number): Promise<Stats>;
-  }
+  type InitFn = (options: Options, callback: Callback) => void;
+  type AsyncInit = (options: Options) => Promise<Stats>;
 
   interface MineStat {
     VERSION: string;

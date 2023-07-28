@@ -50,7 +50,7 @@ For online servers:
   const ms = require('minestat');
 
   try {
-    const result = await ms.init('minecraft.frag.land', 25565);
+    const result = await ms.init({address: 'minecraft.frag.land'});
     console.log("Minecraft server status of " + result.address + " on port " + result.port + ":");
     if(result.online)
     {
@@ -70,7 +70,7 @@ For online servers:
 ### JavaScript synchronous example
 ```javascript
 var ms = require('minestat');
-ms.initSync('minecraft.frag.land', 25565, function(result)
+ms.initSync({address: 'minecraft.frag.land', port: 12345}, function(result)
 {
   console.log("Minecraft server status of " + result.address + " on port " + result.port + ":");
   if(result.online)

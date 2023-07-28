@@ -32,18 +32,13 @@ current_players = null;    // current number of players online
 max_players = null;        // maximum player capacity
 latency = null;            // ping time to server in milliseconds
 
-const init = (address, port, timeout, callback) => {
+const init = (opts, callback) => {
   var res = {};
-  res.address = address;
-  res.port = port;
+  res.address = opts.address;
+  res.port = opts.port || 25565;
   res.online = false;
 
-  // if 3rd argument is a function, it's the callback (timeout is optional)
-  if(typeof(timeout) === typeof(Function()))
-  {
-    callback = timeout;
-    timeout = DEFAULT_TIMEOUT;
-  }
+  const timeout = opts.timeout || DEFAULT_TIMEOUT;
 
   const net = require('net');
   var start_time = new Date();
@@ -118,9 +113,9 @@ const init = (address, port, timeout, callback) => {
 module.exports =
   {
     VERSION: VERSION,
-    init: async function(address, port, timeout) {
+    init: async function(opts) {
       return new Promise((resolve, reject) => {
-        init(address, port, timeout, (error, result) => {
+        init(opts, (error, result) => {
           if (error) {
             reject(error);
           } else {
@@ -129,7 +124,7 @@ module.exports =
         });
       });
     },
-    initSync: function(address, port, timeout, callback) {
-      return init(address, port, timeout, callback);
+    initSync: function(opts, callback) {
+      return init(opts, callback);
     }
   };
