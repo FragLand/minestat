@@ -1,12 +1,12 @@
 declare module 'minestat' {
 
-  type BaseStats<T, U> = {
-    address: T;
-    port: U;
+  type BaseStats = {
+    address: string;
+    port: number;
     latency: number;
   };
 
-  type Online<T, U> = BaseStats<T, U> & {
+  type Online = BaseStats & {
     online: true;
     version: string;
     max_players: number;
@@ -14,20 +14,20 @@ declare module 'minestat' {
     motd: string;
   };
 
-  type Offline<T, U> = BaseStats<T, U> & {
+  type Offline = BaseStats & {
     online: false;
   };
 
-  type Stats<T, U> = Readonly<Online<T, U> | Offline<T, U>>;
+  type Stats = Readonly<Online | Offline>;
 
-  interface Callback<T, U> {
+  interface Callback {
     (error: Error): void;
-    (error: never, result: Stats<T, U>): void;
+    (error: never, result: Stats): void;
   }
 
   interface InitFn {
-    (address: string, port: number, callback: Callback<typeof address, typeof port>): void;
-    (address: string, port: number, timeout: number, callback: Callback<typeof address, typeof port>): void;
+    (address: string, port: number, callback: Callback): void;
+    (address: string, port: number, timeout: number, callback: Callback): void;
   }
 
   interface MineStat {
