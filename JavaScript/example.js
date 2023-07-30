@@ -1,8 +1,10 @@
+// Synchronous example (see example-async.js or example-async.mjs for asynchronous examples)
 var ms = require('minestat');
-ms.init('minecraft.frag.land', 25565, function(error, result)
+ms.initSync({address: 'minecraft.frag.land', port: 25565}, function(error, result)
 {
-  if (error) {
-    console.log('The request timed out');
+  if(error)
+  {
+    console.log('Error encountered during connection attempt.');
     throw error;
   }
 
@@ -11,7 +13,7 @@ ms.init('minecraft.frag.land', 25565, function(error, result)
   {
     console.log("Server is online running version " + result.version + " with " + result.current_players + " out of " + result.max_players + " players.");
     console.log("Message of the day: " + result.motd);
-    console.log("Latency: " + result.latency + "result");
+    console.log("Latency: " + result.latency + "ms");
   }
   else
   {
