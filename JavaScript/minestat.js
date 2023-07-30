@@ -20,13 +20,14 @@
 
 // For use with Node.js
 
-const VERSION = "2.0.0";   // MineStat version
-const NUM_FIELDS = 6;      // number of values expected from server
-const DEFAULT_TIMEOUT = 5000;
+const VERSION = "2.0.0";    // MineStat version
+const NUM_FIELDS = 6;       // number of values expected from server
+const DEFAULT_PORT = 25565; // default TCP port of Minecraft server
+const DEFAULT_TIMEOUT = 5;  // default TCP timeout in seconds
 
 function func(opts, callback)
 {
-  const {address, port = 25565, timeout = DEFAULT_TIMEOUT} = opts;
+  const {address, port = DEFAULT_PORT, timeout = DEFAULT_TIMEOUT * 1000} = opts;
   var res = {};
   res.address = address;
   res.port = port;
