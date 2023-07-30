@@ -117,8 +117,13 @@ To use the npm package: `npm install minestat`
 
 ```javascript
 var ms = require('minestat');
-ms.init('minecraft.frag.land', 25565, function(result)
+ms.initSync({address: 'minecraft.frag.land', port: 25565}, function(error, result)
 {
+  if(error)
+  {
+    console.log('Error encountered during connection attempt.');
+    throw error;
+  }
   console.log("Minecraft server status of " + result.address + " on port " + result.port + ":");
   if(result.online)
   {
@@ -278,6 +283,7 @@ Feel free to [submit an issue](https://github.com/FragLand/minestat/issues/new/c
 * [**@Jordan9232**](https://github.com/Jordan9232): Feature request [_2023_]
 * [**@jrdiver**](https://github.com/jrdiver): C# [_2022_]
 * [**@Junai22**](https://github.com/Junai22): Python issue report [_2021_]
+* **Kolya Venturi** [**@kolyaventuri**](https://github.com/kolyaventuri): JavaScript [_2023_]
 * [**@KyleighD**](https://github.com/kyleighd): Ideas and code review [_2014 - 2020_]
 * **Lewis L. Foster** ([**@sniff122**](https://github.com/sniff122)): Python issue report [_2018_]
 * **Lloyd Dilley** ([**@ldilley**](https://github.com/ldilley)): Lead developer [_2014 - present_]
