@@ -1,6 +1,6 @@
 {
   "name": "minestat",
-  "version": "1.0.5",
+  "version": "2.0.0",
   "description": "A Minecraft server status checker",
   "main": "minestat.js",
   "types": "index.d.ts",
@@ -17,6 +17,20 @@
     "checker"
   ],
   "author": "Lloyd Dilley",
+  "contributors": [
+    {
+      "name": "ThisTNTSquid"
+    },
+    {
+      "name": "seia-soto"
+    },
+    {
+      "name": "RunTheBot"
+    },
+    {
+      "name": "Kolya Venturi"
+    }
+  ],
   "license": "GPL-3.0",
   "bugs": {
     "url": "https://github.com/FragLand/minestat/issues"
