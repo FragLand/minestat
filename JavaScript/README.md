@@ -5,7 +5,7 @@ MineStat is a Minecraft server status checker.
 
 Exposes two methods:
 
-#### `ìnitSync`
+#### `ìnit`
 - Fetches the server status asynchronously, with an optional timeout 
 ```typescript
 init(address: string, port: number): Promise<Stats>;
@@ -43,14 +43,13 @@ For online servers:
 }
 ```
 
-
-
 ### JavaScript async example
 ```javascript
-  const ms = require('minestat');
-
-  try {
-    const result = await ms.init({address: 'minecraft.frag.land'});
+const ms = require('minestat');
+(async () => {
+  try
+  {
+    const result = await ms.init({address: 'minecraft.frag.land', port: 25565});
     console.log("Minecraft server status of " + result.address + " on port " + result.port + ":");
     if(result.online)
     {
@@ -62,15 +61,18 @@ For online servers:
     {
       console.log("Server is offline!");
     }
-  } catch (error) {
+  }
+  catch(error)
+  {
     throw error;
   }
+})();
 ```
 
 ### JavaScript synchronous example
 ```javascript
 var ms = require('minestat');
-ms.initSync({address: 'minecraft.frag.land', port: 12345}, function(result)
+ms.initSync({address: 'minecraft.frag.land', port: 25565}, function(result)
 {
   console.log("Minecraft server status of " + result.address + " on port " + result.port + ":");
   if(result.online)
@@ -85,4 +87,3 @@ ms.initSync({address: 'minecraft.frag.land', port: 12345}, function(result)
   }
 });
 ```
-
