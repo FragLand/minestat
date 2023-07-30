@@ -27,7 +27,7 @@ const DEFAULT_TIMEOUT = 5;  // default TCP timeout in seconds
 
 function func(opts, callback)
 {
-  const {address, port = DEFAULT_PORT, timeout = DEFAULT_TIMEOUT * 1000} = opts;
+  const {address, port = DEFAULT_PORT, timeout = DEFAULT_TIMEOUT} = opts;
   var res = {};
   res.address = address;
   res.port = port;
@@ -42,7 +42,7 @@ function func(opts, callback)
     client.write(buff);
   });
 
-  client.setTimeout(timeout);
+  client.setTimeout(timeout * 1000);
 
   client.on('data', (data) =>
   {
