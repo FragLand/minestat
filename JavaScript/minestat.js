@@ -104,22 +104,27 @@ function func(opts, callback)
 }
 
 module.exports =
+{
+  VERSION: VERSION,
+  init: async function(opts)
   {
-    VERSION: VERSION,
-    init: async function(opts) {
-      return new Promise(function(resolve, reject)
-      {
-        func(opts, (error, result) => {
-          if (error) {
-            reject(error);
-          } else {
-            resolve(result);
-          }
-        });
-      });
-    },
-    initSync: function(opts, callback)
+    return new Promise(function(resolve, reject)
     {
-      return func(opts, callback);
-    }
-  };
+      func(opts, (error, result) =>
+      {
+        if(error)
+        {
+          reject(error);
+        }
+        else
+        {
+          resolve(result);
+        }
+      });
+    });
+  },
+  initSync: function(opts, callback)
+  {
+    return func(opts, callback);
+  }
+};
