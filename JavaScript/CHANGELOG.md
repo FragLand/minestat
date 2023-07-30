@@ -2,7 +2,7 @@
 ## Breaking Changes
 - `MineStat#init` is now `MineStat#initSync` to maintain callback functionality
 - Both async + synchronous init methods now take an `options` object as the first argument
-- A client timeout will not longer end the process
+- A client timeout will no longer end the process
 
 #### All Changes
 - fix(timeout): Resolves issue where if used as library, a timeout would fire `process.exit()` ending the parent app
