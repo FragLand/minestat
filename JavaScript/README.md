@@ -6,7 +6,7 @@ MineStat is a Minecraft server status checker.
 Exposes two methods:
 
 #### `ìnitSync`
-- Fetches the server status asyncrhonously, with an optional timeout 
+- Fetches the server status asynchronously, with an optional timeout 
 ```typescript
 init(address: string, port: number): Promise<Stats>;
 init(address: string, port: number, timeout: number): Promise<Stats>;
@@ -56,7 +56,7 @@ For online servers:
     {
       console.log("Server is online running version " + result.version + " with " + result.current_players + " out of " + result.max_players + " players.");
       console.log("Message of the day: " + result.motd);
-      console.log("Latency: " + result.latency + "result");
+      console.log("Latency: " + result.latency + "ms");
     }
     else
     {
@@ -77,7 +77,7 @@ ms.initSync({address: 'minecraft.frag.land', port: 12345}, function(result)
   {
     console.log("Server is online running version " + result.version + " with " + result.current_players + " out of " + result.max_players + " players.");
     console.log("Message of the day: " + result.motd);
-    console.log("Latency: " + result.latency + "result");
+    console.log("Latency: " + result.latency + "ms");
   }
   else
   {
