@@ -17,6 +17,7 @@ const ms = require('minestat');
   }
   catch(error)
   {
+    console.log("Error encountered during connection attempt.");
     throw error;
   }
 })();
