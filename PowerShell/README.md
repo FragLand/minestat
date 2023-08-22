@@ -26,49 +26,52 @@ if ($ms.Online) {
 ### Commandline Example
 
 ```powershell
-PS C:\> MineStat -Address "localhost","hypixel.net" -Port 25568 -Protocol Extendedlegacy,Json -Timeout 2 -verbose
-VERBOSE: MineStat version: 2.0.6
+PS C:\> MineStat -Address "localhost","hypixel.net" -Port 25568 -Protocol Extendedlegacy,Json,Query -Timeout 2 -verbose
+VERBOSE: MineStat version: 3.0.0
 VERBOSE: _minecraft._tcp.localhost
-VERBOSE: Checking SlpProtocol: ExtendedLegacy, Json
+VERBOSE: Checking SlpProtocol: ExtendedLegacy, Json, Query
 VERBOSE: ExtendedLegacy - Success
 VERBOSE: Json - Unknown
+VERBOSE: Query - Success
 VERBOSE: _minecraft._tcp.hypixel.net
 VERBOSE: Found mc.hypixel.net:25565
-VERBOSE: Checking SlpProtocol: ExtendedLegacy, Json
+VERBOSE: Checking SlpProtocol: ExtendedLegacy, Json, Query
 VERBOSE: ExtendedLegacy - Unknown
 VERBOSE: Json - Success
+VERBOSE: Query - Unknown
 
 address         : localhost
 port            : 25568
 online          : True
-current_players : 3
+version         : 1.6.2
+formatted_motd  : Hello!
+current_players : 0
 max_players     : 20
-latency         : 0
-version         : 1.6
-formatted_motd  : A Minecraft Server
-slp_protocol    : ExtendedLegacy
+latency         : 1
+slp_protocol    : Query
 
 address         : mc.hypixel.net
 port            : 25565
 online          : True
-current_players : 59070
+version         : Requires MC 1.8 / 1.20
+formatted_motd  :                 Hypixel Network [1.8-1.20]
+                      DOUBLE COINS + EXP - SKYBLOCK 0.19.2
+current_players : 46533
 max_players     : 200000
-latency         : 22
-version         : Requires MC 1.8 / 1.19
-formatted_motd  :                 Hypixel Network [1.8-1.19]
-                    
+latency         : 5
 slp_protocol    : Json
 
-PS C:\> MineStat "mc.advancius.net:19132" -Protocol BedrockRaknet
+PS C:\> MineStat mc.advancius.net:19132 -Protocol BedrockRaknet -IgnoreSRV
 
 address         : mc.advancius.net
 port            : 19132
 online          : True
-current_players : 131
-max_players     : 300
-latency         : 42
-version         : 1.19.0 discord.advancius.net (MCPE)
+version         : 1.20.10 (MCPE)
 formatted_motd  : Advancius Network
+                  discord.advancius.net
+current_players : 145
+max_players     : 300
+latency         : 24
 slp_protocol    : BedrockRaknet
 ```
 #### Inputs
@@ -83,11 +86,14 @@ slp_protocol    : BedrockRaknet
   - Tries to detect port using SRV record first.
   - Default: 25565
 - `Protocol`: int / str / array
-  - SlpProtocol to use.
+  - SlpProtocol to use. ("BedrockRaknet", "Json", "Extendedlegacy", "Legacy", "Beta", "Query")
   - Dosn't use BedrockRaknet by default.
 - `Timeout`: int
   - Time in seconds before timeout (for each SlpProtocol)
   - Default: 5
+- `IgnoreSRV`: bool
+  - Stops lookup of SRV record to autofill address and port.
+  - Default: false
 
 #### Available attributes
 
@@ -114,9 +120,9 @@ slp_protocol    : BedrockRaknet
 
 #### Extra attributes
 
-- `gamemode`: str (**_Bedrock specific_**)
-  - Gamemode currently active on the server (Creative/Survival/Adventure). None if the server is not a Bedrock server.
-- `playerlist`: str[] (**_Json specific_**)
+- `gamemode`: str (**_Bedrock & Query specific_**)
+  - Gamemode currently active on the server (Creative/Survival/Adventure). None if the server is not a Bedrock server. Returns "gametype" with queryprotocol
+- `playerlist`: str[] (**_Json & Query specific_**)
   - List of current playernames. \*Ignored by some servers.
 - `favicon`: str (**_Json specific_**)
   - Server favicon in base64.
@@ -133,3 +139,7 @@ slp_protocol    : BedrockRaknet
     - Above MOTD example: `~~ MAGIC1.16 v3~~`
 - `timeout`: int
   - Time in seconds before timeout (for each SlpProtocol) from input
+- `map`: string (**_Query specific_**)
+  - Name of the current map
+- `plugins`: array (**_Query specific_**)
+  - Array of the plugins on the server
