@@ -23,7 +23,7 @@
   CompanyName = "Frag Land"
   Copyright = "(C) 2020-2023 Ajoro and MineStat contributors"
   HelpInfoUri = "https://github.com/FragLand/minestat/tree/master/PowerShell"
-  ModuleVersion = "2.0.6"
+  ModuleVersion = "3.0.0"
   PowerShellVersion = "5.0"
   RootModule = "MineStat.psm1"
   Description = "MineStat is a Minecraft server connection status checker."
@@ -37,6 +37,13 @@
       ProjectUri = "https://github.com/FragLand/minestat"
       LicenseUri = "https://www.gnu.org/licenses/gpl-3.0.txt"
       ReleaseNotes = @'
+## 3.0.0
+- Added support for Query / GameSpot4 / UT3 protocol.
+- Combined motd_1 and motd_2 (bedrock_raknet)
+- Added ignoreSRV option to not do SRV lookup
+- Now chooses first if multiple SRV records
+- Fixed some motds not being stripped or formatted correctly
+
 ## 2.0.6
 - Added support for SRV record (RFC 2782)
 

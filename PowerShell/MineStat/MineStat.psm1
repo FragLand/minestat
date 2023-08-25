@@ -40,11 +40,12 @@ function MineStat {
     # Can combine protocols to check more.
     # Defaults to check: "Json", "Extendedlegacy", "Legacy", "Beta"
     [ArgumentCompleter({
-        "BedrockRaknet", "Json", "Extendedlegacy", "Legacy", "Beta"
+        "BedrockRaknet", "Json", "Extendedlegacy", "Legacy", "Beta", "Query"
       })]
-    $Protocol = 15,
+    $Protocol = 31,
     # The time in seconds, after which a connection is timed out. 
-    [int]$Timeout = 5
+    [int]$Timeout = 5,
+    [switch]$IgnoreSRV = $false
   )
 
   enum ConnStatus {
@@ -61,7 +62,8 @@ function MineStat {
   }
 
   [Flags()] enum SlpProtocol {
-    BedrockRaknet = 16
+    BedrockRaknet = 32
+    Query = 16
     Json = 8 
     ExtendedLegacy = 4
     Legacy = 2
@@ -80,10 +82,10 @@ function MineStat {
       foreach ($Addr in $Address) {
         if (([regex]::Matches($Addr, ":" )).count -eq 1) {
           $split = $Addr -split ":"
-          $value = [ServerStatus]::new($split[0], $split[1], $Timeout, $Protocol)
+          $value = [ServerStatus]::new($split[0], $split[1], $Timeout, $Protocol, $IgnoreSRV)
         }
         else {
-          $value = [ServerStatus]::new($Addr, $Port, $Timeout, $Protocol)
+          $value = [ServerStatus]::new($Addr, $Port, $Timeout, $Protocol, $IgnoreSRV)
         }
         $returnarray += $value
       }
@@ -92,10 +94,10 @@ function MineStat {
     else {
       if (([regex]::Matches($Address, ":" )).count -eq 1) {
         $split = $Address -split ":"
-        return [ServerStatus]::new($split[0], $split[1], $Timeout, $Protocol)
+        return [ServerStatus]::new($split[0], $split[1], $Timeout, $Protocol, $IgnoreSRV)
       }
       else {
-        return [ServerStatus]::new($Address, $Port, $Timeout, $Protocol)
+        return [ServerStatus]::new($Address, $Port, $Timeout, $Protocol, $IgnoreSRV)
       }
     }
   }
@@ -120,17 +122,19 @@ function MineStat {
     hidden [string]$gamemode
     hidden [string[]]$playerList
     hidden [string]$motd
+    hidden [string]$map
+    hidden [string]$plugins
     hidden [string]$stripped_motd
     hidden [string]$connection_status = [ConnStatus]::Unknown
 
-    ServerStatus($address, $port, $timeout, [SlpProtocol]$queryprotocol) {
+    ServerStatus($address, $port, $timeout, [SlpProtocol]$queryprotocol, $ignoresrv) {
       try {
         $resolved = Resolve-DnsName -type srv _minecraft._tcp.$address -ErrorAction Stop
-        if ($resolved.type -ne "SRV") {
+        if ($ignoresrv -or $resolved.type -ne "SRV") {
           throw
         }
-        $this.address = $resolved.NameTarget
-        $this.port = $resolved.port
+        $this.address = $resolved[0].NameTarget
+        $this.port = $resolved[0].port
         Write-Verbose ("Found {0}:{1}" -f $this.address, $this.port)
       }
       catch {
@@ -171,14 +175,20 @@ function MineStat {
         }
         Write-Verbose "Json - $result"
       }
+      # Minecraft Query/GameSpot4/UT3 protocol.
+      if ($queryprotocol.HasFlag([SlpProtocol]::Query) -and $this.connection_status -notin [ConnStatus]::ConnFail) {
+        $this.connection_status = $this.FullstatQuery()
+        Write-Verbose "Query - $($this.connection_status.ToString())"
+      }
     }
 
-    [void] generateMotds($rawmotd) {
+    [string[]] generateMotds($rawmotd) {
+
       function strip_motd($rawmotd) {
         # Function for stripping all formatting codes from a motd.
         $stripped_motd = ""
         if ($rawmotd.gettype().name -eq "string") {
-          $stripped_motd = $rawmotd -split "$([char]0x00A7)+[a-zA-Z0-9]" -join ""
+          $stripped_motd = $rawmotd -split "(?:\\u00A7|$([char]0x00A7))+[a-zA-Z0-9]" -join ""
         }
         else {
           $stripped_motd = $rawmotd.text
@@ -253,6 +263,7 @@ function MineStat {
 
         $formatted_motd = ""
         if ($rawmotd.gettype().name -eq "string") {
+          $rawmotd = $rawmotd -replace "\\u00A7", "$([char]0x00A7)"
           foreach ($format in ($rawmotd -split "($([char]0x00A7)+[a-zA-Z0-9])")) {
             if ($format -in $formatcodes.Keys) {
               $formatted_motd += $formatcodes.$format
@@ -290,10 +301,171 @@ function MineStat {
           return $formatted_motd + $formats.reset
         }
       }
-      $this.stripped_motd = strip_motd($rawmotd)
-      $this.formatted_motd = format_motd($rawmotd)
+
+      $stripped = strip_motd($rawmotd)
+      $formatted = format_motd($rawmotd)
+      return $stripped, $formatted
     }
     
+    [ConnStatus] FullstatQuery() {
+      <#  
+      Method for querying a Minecraft Java server using the fullstat Query / GameSpot4 / UT3 protocol.
+      
+      Needs to be enabled on the Minecraft server using:
+      "enable-query=true"
+      in the servers "server.properties" file.
+
+      This method ONLY supports full stat querys.
+      Documentation for this protocol: https://wiki.vg/Query
+      #>
+      
+      $sock = New-Object System.Net.Sockets.UdpClient
+      $sock.Client.ReceiveTimeout = $this.timeout * 1000
+      $sock.Client.SendTimeout = $this.timeout * 1000
+
+      $stopwatch = New-Object System.Diagnostics.Stopwatch
+      $stopwatch.Start();
+    
+      try {
+        $sock.Connect($this.address, $this.port)
+      }
+      catch {
+        $this.latency = -1
+        $stopwatch.Stop()
+        return [ConnStatus]::ConnFail
+      }
+      $stopwatch.Stop()
+      $this.latency = $stopwatch.ElapsedMilliseconds
+
+      $querymagic = [byte[]]@(254, 253) # b"\xFE\xFD"
+      $handshake_packettype = [byte[]]@(9)
+      $stat_packettype = [byte[]]@(0)
+  
+      $session_id_int = Get-Random -Minimum 0 -Maximum 2147483647
+      $session_id_bytes = [BitConverter]::GetBytes($session_id_int -band 0x0F0F0F0F)
+      if ([System.BitConverter]::IsLittleEndian) {
+        [System.Array]::Reverse($session_id_bytes);
+      }
+  
+      $handshake_packet = $querymagic + $handshake_packettype + $session_id_bytes
+  
+      try {
+        $sock.Send($handshake_packet, $handshake_packet.Length)
+        $handshake_res = $sock.Receive([ref]$null)
+  
+        $challenge_token = $handshake_res[5..$($handshake_res.Length - 1)]
+        $challenge_token_int = [int][System.Text.Encoding]::UTF8.GetString($challenge_token)
+        $challenge_token_bytes = [BitConverter]::GetBytes($challenge_token_int)
+        if ([System.BitConverter]::IsLittleEndian) {
+          [System.Array]::Reverse($challenge_token_bytes);
+        }
+  
+        $req_packet = $querymagic + $stat_packettype + $session_id_bytes + $challenge_token_bytes + [byte[]](0, 0, 0, 0)
+  
+        $sock.Send($req_packet, $req_packet.Length)
+        $raw_res = $sock.Receive([ref]$null)
+  
+        $sock.Close()
+  
+        return $this.ParseFullstatQuery($raw_res[($session_id_bytes.Length + 1)..($raw_res.Length - 1)])
+      }
+      catch [System.Net.Sockets.SocketException] {
+        if ($_.Exception.Message -match "timed out") {
+          return [ConnStatus]::Timeout
+        }
+        else {
+          return [ConnStatus]::Unknown
+        }
+      }
+      finally {
+        $sock.Close()
+      }
+    }
+
+    hidden [ConnStatus] ParseFullstatQuery([byte[]]$raw_res) {
+      <# 
+      Helper method for parsing the reponse from a query request.
+
+      See https://wiki.vg/Query for details.
+
+      This implementation does not parse every value returned by the query protocol.
+      #>
+      try {
+        # Remove unnecessary padding
+        $res = $raw_res[11..($raw_res.Length - 1)]
+
+        # Split stats from players
+        $raw_stats, $raw_players = [Text.Encoding]::UTF8.GetString($res) -split [Text.Encoding]::UTF8.GetString(@(0x00, 0x00, 0x01, 0x70, 0x6C, 0x61, 0x79, 0x65, 0x72, 0x5F, 0x00, 0x00))
+    
+        # Split stat keys and values into individual elements and remove unnecessary padding
+        $stat_list = $raw_stats -split "`0"
+    
+        # Move keys and values into a dictionary, the keys are also decoded
+        $stats = @{}
+        for ($i = 0; $i -lt $stat_list.Length; $i += 2) {
+          $key = $stat_list[$i]
+          $value = $stat_list[$i + 1]
+          $stats[$key] = $value
+        }
+    
+        # Extract motd (hostname) or MOTD
+        $this.motd = $null
+        if ($stats.ContainsKey("hostname")) {
+          $this.motd = $stats["hostname"]
+        }
+        elseif ($stats.ContainsKey("MOTD")) {
+          $this.motd = $stats["MOTD"]
+        }
+        $this.stripped_motd, $this.formatted_motd = $this.generateMotds($this.motd)
+    
+        # Extract the server's Minecraft version
+        $this.version = $null
+        if ($stats.ContainsKey("version")) {
+          $this.version = $stats["version"]
+        }
+    
+        # Extract list of plugins
+        $this.plugins = @()
+        if ($stats.ContainsKey("plugins")) {
+          $raw_plugins = $stats["plugins"]
+          if ($raw_plugins -ne "") {
+            # The plugins are separated by " ;"
+            $this.plugins = $raw_plugins -split " ;"
+    
+            # There may be information about the server software in the first plugin element
+            if ($this.plugins[0] -match ":") {
+              $this.version, $this.plugins[0] = $this.plugins[0] -split ": ", 2
+            }
+          }
+        }
+    
+        # Extract the name of the map the server is running on
+        if ($stats.ContainsKey("map")) {
+          $this.map = $stats["map"]
+        }
+    
+        # Extract number of online and maximum allowed players
+        $this.current_players = 0
+        $this.max_players = 0
+        if ($stats.ContainsKey("numplayers")) {
+          $this.current_players = [int]$stats["numplayers"]
+          $this.max_players = [int]$stats["maxplayers"]
+        }
+
+        $this.playerList = $raw_players.TrimEnd("`0") -split "`0"
+        $this.Slp_Protocol = "Query"; 
+        $this.online = $true;
+        $this.Gamemode = $stats.gametype
+
+        return [ConnStatus]::Success 
+    
+      }
+      catch {
+        return [ConnStatus]::Unknown  
+      }
+      
+    }
+
     [ConnStatus] RequestWithRaknetProtocol() {
       <# 
       Method for querying a Bedrock server (Minecraft PE, Windows 10 or Education Edition).
@@ -335,9 +507,9 @@ function MineStat {
       [System.Collections.Generic.List[byte]]$raknetPingHandshakePacket = 0x01
 
       $unixtime = [System.BitConverter]::GetBytes([DateTimeOffset]::Now.ToUnixTimemilliseconds())
-      # if ([System.BitConverter]::IsLittleEndian) {
-      #   [System.Array]::Reverse($unixtime);
-      # }
+      if ([System.BitConverter]::IsLittleEndian) {
+        [System.Array]::Reverse($unixtime);
+      }
       $raknetPingHandshakePacket.AddRange($unixtime)
       $raknetPingHandshakePacket.AddRange($raknetmagic)
       $raknetPingHandshakePacket.AddRange([System.BitConverter]::GetBytes([Int64]0x02))
@@ -348,8 +520,7 @@ function MineStat {
         return [ConnStatus]::Unknown
       }
       try {
-        $endpoint = new-object System.Net.IPEndPoint([net.ipaddress]::any, $this.port)
-        [System.Collections.Generic.Queue[byte]]$response = $sock.Receive([ref]$endpoint)
+        [System.Collections.Generic.Queue[byte]]$response = $sock.Receive([ref]$null)
       
         if ($response.Dequeue() -ne 0x1c) {
           return [ConnStatus]::InvalidResponse
@@ -365,9 +536,9 @@ function MineStat {
         if ($null -ne (Compare-Object $responseMagic $raknetMagic -CaseSensitive)) {
           return [ConnStatus]::Unknown
         }
-        # if ([System.BitConverter]::IsLittleEndian) {
-        #   [System.Array]::Reverse($response);
-        # }
+        if ([System.BitConverter]::IsLittleEndian) {
+          [System.Array]::Reverse($response);
+        }
         
         # responseIdStringLength (never used)
         [System.BitConverter]::ToUInt16((readbytestream $response 2), 0)
@@ -401,9 +572,9 @@ function MineStat {
       $this.online = $true;
       $this.current_players = $payload_obj.current_players
       $this.max_players = $payload_obj.max_players
-      $this.version = @($payload_obj.version, $payload_obj.motd_2, "($($payload_obj.edition))") -ne $null -join " "
-      $this.motd = $payload_obj.motd_1
-      $this.generateMotds($this.motd)
+      $this.version = @($payload_obj.version, "($($payload_obj.edition))") -join " "
+      $this.motd = $payload_obj.motd_1 + "`n" + $payload_obj.motd_2
+      $this.stripped_motd, $this.formatted_motd = $this.generateMotds($this.motd)
       $this.Gamemode = $payload_obj.gamemode
 
       return [ConnStatus]::Success
@@ -610,7 +781,7 @@ function MineStat {
       else {
         $this.motd = ConvertTo-Json $descriptionElement
       }
-      $this.generateMotds($descriptionElement)
+      $this.stripped_motd, $this.formatted_motd = $this.generateMotds($descriptionElement)
 
       $playerSampleElement = $payload_obj.players.sample
       if ($null -ne $playerSampleElement -and $playerSampleElement.GetType().BaseType.Name -eq "array") {
@@ -779,7 +950,7 @@ function MineStat {
       $this.max_players = $payloadArray[5]
       $this.current_players = $payloadArray[4]
       $this.motd = $payloadArray[3]
-      $this.generateMotds($this.motd)
+      $this.stripped_motd, $this.formatted_motd = $this.generateMotds($this.motd)
       $this.Slp_Protocol = $SlpProtocol
       $this.online = $true
       return [ConnStatus]::Success
@@ -847,7 +1018,7 @@ function MineStat {
       $this.max_players = $payloadArray[$payloadArray.Length - 1];
       $this.current_players = $payloadArray[$payloadArray.Length - 2];
       $this.motd = $payloadArray[0..($payloadArray.Length - 3)] -join [char]0x00A7
-      $this.generateMotds($this.motd)
+      $this.stripped_motd, $this.formatted_motd = $this.generateMotds($this.motd)
       $this.Slp_Protocol = "Beta";
       $this.Online = $true
 
