@@ -10,6 +10,6 @@ jobs:
       run:
         working-directory: PowerShell/
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Publish Module to PowerShell Gallery
         run: Publish-Module -path MineStat -NuGetApiKey ${{ secrets.PS_GALLERY_KEY }}
