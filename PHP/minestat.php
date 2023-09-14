@@ -21,7 +21,7 @@
 
 class MineStat
 {
-  const VERSION = "2.4.0";            // MineStat version
+  const VERSION = "2.4.1";            // MineStat version
   const NUM_FIELDS = 6;               // number of values expected from server
   const NUM_FIELDS_BETA = 3;          // number of values expected from a 1.8b/1.3 server
   const MAX_VARINT_SIZE = 5;          // maximum number of bytes a varint can be
@@ -122,16 +122,6 @@ class MineStat
       $this->set_connection_status(MineStat::RETURN_SUCCESS);
     else
       $this->set_connection_status($retval);
-  }
-
-  public function __destruct()
-  {
-    if(@socket_read($this->socket, 1))
-    {
-      socket_shutdown($this->socket);
-      socket_close($this->socket);
-      $this->socket = null;
-    }
   }
 
   public function get_address() { return $this->address; }
