@@ -3,7 +3,7 @@
 <head>
 <title><?php echo $siteTitle; ?></title>
 <link rel="stylesheet" href="css/style.css" />
-<link rel="icon" type="image/png" href="images/logo.png">
+<link rel="icon" type="image/png" href="https://kaosincorporated.com/assets/images/logo.png">
 </head>
 <body>
 <center>
