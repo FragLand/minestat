@@ -42,7 +42,7 @@
 			$runCMD = "MineStat -Address ".$ip." -Port ".$port." -Protocol ".$protocol." -Timeout 1";
 			$output = shell_exec('powershell.exe '.$runCMD);
 			$output = str_replace('}', ', ', str_replace('{.', '', $output)); //removes brackets and dots from usernames
-			if(str_contains($output, "Offline") || str_contains($output, "Timeout"))
+			if(str_contains($output, "Offline") || str_contains($output, "Timeout") || str_contains($output, "ConnFail"))
 			{
 				 $javaStatus = false; // Return Java server status
 			}
@@ -91,7 +91,7 @@
 					$runCMD = "MineStat -Address ".$ip." -Port ".$port." -Protocol ".$protocol." -Timeout 1";
 					$output = shell_exec('powershell.exe '.$runCMD);
 					$output = str_replace('}', ', ', str_replace('{.', '', $output)); //removes brackets and dots from usernames
-					if(str_contains($output, "Offline") || str_contains($output, "Timeout"))
+					if(str_contains($output, "Offline") || str_contains($output, "Timeout") || str_contains($output, "ConnFail"))
 					{
 						$bedrockStatus = false; // Return Java server status
 					}
