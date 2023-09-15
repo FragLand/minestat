@@ -42,9 +42,20 @@
 			$runCMD = "MineStat -Address ".$ip." -Port ".$port." -Protocol ".$protocol." -Timeout 1";
 			$output = shell_exec('powershell.exe '.$runCMD);
 			$output = str_replace('}', ', ', str_replace('{.', '', $output)); //removes brackets and dots from usernames
-			if(str_contains($output, "Offline") || str_contains($output, "Timeout") || str_contains($output, "ConnFail"))
+			if(str_contains($output, "Offline"))
 			{
 				 $javaStatus = false; // Return Java server status
+				 $statusType = "Offline";
+			}
+			elseif(str_contains($output, "Timeout"))
+			{
+				$javaStatus = false; // Return Java server status
+				$statusType = "Timed Out";
+			}
+			elseif(str_contains($output, "ConnFail"))
+			{
+				$javaStatus = false; // Return Java server status
+				$statusType = "Connection Failure";
 			}
 			else
 			{
@@ -52,7 +63,7 @@
 			}
 			if($javaStatus != true)
 			{
-					echo '<div class="alert alert-danger">Java Server: '.$ip.':'.$port.' is currently Offline! </div>';
+					echo '<div class="alert alert-danger">Java Server: '.$ip.':'.$port.' is currently Offline!<br />Status Type: '.$statusType.'</div>';
 			}
 			else
 			{
@@ -91,9 +102,20 @@
 					$runCMD = "MineStat -Address ".$ip." -Port ".$port." -Protocol ".$protocol." -Timeout 1";
 					$output = shell_exec('powershell.exe '.$runCMD);
 					$output = str_replace('}', ', ', str_replace('{.', '', $output)); //removes brackets and dots from usernames
-					if(str_contains($output, "Offline") || str_contains($output, "Timeout") || str_contains($output, "ConnFail"))
+					if(str_contains($output, "Offline"))
+					{
+						 $bedrockStatus = false; // Return Java server status
+						 $statusType = "Offline";
+					}
+					elseif(str_contains($output, "Timeout"))
 					{
 						$bedrockStatus = false; // Return Java server status
+						$statusType = "Timed Out";
+					}
+					elseif(str_contains($output, "ConnFail"))
+					{
+						$bedrockStatus = false; // Return Java server status
+						$statusType = "Connection Failure";
 					}
 					else
 					{
@@ -101,7 +123,7 @@
 					}
 					if($bedrockStatus != true)
 					{
-							echo '<div class="alert alert-danger">Bedrock Server: '.$ip.':'.$port.' is currently Offline! </div>';
+							echo '<div class="alert alert-danger">Bedrock Server: '.$ip.':'.$port.' is currently Offline!<br />Status Type: '.$statusType.'</div>';
 					}
 					else
 					{
