@@ -1,145 +1,95 @@
-<?php require_once("settings.php"); ?>
-<html>
-<head>
-<title><?php echo $siteTitle; ?></title>
-<link rel="stylesheet" href="css/style.css" />
-<link rel="icon" type="image/png" href="https://kaosincorporated.com/assets/images/logo.png">
-<script src="https://kit.fontawesome.com/97c7e13229.js" crossorigin="anonymous"></script>
-       <!-- Latest compiled and minified CSS -->
-<link rel="stylesheet" href="css/bootstrap.css">
+<?php
+require_once("settings.php");
 
-<!-- Optional theme -->
-<link rel="stylesheet" href="css/bootstrap-theme.min.css">
+function generate_box($ip, $port, $protocol)
+{
+  $urlParts = explode('.', $ip);
+  end($urlParts);
+  $urlParts = prev($urlParts);
 
-<!-- Latest compiled and minified JavaScript -->
-<script src="js/bootstrap.min.js"></script>
-	
-</head>
-<body>
-<center>
-<div class="container">
-	<img src="images/logo.png" class="logo" />
-	<div class="header"><?php echo $siteName; ?></div>
-		<div class="list pull-left">
-		<?php
-		//Host information
-		$serverIP = $javaIP;
+  $runCMD = 'PowerShell.exe "(MineStat -Address ' . $ip . ' -Port ' . $port . ' -Protocol ' . $protocol . ' -Timeout 1 | ConvertTo-Json)"';
+  $output = json_decode(mb_convert_encoding(shell_exec($runCMD), 'UTF-8', 'UTF-8'), true);
 
-		foreach ($serverIP as $ip)
-		{
-			$urlParts = explode('.', $ip);
+  // Check for JSON decoding errors
+  if (json_last_error() !== JSON_ERROR_NONE || !isset($output["connection_status"])) {
+    exit("Error occured");
+    // Handle the error here, you can log it or return a custom error message
+  }
 
-			$port = "25565"; // Port for the server to listen on, bedrock is 19132 by default, Java is 25565
+  $status = false;
+  $statusType = "Offline";
+  switch ($output["connection_status"]) {
+    case 'Success':
+      $statusType = "Online";
+      $status = true;
+      break;
+    case 'Connfail':
+      $statusType = "Connection Failure";
+      break;
+    case 'Timeout':
+      $statusType = "Timed Out";
+      break;
+  }
 
-			// Valid Protocols: Unknown, Beta, Legacy, ExtendedLegacy, Json, BedrockRaknet
-			// Use BedrockRakNet for Bedrock/Pocket Edition, The rest will not work with bedrock servers.  Also, BedrockRaknet does not output player usernames.
-			// ExtendedLegacy does not seem to work.  This is a Minestat issue or a Server problem.  
-			// For Java, use Json or Legacy, Json seems to be more accurate at locating online servers vs Legacy does.  Most likely because the servers are not using Geyser/Floodgate?
-			
-			$protocol = "Json";
+  $ip = $output["address"];
+  $port = $output["port"];
+  $version = $output["version"];
+  $motd = $output["stripped_motd"];
+  $current_players = $output["current_players"];
+  $max_players = $output["max_players"];
+  $latency = $output["latency"];
+  //more available: https://github.com/FragLand/minestat/tree/master/PowerShell
+  $output = "\n\naddress         : $ip\n"
+    . "port            : $port\n"
+    . "version         : $version\n"
+    . "motd            : $motd\n"
+    . "current_players : $current_players\n"
+    . "max_players     : $max_players\n"
+    . "latency         : $latency\n\n\n";
 
-
-			$runCMD = "MineStat -Address ".$ip." -Port ".$port." -Protocol ".$protocol." -Timeout 1";
-			$output = shell_exec('powershell.exe '.$runCMD);
-			$output = str_replace('}', ', ', str_replace('{.', '', $output)); //removes brackets and dots from usernames
-			if(str_contains($output, "Offline"))
-			{
-				 $javaStatus = false; // Return Java server status
-				 $statusType = "Offline";
-			}
-			elseif(str_contains($output, "Timeout"))
-			{
-				$javaStatus = false; // Return Java server status
-				$statusType = "Timed Out";
-			}
-			elseif(str_contains($output, "ConnFail"))
-			{
-				$javaStatus = false; // Return Java server status
-				$statusType = "Connection Failure";
-			}
-			else
-			{
-				$javaStatus = true;
-			}
-			if($javaStatus != true)
-			{
-					echo '<div class="alert alert-danger">Java Server: '.$ip.':'.$port.' is currently Offline!<br />Status Type: '.$statusType.'</div>';
-			}
-			else
-			{
-				if(isset($urlParts[1]))
-				{
-					echo "<pre class='item text-left'><center>".ucfirst($urlParts[1])." - Java</center>".$output."</pre><br />";
-				}
-				else
-				{
-					echo "<pre class='item text-left'><center>".ucfirst($urlParts[0])." - Java</center>".$output."</pre><br />";
-				}
-			}
-		}
+  if ($status != true)
+    return '<div class="alert alert-danger">Server: ' . $ip . ':' . $port . ' is currently Offline!<br />Status Type: ' . $statusType . '</div>';
+  else
+    return "<pre class='item text-left'><center>$urlParts - $protocol</center>" . $output . "</pre><br />";
+}
 ?>
-</div>
-<div class="list pull-right">
-<?php		
-		// Bedrock Status
-		//Host information
-				$serverIP = $bedrockIP;
+<html>
 
-				foreach ($serverIP as $ip)
-				{
-					$urlParts = explode('.', $ip);
+<head>
+  <title><?php echo $siteTitle; ?></title>
+  <script src="https://kit.fontawesome.com/97c7e13229.js" crossorigin="anonymous"></script>
+  <!-- Latest compiled and minified bootstrap CSS -->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+  <!-- Latest compiled and minified Jquery -->
+  <script src="https://code.jquery.com/jquery-3.7.1.slim.min.js" integrity="sha256-kmHvs0B+OpCW5GVHUNjv9rOmY0IvSIRcf7zGUDTDQM8=" crossorigin="anonymous"></script>
+  <!-- Latest compiled and minified bootstrap JavaScript -->
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="icon" type="image/png" href="">
+</head>
 
-					$port = "19132"; // Port for the server to listen on, bedrock is 19132 by default, Java is 25565
-
-					// Valid Protocols: Unknown, Beta, Legacy, ExtendedLegacy, Json, BedrockRaknet
-					// Use BedrockRakNet for Bedrock/Pocket Edition, The rest will not work with bedrock servers.  Also, BedrockRaknet does not output player usernames.
-					// ExtendedLegacy does not seem to work.  This is a Minestat issue or a Server problem.  
-					// For Java, use Json or Legacy, Json seems to be more accurate at locating online servers vs Legacy does.  Most likely because the servers are not using Geyser/Floodgate?
-					
-					$protocol = "BedrockRaknet";
-
-
-					$runCMD = "MineStat -Address ".$ip." -Port ".$port." -Protocol ".$protocol." -Timeout 1";
-					$output = shell_exec('powershell.exe '.$runCMD);
-					$output = str_replace('}', ', ', str_replace('{.', '', $output)); //removes brackets and dots from usernames
-					if(str_contains($output, "Offline"))
-					{
-						 $bedrockStatus = false; // Return Java server status
-						 $statusType = "Offline";
-					}
-					elseif(str_contains($output, "Timeout"))
-					{
-						$bedrockStatus = false; // Return Java server status
-						$statusType = "Timed Out";
-					}
-					elseif(str_contains($output, "ConnFail"))
-					{
-						$bedrockStatus = false; // Return Java server status
-						$statusType = "Connection Failure";
-					}
-					else
-					{
-						$bedrockStatus = true;
-					}
-					if($bedrockStatus != true)
-					{
-							echo '<div class="alert alert-danger">Bedrock Server: '.$ip.':'.$port.' is currently Offline!<br />Status Type: '.$statusType.'</div>';
-					}
-					else
-					{
-						if(isset($urlParts[1]))
-						{
-							echo "<pre class='item text-left'><center>".ucfirst($urlParts[1])." - Bedrock</center>".$output."</pre><br />";
-						}
-						else
-						{
-							echo "<pre class='item text-left'><center>".ucfirst($urlParts[0])." - Bedrock</center>".$output."</pre><br />";
-						}
-					}
-				}
-		?>
-		</div>
-</div>
-</center>
+<body>
+  <center>
+    <div class="container">
+      <img src="" class="logo" />
+      <div class="header"><?php echo $siteName; ?></div>
+      <div class="list pull-left">
+        <?php
+        foreach ($javaIP as $ip) {
+          echo generate_box($ip, 25565, 'Json');
+        }
+        ?>
+      </div>
+      <div class="list pull-right">
+        <?php
+        foreach ($bedrockIP as $ip) {
+          echo generate_box($ip, 19132, 'BedrockRaknet');
+        }
+        ?>
+      </div>
+    </div>
+  </center>
 </body>
+
 </html>
+
