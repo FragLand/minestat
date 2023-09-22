@@ -19,7 +19,8 @@ body {
 }
 .logo {
 	width: 5%;
-	margin: 25px 25px 25px 25px;
+	margin: 25px;
+
 }
 .text-left {
 	text-align: left;
