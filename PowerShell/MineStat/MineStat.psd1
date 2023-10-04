@@ -23,7 +23,7 @@
   CompanyName = "Frag Land"
   Copyright = "(C) 2020-2023 Ajoro and MineStat contributors"
   HelpInfoUri = "https://github.com/FragLand/minestat/tree/master/PowerShell"
-  ModuleVersion = "3.0.0"
+  ModuleVersion = "3.0.1"
   PowerShellVersion = "5.0"
   RootModule = "MineStat.psm1"
   Description = "MineStat is a Minecraft server connection status checker."
@@ -37,6 +37,9 @@
       ProjectUri = "https://github.com/FragLand/minestat"
       LicenseUri = "https://www.gnu.org/licenses/gpl-3.0.txt"
       ReleaseNotes = @'
+## 3.0.1
+- Fix latency being overwritten
+
 ## 3.0.0
 - Added support for Query / GameSpot4 / UT3 protocol.
 - Combined motd_1 and motd_2 (bedrock_raknet)
