@@ -1,3 +1,9 @@
+## 3.0.3 (November 2, 2023)
+- Fixed empty MotD issue
+
+## 3.0.2 (February 20, 2023)
+- Added field (srv_succeeded) to indicate whether DNS SRV resolution was successful
+
 ## 3.0.1 (February 5, 2023)
 - Added configurable DNS SRV resolution
 - Added request type that attempts all SLP protocols
