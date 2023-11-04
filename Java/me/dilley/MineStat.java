@@ -281,44 +281,9 @@ public class MineStat
 
   public void setMotd(String motd) { this.motd = motd; }
 
-  public String getStrippedMotd() {
-    return strippedMotd;
-  }
+  public String getStrippedMotd() { return strippedMotd; }
 
-  public void setStrippedMotd(String strippedMotd) {
-    this.strippedMotd = strippedMotd;
-  }
-
-  /**
-   * Helper function for stripping any formatting from a motd.
-   * @param motd A motd with formatting codes
-   * @return A motd with all formatting codes removed
-   * @since 2.1.0
-   */
-  public String stripMotdFormatting(String motd) {
-    return motd.replaceAll("§.", "");
-  }
-
-  public String stripMotdFormatting(JsonObject motd) {
-    StringBuilder strippedMotd = new StringBuilder();
-
-    if(motd.isJsonPrimitive()) {
-      return motd.getAsString();
-    }
-
-    JsonObject motdObj = motd.getAsJsonObject();
-    if(motdObj.has("text")) {
-      strippedMotd.append(motdObj.get("text").getAsString());
-    }
-
-    if(motdObj.has("extra") && motdObj.get("extra").isJsonArray()) {
-      for(JsonElement extraElem : motdObj.get("extra").getAsJsonArray()) {
-        strippedMotd.append(stripMotdFormatting(extraElem.getAsJsonObject()));
-      }
-    }
-
-    return strippedMotd.toString();
-  }
+  public void setStrippedMotd(String strippedMotd) { this.strippedMotd = strippedMotd; }
 
   public String getVersion() { return version; }
 
@@ -355,7 +320,39 @@ public class MineStat
   public void setRequestType(String requestType) { this.requestType = requestType; }
 
   public ConnectionStatus getConnectionStatus() { return connectionStatus; }
+
   public String getConnectionStatusDescription() { return connectionStatus.toString(); }
+
+  /**
+   * Helper function for stripping any formatting from a motd.
+   * @param motd A motd with formatting codes
+   * @return A motd with all formatting codes removed
+   * @since 2.1.0
+   */
+  public String stripMotdFormatting(String motd)
+  {
+    return motd.replaceAll("§.", "");
+  }
+
+  public String stripMotdFormatting(JsonObject motd)
+  {
+    StringBuilder strippedMotd = new StringBuilder();
+
+    if(motd.isJsonPrimitive())
+      return motd.getAsString();
+
+    JsonObject motdObj = motd.getAsJsonObject();
+    if(motdObj.has("text"))
+      strippedMotd.append(motdObj.get("text").getAsString());
+
+    if(motdObj.has("extra") && motdObj.get("extra").isJsonArray())
+    {
+      for(JsonElement extraElem : motdObj.get("extra").getAsJsonArray())
+        strippedMotd.append(stripMotdFormatting(extraElem.getAsJsonObject()));
+    }
+
+    return strippedMotd.toString();
+  }
 
   /*
    * 1.8b/1.3
