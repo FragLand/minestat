@@ -27,7 +27,7 @@ require 'timeout'
 # Provides a Ruby interface for polling the status of Minecraft servers
 class MineStat
   # MineStat version
-  VERSION = "3.0.2"
+  VERSION = "3.0.3"
 
   # Number of values expected from server
   NUM_FIELDS = 6
@@ -255,7 +255,8 @@ class MineStat
   # Strips message of the day formatting characters
   def strip_motd()
     unless @motd['text'] == nil
-      @stripped_motd = @motd['text']
+      @motd = @motd['text']
+      @stripped_motd = @motd
     else
       @stripped_motd = @motd
     end

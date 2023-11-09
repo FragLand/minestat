@@ -165,7 +165,7 @@ Contains possible SLP (Server List Ping) protocols.
 
 
 class MineStat:
-  VERSION = "2.6.1"
+  VERSION = "2.6.2"
   """The MineStat version"""
   DEFAULT_TCP_PORT = 25565
   """default TCP port for SLP queries"""
@@ -791,11 +791,11 @@ class MineStat:
     self.version = payload_obj["version"]["name"]
 
     # The motd might be a string directly, not a json object
-    if isinstance(payload_obj["description"], str):
-      self.motd = payload_obj["description"]
+    if isinstance(payload_obj.get("description", ""), str):
+      self.motd = payload_obj.get("description", "")
     else:
       self.motd = json.dumps(payload_obj["description"])
-    self.stripped_motd = self.motd_strip_formatting(payload_obj["description"])
+    self.stripped_motd = self.motd_strip_formatting(payload_obj.get("description", ""))
 
     self.max_players = payload_obj["players"]["max"]
     self.current_players = payload_obj["players"]["online"]
