@@ -378,6 +378,7 @@ class MineStat
         {
           if(isset($server_info[1]) && !empty($server_info[1]))
             $this->player_list = explode($delimiter, $server_info[1]);
+          // Convert values into friendly key names and value pairs
           $values = explode($delimiter, $server_info[0]);
           $count = count($values);
           $server_info = [];
