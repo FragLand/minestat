@@ -785,7 +785,7 @@ class MineStat
           challenge_token = @server.recv(QUERY_HANDSHAKE_SIZE)[QUERY_HANDSHAKE_OFFSET..-1]
           payload = "\xFE\xFD\x00\x0B\x03\x03\x0F".force_encoding('ASCII-8BIT')
           # Use the full stat below by stripping the null terminator from the challenge token and padding the end
-          # of the payload  with "\x00\x00\x00\x00". The basic stat response does not include the server version.
+          # of the payload with "\x00\x00\x00\x00". The basic stat response does not include the server version.
           payload += [challenge_token.rstrip.to_i].pack('l>').force_encoding('ASCII-8BIT')
           payload += "\x00\x00\x00\x00".force_encoding('ASCII-8BIT')
           @server.write(payload)
