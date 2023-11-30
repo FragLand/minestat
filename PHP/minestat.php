@@ -21,7 +21,7 @@
 
 class MineStat
 {
-  const VERSION = "2.4.1";            // MineStat version
+  const VERSION = "3.0.0";            // MineStat version
   const NUM_FIELDS = 6;               // number of values expected from server
   const NUM_FIELDS_BETA = 3;          // number of values expected from a 1.8b/1.3 server
   const MAX_VARINT_SIZE = 5;          // maximum number of bytes a varint can be
@@ -37,6 +37,26 @@ class MineStat
    * String ID length = 2 bytes
    */
   const BEDROCK_PACKET_OFFSET = 35;
+  /*
+   * UT3/GS4 query handshake packet size in bytes (1 + 4 + 13)
+   * Handshake (0x09) = 1 byte
+   * Session ID = 4 bytes
+   * Challenge token = variable null-terminated string up to 13 bytes(?)
+   */
+  const QUERY_HANDSHAKE_SIZE = 18;
+  /*
+   * UT3/GS4 query handshake packet offset for challenge token in bytes (1 + 4)
+   * Handshake (0x09) = 1 byte
+   * Session ID = 4 bytes
+   */
+  const QUERY_HANDSHAKE_OFFSET = 5;
+  /*
+   * UT3/GS4 query full stat packet offset in bytes (1 + 4 + 11)
+   * Stat (0x00) = 1 byte
+   * Session ID = 4 bytes
+   * Padding = 11 bytes
+   */
+  const QUERY_STAT_OFFSET = 16;
 
   // No enums or class nesting in PHP, so this is our workaround for return values
   const RETURN_SUCCESS = 0;           // the server ping completed successfully
@@ -51,6 +71,7 @@ class MineStat
   const REQUEST_EXTENDED = 2;         // server version 1.6
   const REQUEST_JSON = 3;             // server version 1.7 to latest
   const REQUEST_BEDROCK = 4;          // Bedrock/Pocket Edition
+  const REQUEST_QUERY = 5;            // Unreal Tournament 3/GameSpy 4 query
 
   private $address;                   // hostname or IP address of the Minecraft server
   private $port;                      // port number the Minecraft server accepts connections on
@@ -63,6 +84,8 @@ class MineStat
   private $stripped_motd;             // message of the day without formatting
   private $current_players;           // current number of players online
   private $max_players;               // maximum player capacity
+  private $player_list;               // list of players (UT3/GS4 query only)
+  private $plugin_list;               // list of plugins (UT3/GS4 query only)
   private $protocol;                  // protocol level
   private $json_data;                 // JSON data for 1.7 queries
   private $favicon_b64;               // base64-encoded favicon possibly contained in JSON 1.7 responses
@@ -86,6 +109,7 @@ class MineStat
       $this->try_all = true;
     $this->srv_enabled = $srv_enabled;
     $this->srv_succeeded = false;
+    $retval = "";
 
     if($this->srv_enabled)
       $this->srv_succeeded = $this->resolve_srv();
@@ -107,6 +131,9 @@ class MineStat
       case MineStat::REQUEST_BEDROCK:
         $this->bedrock_request();
         break;
+      case MineStat::REQUEST_QUERY:
+        $this->query_request();
+        break;
       default:
         $retval = $this->legacy_request();            // SLP 1.4/1.5
         if($retval != MineStat::RETURN_SUCCESS && $retval != MineStat::RETURN_CONNFAIL)
@@ -117,6 +144,8 @@ class MineStat
           $retval = $this->json_request();            // SLP 1.7
         if(!$this->is_online())
           $retval = $this->bedrock_request();         // Bedrock/Pocket Edition
+        if(!$this->is_online())
+          $retval = $this->query_request();           // UT3/GS4 query
     }
     if($this->is_online())
       $this->set_connection_status(MineStat::RETURN_SUCCESS);
@@ -145,6 +174,10 @@ class MineStat
   public function get_current_players() { return $this->current_players; }
 
   public function get_max_players() { return $this->max_players; }
+
+  public function get_player_list() { return $this->player_list; }
+
+  public function get_plugin_list() { return $this->plugin_list; }
 
   public function get_protocol() { return $this->protocol; }
 
@@ -227,9 +260,9 @@ class MineStat
   /* Connects to remote server */
   private function connect()
   {
-    if($this->request_type == MineStat::REQUEST_BEDROCK || $this->request_type == "Bedrock/Pocket Edition")
+    if($this->request_type == MineStat::REQUEST_BEDROCK || $this->request_type == "Bedrock/Pocket Edition" || $this->request_type == "UT3/GS4 Query")
     {
-      if($this->port == MineStat::DEFAULT_TCP_PORT && $this->try_all)
+      if($this->port == MineStat::DEFAULT_TCP_PORT && $this->request_type != "UT3/GS4 Query" && $this->try_all)
         $this->port = MineStat::DEFAULT_BEDROCK_PORT;
       $this->socket = socket_create(AF_INET, SOCK_DGRAM, 0);
     }
@@ -278,7 +311,7 @@ class MineStat
   /* Populates object fields after connecting */
   private function parse_data($delimiter, $is_beta = false)
   {
-    if($this->request_type == "Bedrock/Pocket Edition")
+    if($this->request_type == "Bedrock/Pocket Edition" || $this->request_type == "UT3/GS4 Query")
     {
       socket_recv($this->socket, $response, 1, MSG_PEEK);
       $response = @unpack('C', $response);
@@ -295,6 +328,11 @@ class MineStat
       $raw_data = substr(socket_read($this->socket, MineStat::BEDROCK_PACKET_OFFSET + $server_id_len), MineStat::BEDROCK_PACKET_OFFSET);
       socket_close($this->socket);
     }
+    elseif($this->request_type == "UT3/GS4 Query" && !empty($response) && $response[1] == 0x00) // stat packet
+    {
+      $raw_data = substr(socket_read($this->socket, 4096), MineStat::QUERY_STAT_OFFSET);
+      socket_close($this->socket);
+    }
     elseif(!empty($response) && $response[1] == 0xFF) // kick packet (255)
     {
       $len = unpack('n', socket_read($this->socket, 2))[1];
@@ -309,19 +347,19 @@ class MineStat
 
     if(isset($raw_data))
     {
-      $server_info = explode($delimiter, $raw_data); // split on delimiter
-      if($is_beta)
-        $num_fields = MineStat::NUM_FIELDS_BETA;
+      // Split on delimiter
+      if($this->request_type == "UT3/GS4 Query")
+        $server_info = explode("\x00\x00\x01player_\x00\x00", $raw_data);
       else
-        $num_fields = MineStat::NUM_FIELDS;
-      if(isset($server_info) && sizeof($server_info) >= $num_fields)
+        $server_info = explode($delimiter, $raw_data);
+      if(isset($server_info))
       {
-        if($is_beta)
+        if($is_beta && sizeof($server_info) >= MineStat::NUM_FIELDS_BETA)
         {
           $this->version = ">=1.8b/1.3"; // since server does not return version, set it
-          $this->motd = $server_info[0];
+          $this->motd = trim($server_info[0], "§");
           $this->strip_motd();
-          $this->current_players = (int)$server_info[1];
+          $this->current_players = (int)trim($server_info[1], "§");
           $this->max_players = (int)$server_info[2];
           $this->online = true;
         }
@@ -336,16 +374,58 @@ class MineStat
           $this->max_players = (int)$server_info[5];
           $this->online = true;
         }
-        else
+        elseif($this->request_type == "UT3/GS4 Query")
         {
-          // $server_info[0] contains the section symbol and 1
-          $this->protocol = (int)$server_info[1]; // contains the protocol version (51 for 1.9 or 78 for 1.6.4 for example)
-          $this->version = $server_info[2];
-          $this->motd = $server_info[3];
-          $this->strip_motd();
-          $this->current_players = (int)$server_info[4];
-          $this->max_players = (int)$server_info[5];
+          if(isset($server_info[1]) && !empty($server_info[1]))
+            $this->player_list = explode($delimiter, $server_info[1]);
+          // Convert values into friendly key names and value pairs
+          $values = explode($delimiter, $server_info[0]);
+          $count = count($values);
+          $server_info = [];
+          if($count > MineStat::NUM_FIELDS)
+          {
+            for($i = 0; $i < $count / 2; $i++)
+            {
+              $idx = $i * 2;
+              $server_info[$values[$idx]] = $values[$idx + 1];
+            }
+          }
+          if(isset($server_info["version"]))
+            $this->version = $server_info["version"];
+          if(isset($server_info["hostname"]))
+          {
+            $this->motd = $server_info["hostname"];
+            $this->strip_motd();
+          }
+          if(isset($server_info["numplayers"]))
+            $this->current_players = (int)$server_info["numplayers"];
+          if(isset($server_info["maxplayers"]))
+            $this->max_players = (int)$server_info["maxplayers"];
+          if(isset($server_info["plugins"]) && !empty($server_info["plugins"]))
+          {
+            // Vanilla servers do not send a list of plugins.
+            // Bukkit and derivatives send plugins in the form: Paper on 1.19.3-R0.1-SNAPSHOT: Essentials 2.19.7; EssentialsChat 2.19.7
+            $this->plugin_list = explode(':', $server_info["plugins"]);
+            if(count($this->plugin_list) > 1)
+              $this->plugin_list = array_map('trim', explode(';', $this->plugin_list[1])); // remove leading/trailing whitespace
+          }
           $this->online = true;
+        }
+        else // SLP
+        {
+          if(sizeof($server_info) >= MineStat::NUM_FIELDS)
+          {
+            // $server_info[0] contains the section symbol and 1
+            $this->protocol = (int)$server_info[1]; // contains the protocol version (51 for 1.9 or 78 for 1.6.4 for example)
+            $this->version = $server_info[2];
+            $this->motd = $server_info[3];
+            $this->strip_motd();
+            $this->current_players = (int)$server_info[4];
+            $this->max_players = (int)$server_info[5];
+            $this->online = true;
+          }
+          else
+            return MineStat::RETURN_UNKNOWN;
         }
       }
       else
@@ -376,7 +456,7 @@ class MineStat
         return $retval;
       // Start the handshake and attempt to acquire data
       socket_write($this->socket, "\xFE");
-      $retval = $this->parse_data("\xA7", true);
+      $retval = $this->parse_data("\xA7", true); // section symbol (§)
       if($retval == MineStat::RETURN_SUCCESS)
         $this->request_type = "SLP 1.8b/1.3 (beta)";
     }
@@ -612,6 +692,66 @@ class MineStat
       $payload .= pack('P', 2);                                                       // client GUID
       socket_write($this->socket, $payload);
       $retval = $this->parse_data("\x3B"); // semicolon
+    }
+    catch(Exception $e)
+    {
+      return MineStat::RETURN_UNKNOWN;
+    }
+    return $retval;
+  }
+
+  /*
+   * Unreal Tournament 3/GameSpy 4 (UT3/GS4) query protocol
+   *   1. Client sends:
+   *     1a. 0xFE 0xFD (query identifier)
+   *     1b. 0x09 (handshake)
+   *     1c. arbitrary session ID (4 bytes)
+   *   2. Server responds with:
+   *     2a. 0x09 (handshake)
+   *     2b. session ID (4 bytes)
+   *     2c. challenge token (variable null-terminated string)
+   *   3. Client sends:
+   *     3a. 0xFE 0xFD (query identifier)
+   *     3b. 0x00 (stat)
+   *     3c. arbitrary session ID (4 bytes)
+   *     3d. challenge token (32-bit integer in network byte order)
+   *     3e. padding (4 bytes -- 0x00 0x00 0x00 0x00); omit padding for basic stat (which does not supply the version)
+   *   4. Server responds with:
+   *     4a. 0x00 (stat)
+   *     4b. session ID (4 bytes)
+   *     4c. padding (11 bytes)
+   *     4e. key/value pairs of multiple null-terminated strings containing the fields below:
+   *         hostname, game type, game ID, version, plugin list, map, current players, max players, port, address
+   *     4f. padding (10 bytes)
+   *     4g. list of null-terminated strings containing player names
+   */
+  public function query_request()
+  {
+    try
+    {
+      $this->request_type = "UT3/GS4 Query";
+      $retval = $this->connect();
+      if($retval != MineStat::RETURN_SUCCESS)
+        return $retval;
+      $payload = "\xFE\xFD\x09\x0B\x03\x03\x0F";
+      socket_write($this->socket, $payload);
+      $start_byte = "";
+      socket_recv($this->socket, $start_byte, 1, MSG_PEEK);
+      if(isset($start_byte) && unpack('C', $start_byte)[1] == 0x09) // query handshake packet
+      {
+        // Session ID generated by the server is not used -- use a static session ID instead such as 0x0B 0x03 0x03 0x0F.
+        //socket_recv($this->socket, $session_id, MineStat::QUERY_HANDSHAKE_OFFSET, MSG_PEEK);
+        //$session_id = unpack('N', substr($session_id, 1));
+        socket_recv($this->socket, $challenge_token, MineStat::QUERY_HANDSHAKE_SIZE, MSG_WAITALL);
+        $challenge_token = substr($challenge_token, MineStat::QUERY_HANDSHAKE_OFFSET);
+        $payload = "\xFE\xFD\x00\x0B\x03\x03\x0F";
+        // Use the full stat below by stripping the null terminator from the challenge token and padding the end
+        // of the payload with "\x00\x00\x00\x00". The basic stat response does not include the server version.
+        $payload .= pack('N', $challenge_token);
+        $payload .= "\x00\x00\x00\x00";
+        socket_write($this->socket, $payload);
+      }
+      $retval = $this->parse_data("\x00"); // null
     }
     catch(Exception $e)
     {
