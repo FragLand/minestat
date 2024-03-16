@@ -165,7 +165,7 @@ Contains possible SLP (Server List Ping) protocols.
 
 
 class MineStat:
-  VERSION = "2.6.3"
+  VERSION = "2.6.2"
   """The MineStat version"""
   DEFAULT_TCP_PORT = 25565
   """default TCP port for SLP queries"""
