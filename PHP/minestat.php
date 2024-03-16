@@ -359,8 +359,8 @@ class MineStat
           $this->version = ">=1.8b/1.3"; // since server does not return version, set it
           $this->motd = trim($server_info[0], "§");
           $this->strip_motd();
-          $this->current_players = (int)trim($server_info[1]??0, "§");
-          $this->max_players = (int)$server_info[2]??0;
+          $this->current_players = (int)trim($server_info[1]??-1, "§");
+          $this->max_players = (int)$server_info[2]??-1;
           $this->online = true;
         }
         elseif($this->request_type == "Bedrock/Pocket Edition")
