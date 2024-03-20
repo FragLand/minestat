@@ -1,6 +1,6 @@
 ###
 # MineStat.psm1
-# Copyright (C) 2020-2023 Ajoro and MineStat contributors.
+# Copyright (C) 2020-2024 Ajoro and MineStat contributors.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,19 +32,23 @@ function MineStat {
   param (
     # Addresss (domain or IP-address) of the server to connect to.
     # Input as str or str[]
-    $Address = "localhost",
+    [Parameter(ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
+    [Alias('Server', 'Host', 'IP')]
+    [string[]]$Address = "localhost",
+
     # Port of the server to connect to.
     [uint16]$Port = 25565,
+
     # SlpProtocol to use
     # Possible values: "BedrockRaknet", "Json", "Extendedlegacy", "Legacy", "Beta"
     # Can combine protocols to check more.
     # Defaults to check: "Json", "Extendedlegacy", "Legacy", "Beta"
-    [ArgumentCompleter({
-        "BedrockRaknet", "Json", "Extendedlegacy", "Legacy", "Beta", "Query"
-      })]
-    $Protocol = 31,
+    [ValidateSet("BedrockRaknet", "Json", "Extendedlegacy", "Legacy", "Beta", "Query")]
+    [string[]]$Protocol = 31,
+
     # The time in seconds, after which a connection is timed out.
     [int]$Timeout = 5,
+
     [switch]$IgnoreSRV = $false
   )
 
@@ -61,7 +65,8 @@ function MineStat {
     ConnFail = -3
   }
 
-  [Flags()] enum SlpProtocol {
+  [Flags()]
+  enum SlpProtocol {
     BedrockRaknet = 32
     Query = 16
     Json = 8
@@ -75,31 +80,27 @@ function MineStat {
   Write-Verbose "MineStat version: $($ModuleInfos.ModuleVersion.ToString())"
 
   try {
-    # Return array if address input is array
-    [SlpProtocol]$Protocol = $Protocol
-    if ($Address.GetType().BaseType.Name -eq "Array") {
-      $returnarray = @()
-      foreach ($Addr in $Address) {
-        if (([regex]::Matches($Addr, ":" )).count -eq 1) {
-          $split = $Addr -split ":"
-          $value = [ServerStatus]::new($split[0], $split[1], $Timeout, $Protocol, $IgnoreSRV)
-        }
-        else {
-          $value = [ServerStatus]::new($Addr, $Port, $Timeout, $Protocol, $IgnoreSRV)
-        }
-        $returnarray += $value
-      }
-      return $returnarray
+    function New-ServerStatus {
+      param (
+        [string]$Address,
+        [uint16]$Port,
+        [int]$Timeout,
+        [SlpProtocol]$Protocol,
+        [switch]$IgnoreSRV
+      )
+
+      $split = $Address -split ":"
+      $port = if ($split.Count -gt 1) { $split[1] } else { $Port }
+      $protocol = if ($split.Count -eq 3) { $split[2] } else { $Protocol }
+
+      [ServerStatus]::new($split[0], $port, $Timeout, $protocol, $IgnoreSRV)
     }
-    else {
-      if (([regex]::Matches($Address, ":" )).count -eq 1) {
-        $split = $Address -split ":"
-        return [ServerStatus]::new($split[0], $split[1], $Timeout, $Protocol, $IgnoreSRV)
-      }
-      else {
-        return [ServerStatus]::new($Address, $Port, $Timeout, $Protocol, $IgnoreSRV)
-      }
+
+    $returnArray = foreach ($Addr in $Address) {
+      New-ServerStatus -Address $Addr -Port $Port -Timeout $Timeout -Protocol $Protocol -IgnoreSRV:$IgnoreSRV
     }
+    
+    return $returnArray
   }
   catch {
     throw $_
