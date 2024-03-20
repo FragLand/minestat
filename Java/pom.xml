@@ -65,7 +65,7 @@
       <!-- Build .class files -->
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.11.0</version>
+        <version>3.12.1</version>
         <configuration>
           <includes>
             <include>Example.java</include>
@@ -102,7 +102,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
-        <version>3.6.0</version>
+        <version>3.6.3</version>
         <executions>
           <execution>
             <id>attach-javadocs</id>
@@ -118,7 +118,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-gpg-plugin</artifactId>
-        <version>3.1.0</version>
+        <version>3.2.0</version>
         <executions>
           <execution>
             <id>sign-artifacts</id>
@@ -156,7 +156,7 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-javadoc-plugin</artifactId>
-            <version>3.6.0</version>
+            <version>3.6.3</version>
             <executions>
               <execution>
                 <id>attach-javadocs</id>
