@@ -1,7 +1,7 @@
 ###
 # ==++==
 #
-# Copyright (C) 2020-2023 Ajoro and MineStat contributors.
+# Copyright (C) 2020-2024 Ajoro and MineStat contributors.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
   GUID = '9adc7f28-e495-424d-83ef-8e48b08b5909'
   Author = "Ajoro and MineStat contributors"
   CompanyName = "Frag Land"
-  Copyright = "(C) 2020-2023 Ajoro and MineStat contributors"
+  Copyright = "(C) 2020-2024 Ajoro and MineStat contributors"
   HelpInfoUri = "https://github.com/FragLand/minestat/tree/master/PowerShell"
   ModuleVersion = "3.0.1"
   PowerShellVersion = "5.0"
@@ -39,6 +39,7 @@
       ReleaseNotes = @'
 ## 3.0.1
 - Fix latency being overwritten
+- Added support for splitting "Address:Port:Protocol" in address input (port/protocol "overwrite")
 
 ## 3.0.0
 - Added support for Query / GameSpot4 / UT3 protocol.
