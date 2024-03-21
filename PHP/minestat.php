@@ -370,8 +370,8 @@ class MineStat
           $this->mode = $server_info[8];
           $this->motd = $server_info[1];
           $this->strip_motd();
-          $this->current_players = (int)$server_info[4]??-1;
-          $this->max_players = (int)$server_info[5]??-1;
+          $this->current_players = (int)$server_info[4] ?? -1;
+          $this->max_players = (int)$server_info[5] ?? -1;
           $this->online = true;
         }
         elseif($this->request_type == "UT3/GS4 Query")
