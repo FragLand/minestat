@@ -61,7 +61,7 @@ max_players     : 200000
 latency         : 5
 slp_protocol    : Json
 
-PS C:\> MineStat mc.advancius.net:19132 -Protocol BedrockRaknet -IgnoreSRV
+PS C:\> MineStat mc.advancius.net:19132:BedrockRaknet -Protocol Json -IgnoreSRV
 
 address         : mc.advancius.net
 port            : 19132
@@ -78,7 +78,7 @@ slp_protocol    : BedrockRaknet
 
 - `Address`: str[] / str
   - Address (domain or IP-address) of the server to connect to. 
-  - Can take array input and also take `address:port` as input.
+  - Can take array input and also take `address:port:protocol` as input which overwrites port and protocol.
   - Tries to detect address using SRV record first.
   - Default: localhost
 - `Port`: uint

@@ -1,6 +1,6 @@
 ###
 # MineStat.psm1
-# Copyright (C) 2020-2023 Ajoro and MineStat contributors.
+# Copyright (C) 2020-2024 Ajoro and MineStat contributors.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,19 +32,23 @@ function MineStat {
   param (
     # Addresss (domain or IP-address) of the server to connect to.
     # Input as str or str[]
-    $Address = "localhost",
+    [Parameter(ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
+    [Alias('Server', 'Host', 'IP')]
+    [string[]]$Address = "localhost",
+
     # Port of the server to connect to.
     [uint16]$Port = 25565,
+
     # SlpProtocol to use
     # Possible values: "BedrockRaknet", "Json", "Extendedlegacy", "Legacy", "Beta"
     # Can combine protocols to check more.
     # Defaults to check: "Json", "Extendedlegacy", "Legacy", "Beta"
-    [ArgumentCompleter({
-        "BedrockRaknet", "Json", "Extendedlegacy", "Legacy", "Beta", "Query"
-      })]
-    $Protocol = 31,
-    # The time in seconds, after which a connection is timed out. 
+    [ValidateSet("BedrockRaknet", "Json", "Extendedlegacy", "Legacy", "Beta", "Query")]
+    [string[]]$Protocol = 31,
+
+    # The time in seconds, after which a connection is timed out.
     [int]$Timeout = 5,
+
     [switch]$IgnoreSRV = $false
   )
 
@@ -61,10 +65,11 @@ function MineStat {
     ConnFail = -3
   }
 
-  [Flags()] enum SlpProtocol {
+  [Flags()]
+  enum SlpProtocol {
     BedrockRaknet = 32
     Query = 16
-    Json = 8 
+    Json = 8
     ExtendedLegacy = 4
     Legacy = 2
     Beta = 1
@@ -75,31 +80,27 @@ function MineStat {
   Write-Verbose "MineStat version: $($ModuleInfos.ModuleVersion.ToString())"
 
   try {
-    # Return array if address input is array
-    [SlpProtocol]$Protocol = $Protocol
-    if ($Address.GetType().BaseType.Name -eq "Array") {
-      $returnarray = @()
-      foreach ($Addr in $Address) {
-        if (([regex]::Matches($Addr, ":" )).count -eq 1) {
-          $split = $Addr -split ":"
-          $value = [ServerStatus]::new($split[0], $split[1], $Timeout, $Protocol, $IgnoreSRV)
-        }
-        else {
-          $value = [ServerStatus]::new($Addr, $Port, $Timeout, $Protocol, $IgnoreSRV)
-        }
-        $returnarray += $value
-      }
-      return $returnarray
+    function New-ServerStatus {
+      param (
+        [string]$Address,
+        [uint16]$Port,
+        [int]$Timeout,
+        [SlpProtocol]$Protocol,
+        [switch]$IgnoreSRV
+      )
+
+      $split = $Address -split ":"
+      $port = if ($split.Count -gt 1) { $split[1] } else { $Port }
+      $protocol = if ($split.Count -eq 3) { $split[2] } else { $Protocol }
+
+      [ServerStatus]::new($split[0], $port, $Timeout, $protocol, $IgnoreSRV)
     }
-    else {
-      if (([regex]::Matches($Address, ":" )).count -eq 1) {
-        $split = $Address -split ":"
-        return [ServerStatus]::new($split[0], $split[1], $Timeout, $Protocol, $IgnoreSRV)
-      }
-      else {
-        return [ServerStatus]::new($Address, $Port, $Timeout, $Protocol, $IgnoreSRV)
-      }
+
+    $returnArray = foreach ($Addr in $Address) {
+      New-ServerStatus -Address $Addr -Port $Port -Timeout $Timeout -Protocol $Protocol -IgnoreSRV:$IgnoreSRV
     }
+    
+    return $returnArray
   }
   catch {
     throw $_
@@ -109,8 +110,8 @@ function MineStat {
     [string]$address = "localhost"
     [uint16]$port = 25565
     [bool]$online = $false
-    [string]$version 
-    [string]$formatted_motd 
+    [string]$version
+    [string]$formatted_motd
     [int]$current_players = -1
     [int]$max_players = -1
     [int]$latency = -1
@@ -306,11 +307,11 @@ function MineStat {
       $formatted = format_motd($rawmotd)
       return $stripped, $formatted
     }
-    
+
     [ConnStatus] FullstatQuery() {
-      <#  
+      <#
       Method for querying a Minecraft Java server using the fullstat Query / GameSpot4 / UT3 protocol.
-      
+
       Needs to be enabled on the Minecraft server using:
       "enable-query=true"
       in the servers "server.properties" file.
@@ -318,14 +319,14 @@ function MineStat {
       This method ONLY supports full stat querys.
       Documentation for this protocol: https://wiki.vg/Query
       #>
-      
+
       $sock = New-Object System.Net.Sockets.UdpClient
       $sock.Client.ReceiveTimeout = $this.timeout * 1000
       $sock.Client.SendTimeout = $this.timeout * 1000
 
       $stopwatch = New-Object System.Diagnostics.Stopwatch
       $stopwatch.Start();
-    
+
       try {
         $sock.Connect($this.address, $this.port)
       }
@@ -335,38 +336,40 @@ function MineStat {
         return [ConnStatus]::ConnFail
       }
       $stopwatch.Stop()
-      $this.latency = $stopwatch.ElapsedMilliseconds
+      if ($this.latency -eq -1) {
+        $this.latency = $stopwatch.ElapsedMilliseconds
+      }
 
       $querymagic = [byte[]]@(254, 253) # b"\xFE\xFD"
       $handshake_packettype = [byte[]]@(9)
       $stat_packettype = [byte[]]@(0)
-  
+
       $session_id_int = Get-Random -Minimum 0 -Maximum 2147483647
       $session_id_bytes = [BitConverter]::GetBytes($session_id_int -band 0x0F0F0F0F)
       if ([System.BitConverter]::IsLittleEndian) {
         [System.Array]::Reverse($session_id_bytes);
       }
-  
+
       $handshake_packet = $querymagic + $handshake_packettype + $session_id_bytes
-  
+
       try {
         $sock.Send($handshake_packet, $handshake_packet.Length)
         $handshake_res = $sock.Receive([ref]$null)
-  
+
         $challenge_token = $handshake_res[5..$($handshake_res.Length - 1)]
         $challenge_token_int = [int][System.Text.Encoding]::UTF8.GetString($challenge_token)
         $challenge_token_bytes = [BitConverter]::GetBytes($challenge_token_int)
         if ([System.BitConverter]::IsLittleEndian) {
           [System.Array]::Reverse($challenge_token_bytes);
         }
-  
+
         $req_packet = $querymagic + $stat_packettype + $session_id_bytes + $challenge_token_bytes + [byte[]](0, 0, 0, 0)
-  
+
         $sock.Send($req_packet, $req_packet.Length)
         $raw_res = $sock.Receive([ref]$null)
-  
+
         $sock.Close()
-  
+
         return $this.ParseFullstatQuery($raw_res[($session_id_bytes.Length + 1)..($raw_res.Length - 1)])
       }
       catch [System.Net.Sockets.SocketException] {
@@ -383,7 +386,7 @@ function MineStat {
     }
 
     hidden [ConnStatus] ParseFullstatQuery([byte[]]$raw_res) {
-      <# 
+      <#
       Helper method for parsing the reponse from a query request.
 
       See https://wiki.vg/Query for details.
@@ -396,10 +399,10 @@ function MineStat {
 
         # Split stats from players
         $raw_stats, $raw_players = [Text.Encoding]::UTF8.GetString($res) -split [Text.Encoding]::UTF8.GetString(@(0x00, 0x00, 0x01, 0x70, 0x6C, 0x61, 0x79, 0x65, 0x72, 0x5F, 0x00, 0x00))
-    
+
         # Split stat keys and values into individual elements and remove unnecessary padding
         $stat_list = $raw_stats -split "`0"
-    
+
         # Move keys and values into a dictionary, the keys are also decoded
         $stats = @{}
         for ($i = 0; $i -lt $stat_list.Length; $i += 2) {
@@ -407,7 +410,7 @@ function MineStat {
           $value = $stat_list[$i + 1]
           $stats[$key] = $value
         }
-    
+
         # Extract motd (hostname) or MOTD
         $this.motd = $null
         if ($stats.ContainsKey("hostname")) {
@@ -417,13 +420,13 @@ function MineStat {
           $this.motd = $stats["MOTD"]
         }
         $this.stripped_motd, $this.formatted_motd = $this.generateMotds($this.motd)
-    
+
         # Extract the server's Minecraft version
         $this.version = $null
         if ($stats.ContainsKey("version")) {
           $this.version = $stats["version"]
         }
-    
+
         # Extract list of plugins
         $this.plugins = @()
         if ($stats.ContainsKey("plugins")) {
@@ -431,19 +434,19 @@ function MineStat {
           if ($raw_plugins -ne "") {
             # The plugins are separated by " ;"
             $this.plugins = $raw_plugins -split " ;"
-    
+
             # There may be information about the server software in the first plugin element
             if ($this.plugins[0] -match ":") {
               $this.version, $this.plugins[0] = $this.plugins[0] -split ": ", 2
             }
           }
         }
-    
+
         # Extract the name of the map the server is running on
         if ($stats.ContainsKey("map")) {
           $this.map = $stats["map"]
         }
-    
+
         # Extract number of online and maximum allowed players
         $this.current_players = 0
         $this.max_players = 0
@@ -453,21 +456,20 @@ function MineStat {
         }
 
         $this.playerList = $raw_players.TrimEnd("`0") -split "`0"
-        $this.Slp_Protocol = "Query"; 
+        $this.Slp_Protocol = "Query";
         $this.online = $true;
         $this.Gamemode = $stats.gametype
 
-        return [ConnStatus]::Success 
-    
+        return [ConnStatus]::Success
+
       }
       catch {
-        return [ConnStatus]::Unknown  
+        return [ConnStatus]::Unknown
       }
-      
     }
 
     [ConnStatus] RequestWithRaknetProtocol() {
-      <# 
+      <#
       Method for querying a Bedrock server (Minecraft PE, Windows 10 or Education Edition).
       The protocol is based on the RakNet protocol.
 
@@ -490,7 +492,7 @@ function MineStat {
 
       $stopwatch = New-Object System.Diagnostics.Stopwatch
       $stopwatch.Start();
-    
+
       try {
         $sock.Connect($this.address, $this.port)
       }
@@ -500,7 +502,9 @@ function MineStat {
         return [ConnStatus]::ConnFail
       }
       $stopwatch.Stop()
-      $this.latency = $stopwatch.ElapsedMilliseconds
+      if ($this.latency -eq -1) {
+        $this.latency = $stopwatch.ElapsedMilliseconds
+      }
 
       [byte[]]$raknetMagic = @(0x00, 0xFF, 0xFF, 0x00, 0xFE, 0xFE, 0xFE, 0xFE, 0xFD, 0xFD, 0xFD, 0xFD, 0x12, 0x34, 0x56, 0x78)
 
@@ -521,7 +525,7 @@ function MineStat {
       }
       try {
         [System.Collections.Generic.Queue[byte]]$response = $sock.Receive([ref]$null)
-      
+
         if ($response.Dequeue() -ne 0x1c) {
           return [ConnStatus]::InvalidResponse
         }
@@ -539,12 +543,12 @@ function MineStat {
         if ([System.BitConverter]::IsLittleEndian) {
           [System.Array]::Reverse($response);
         }
-        
+
         # responseIdStringLength (never used)
         [System.BitConverter]::ToUInt16((readbytestream $response 2), 0)
 
         $temp = readbytestream $response $response.Count
-        $responseIdString = [System.Text.Encoding]::UTF8.GetString($temp) 
+        $responseIdString = [System.Text.Encoding]::UTF8.GetString($temp)
       }
       catch {
         $this.latency = -1
@@ -559,16 +563,15 @@ function MineStat {
     }
 
     hidden [ConnStatus] ParseBedrockPayload([string]$payload) {
-      $values = $payload -split ";" 
+      $values = $payload -split ";"
       $keys = @("edition", "motd_1", "protocol_version", "version", "current_players", "max_players",
         "server_uid", "motd_2", "gamemode", "gamemode_numeric", "port_ipv4", "port_ipv6")
 
       $payload_obj = @{}
-  
       for ($i = 0; $i -lt $keys.Count; $i++) {
         $payload_obj.Add($keys[$i], $values[$i])
       }
-      $this.Slp_Protocol = "BedrockRaknet"; 
+      $this.Slp_Protocol = "BedrockRaknet";
       $this.online = $true;
       $this.current_players = $payload_obj.current_players
       $this.max_players = $payload_obj.max_players
@@ -578,18 +581,17 @@ function MineStat {
       $this.Gamemode = $payload_obj.gamemode
 
       return [ConnStatus]::Success
-      
     }
 
     [ConnStatus] RequestWithJsonProtocol() {
-      <# 
+      <#
       Method for querying a modern (MC Java >= 1.7) server with the SLP protocol.
       This protocol is based on encoded JSON, see the documentation at wiki.vg below
       for a full packet description.
 
       See https://wiki.vg/Server_List_Ping#Current
       #>
-    
+
       function WriteLeb128([int]$value) {
         [System.Collections.Generic.List[byte]]$byteList = @()
         if ($value -eq -1) {
@@ -606,7 +608,7 @@ function MineStat {
           }
           $byteList.Add($temp)
         } while ($actual -ne 0)
-    
+
         return $byteList.ToArray()
       }
 
@@ -672,7 +674,9 @@ function MineStat {
         return [ConnStatus]::ConnFail
       }
       $stopwatch.Stop()
-      $this.Latency = $stopwatch.ElapsedMilliseconds
+      if ($this.latency -eq -1) {
+        $this.latency = $stopwatch.ElapsedMilliseconds
+      }
       $stream = $tcpclient.GetStream()
 
       [System.Collections.Generic.List[byte]]$jsonPingHandshakePacket = 0x00
@@ -698,7 +702,7 @@ function MineStat {
         $stream.WriteByte(0x00)
 
         $responseSize = ReadLeb128Stream $stream
-      } 
+      }
       catch {
         return [ConnStatus]::Unknown
       }
@@ -747,7 +751,7 @@ function MineStat {
               }
             )
             ## Return the array but don't enumerate it because the object may be pretty complex
-            Write-Output -NoEnumerate $collection
+            Write-Output -InputObject $collection -NoEnumerate
           }
           elseif ($InputObject -is [psobject]) {
             ## If the object has properties that need enumeration
@@ -802,7 +806,7 @@ function MineStat {
     }
 
     [ConnStatus] RequestWithExtendedLegacyProtocol() {
-      <# 
+      <#
       Minecraft 1.6 SLP query, extended legacy ping protocol.
       All modern servers are currently backwards compatible with this protocol.
 
@@ -828,8 +832,9 @@ function MineStat {
         return [ConnStatus]::ConnFail
       }
       $stopwatch.Stop()
-
-      $this.Latency = $stopwatch.ElapsedMilliseconds
+      if ($this.latency -eq -1) {
+        $this.latency = $stopwatch.ElapsedMilliseconds
+      }
       $stream = $tcpclient.GetStream()
 
       [System.Collections.Generic.List[byte]]$extlegacyPingPacket = @(0xFE, 0x01, 0xFA, 0x00, 0x0B)
@@ -881,7 +886,7 @@ function MineStat {
     }
 
     [ConnStatus] RequestWithLegacyProtocol() {
-      <# 
+      <#
       Minecraft 1.4-1.5 SLP query, server response contains more info than beta SLP
 
       See https://wiki.vg/Server_List_Ping#1.4_to_1.5
@@ -906,8 +911,9 @@ function MineStat {
         return [ConnStatus]::ConnFail
       }
       $stopwatch.Stop()
-
-      $this.Latency = $stopwatch.ElapsedMilliseconds
+      if ($this.latency -eq -1) {
+        $this.latency = $stopwatch.ElapsedMilliseconds
+      }
       $stream = $tcpclient.GetStream()
 
       [byte[]] $legacyPingPacket = 0xFE, 0x01
@@ -923,17 +929,14 @@ function MineStat {
       if ($responsePacketHeader[0] -ne 0xFF) {
         return [ConnStatus]::InvalidResponse
       }
-
       if ([System.BitConverter]::IsLittleEndian) {
         [System.Array]::Reverse($responsePacketHeader);
       }
 
       $payloadLength = [System.BitConverter]::ToUInt16($responsePacketHeader, 0)
-
       if ($payloadLength -lt 3) {
         return [ConnStatus]::InvalidResponse
       }
-
       [byte[]]$payload = $this.NetStreamReadExact($stream , ($payloadLength * 2))
 
       return $this.ParseLegacyProtocol($payload, "Legacy")
@@ -945,7 +948,6 @@ function MineStat {
       if ($payloadArray.Length -ne 6) {
         return [ConnStatus]::InvalidResponse
       }
-  
       $this.Version = $payloadArray[2]
       $this.max_players = $payloadArray[5]
       $this.current_players = $payloadArray[4]
@@ -957,7 +959,7 @@ function MineStat {
     }
 
     [ConnStatus] RequestWithBetaProtocol() {
-      <# 
+      <#
       Minecraft Beta 1.8 to Release 1.3 SLP protocol
       See https://wiki.vg/Server_List_Ping#Beta_1.8_to_1.3
       #>
@@ -981,8 +983,9 @@ function MineStat {
         return [ConnStatus]::ConnFail
       }
       $stopwatch.Stop()
-
-      $this.Latency = $stopwatch.ElapsedMilliseconds
+      if ($this.latency -eq -1) {
+        $this.latency = $stopwatch.ElapsedMilliseconds
+      }
       $stream = $tcpclient.GetStream()
 
       [byte[]] $betaPingPacket = 0xFE
