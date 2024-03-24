@@ -20,7 +20,7 @@
 
 // For use with Node.js
 
-const VERSION = "2.0.0";    // MineStat version
+const VERSION = "2.0.1";    // MineStat version
 const NUM_FIELDS = 6;       // number of values expected from server
 const DEFAULT_PORT = 25565; // default TCP port of Minecraft server
 const DEFAULT_TIMEOUT = 5;  // default TCP timeout in seconds
@@ -54,8 +54,17 @@ function func(opts, callback)
         res.online = true;
         res.version = server_info[2].replace(/\u0000/g,'');
         res.motd = server_info[3].replace(/\u0000/g,'');
+        if (server_info.length > 4) {
+          res.current_players = Number(server_info[4].replace(/\u0000/g, ''));
+        } else {
+          res.current_players = -1
+        }
         res.current_players = Number(server_info[4].replace(/\u0000/g,''));
-        res.max_players = Number(server_info[5].replace(/\u0000/g,''));
+        if (server_info.length > 5) {
+          res.max_players = Number(server_info[5].replace(/\u0000/g, ''));
+        } else {
+          res.max_players = -1
+        }
       }
       else
       {

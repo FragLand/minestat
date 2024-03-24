@@ -797,12 +797,13 @@ class MineStat:
       self.motd = json.dumps(payload_obj["description"])
     self.stripped_motd = self.motd_strip_formatting(payload_obj.get("description", ""))
 
-    self.max_players = payload_obj["players"]["max"]
-    self.current_players = payload_obj["players"]["online"]
+    players = payload_obj.get("players", {"max":-1, "online":-1})
+    self.max_players = players["max"]
+    self.current_players = players["online"]
 
     # There may be a "sample" field in the "players" object that contains a sample list of online players
-    if "sample" in payload_obj["players"]:
-      self.player_list = [player["name"] for player in payload_obj["players"]["sample"]]
+    if "sample" in players:
+      self.player_list = [player["name"] for player in players["sample"]]
 
     try:
       self.favicon_b64 = payload_obj["favicon"]
