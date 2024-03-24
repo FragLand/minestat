@@ -309,6 +309,7 @@ Feel free to [submit an issue](https://github.com/FragLand/minestat/issues/new/c
 * [**@RunTheBot**](https://github.com/RunTheBot): JavaScript [_2023_]
 * [**@samdotnet**](https://github.com/samdotnet): Java issue report [_2020_]
 * [**@Sch8ill**](https://github.com/sch8ill): Go and Python [_2022 - present_]
+* **SeongHoon Ryu** ([**@ryush00**](https://github.com/ryush00)): Ruby [_2024_]
 * [**@sinhpn92**](https://github.com/sinhpn92): Go and JavaScript issue report [_2020_]
 * [**@skybird23333**](https://github.com/skybird23333): Java issue report [_2020_]
 * **Sondre Batalden** ([**@Pomdre**](https://github.com/Pomdre)): PHP issue report [_2019_]
