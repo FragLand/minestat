@@ -170,7 +170,7 @@ class MineStat
     @srv_succeeded = false     # SRV resolution successful?
 
     @try_all = true if request_type == Request::NONE
-    @srv_suceeded = resolve_srv() if @srv_enabled
+    @srv_succeeded = resolve_srv() if @srv_enabled
     set_connection_status(attempt_protocols(request_type))
   end
 
