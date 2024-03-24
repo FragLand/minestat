@@ -11,6 +11,8 @@ body {
 	font-size: 16px;
 }
 .container {
+    margin: 0 auto;
+    text-align: center;
     width: 100%;
 }
 .header {

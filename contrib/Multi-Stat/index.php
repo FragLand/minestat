@@ -53,7 +53,8 @@ function generate_box($ip, $port, $protocol)
     return "<pre class='item text-left'><center>$urlParts - $protocol</center>" . $output . "</pre><br />";
 }
 ?>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 
 <head>
   <title><?php echo $siteTitle; ?></title>
@@ -65,26 +66,24 @@ function generate_box($ip, $port, $protocol)
 </head>
 
 <body>
-  <center>
-    <div class="container">
-      <img src="" class="logo" />
-      <div class="header"><?php echo $siteName; ?></div>
-      <div class="list pull-left">
-        <?php
-        foreach ($javaIP as $ip) {
-          echo generate_box($ip, 25565, 'Json');
-        }
-        ?>
-      </div>
-      <div class="list pull-right">
-        <?php
-        foreach ($bedrockIP as $ip) {
-          echo generate_box($ip, 19132, 'BedrockRaknet');
-        }
-        ?>
-      </div>
+  <div class="container">
+    <img src="" class="logo" />
+    <div class="header"><?php echo $siteName; ?></div>
+    <div class="list pull-left">
+      <?php
+      foreach ($javaIP as $ip) {
+        echo generate_box($ip, 25565, 'Json');
+      }
+      ?>
     </div>
-  </center>
+    <div class="list pull-right">
+      <?php
+      foreach ($bedrockIP as $ip) {
+        echo generate_box($ip, 19132, 'BedrockRaknet');
+      }
+      ?>
+    </div>
+  </div>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script> <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script> <!-- Popper -->
   <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script> <!-- JQuery -->
