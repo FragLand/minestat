@@ -797,9 +797,9 @@ class MineStat:
       self.motd = json.dumps(payload_obj["description"])
     self.stripped_motd = self.motd_strip_formatting(payload_obj.get("description", ""))
 
-    players = payload_obj.get("players", {"max":-1, "online":-1})
-    self.max_players = players["max"]
-    self.current_players = players["online"]
+    players = payload_obj.get("players", {})
+    self.max_players = players.get("max", -1)
+    self.current_players = players.get("online", -1)
 
     # There may be a "sample" field in the "players" object that contains a sample list of online players
     if "sample" in players:
