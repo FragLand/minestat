@@ -293,7 +293,7 @@ Feel free to [submit an issue](https://github.com/FragLand/minestat/issues/new/c
 * [**@matahombres**](https://github.com/matahombres): PHP issue report [_2019_]
 * [**@MegaNarwhal**](https://github.com/MegaNarwhal): Java issue report [_2017_]
 * [**@mio9**](https://github.com/mio9): JavaScript issue report [_2017_]
-* [**@molanp**](https://github.com/molanp): Python issue report [_2023_]
+* [**@molanp**](https://github.com/molanp): PHP and Python [_2023 - present_]
 * **Nate Bendall** ([**@nbendall34**](https://github.com/nbendall34)): Java issue report [_2021_]
 * [**@Nortank12**](https://github.com/Nortank12): Python issue report [_2019_]
 * [**@Norway174**](https://github.com/Norway174): JavaScript issue report [_2017_]
