@@ -611,7 +611,7 @@ class MineStat
       $this->motd = @$json_data['description'];
       $this->strip_motd();
       $this->current_players = (int)@$json_data['players']['online'] ?? -1;
-      $this->max_players = (int)@$json_data['players']['max']?? -1;
+      $this->max_players = (int)@$json_data['players']['max'] ?? -1;
       $this->favicon_b64 = @$json_data['favicon'];
       if(isset($this->favicon_b64))
       {
