@@ -165,7 +165,7 @@ Contains possible SLP (Server List Ping) protocols.
 
 
 class MineStat:
-  VERSION = "2.6.2"
+  VERSION = "2.6.3"
   """The MineStat version"""
   DEFAULT_TCP_PORT = 25565
   """default TCP port for SLP queries"""
@@ -797,12 +797,13 @@ class MineStat:
       self.motd = json.dumps(payload_obj["description"])
     self.stripped_motd = self.motd_strip_formatting(payload_obj.get("description", ""))
 
-    self.max_players = payload_obj["players"]["max"]
-    self.current_players = payload_obj["players"]["online"]
+    players = payload_obj.get("players", {})
+    self.max_players = players.get("max", -1)
+    self.current_players = players.get("online", -1)
 
     # There may be a "sample" field in the "players" object that contains a sample list of online players
-    if "sample" in payload_obj["players"]:
-      self.player_list = [player["name"] for player in payload_obj["players"]["sample"]]
+    if "sample" in players:
+      self.player_list = [player["name"] for player in players["sample"]]
 
     try:
       self.favicon_b64 = payload_obj["favicon"]
