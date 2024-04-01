@@ -27,7 +27,7 @@ require 'timeout'
 # Provides a Ruby interface for polling the status of Minecraft servers
 class MineStat
   # MineStat version
-  VERSION = "3.0.4"
+  VERSION = "3.0.5"
 
   # Number of values expected from server
   NUM_FIELDS = 6
@@ -253,21 +253,19 @@ class MineStat
   private :set_connection_status
 
   # Strips message of the day formatting characters
-  def strip_motd()
-    unless @motd['text'] == nil
-      @motd = @motd['text']
-      @stripped_motd = @motd
-    else
-      @stripped_motd = @motd
-    end
-    unless @motd['extra'] == nil
-      json_data = @motd['extra']
-      unless json_data.nil? || json_data.empty?
-        json_data.each do |nested_hash|
-          @stripped_motd += nested_hash['text']
+  def strip_motd(raw_motd)
+    @stripped_motd = raw_motd if raw_motd.is_a?(String)
+
+    if raw_motd.is_a?(Hash)
+      @stripped_motd = raw_motd['text'] unless raw_motd['text'].nil?
+
+      unless raw_motd['extra'].nil?
+        raw_motd['extra'].each do |nested_hash|
+          @stripped_motd += strip_motd(nested_hash)
         end
       end
     end
+
     @stripped_motd = @stripped_motd.force_encoding('UTF-8')
     @stripped_motd = @stripped_motd.gsub(/§./, "")
   end
@@ -360,7 +358,7 @@ class MineStat
       if server_info != nil && server_info.length >= NUM_FIELDS_BETA
         @version = ">=1.8b/1.3" # since server does not return version, set it
         @motd = server_info[0]
-        strip_motd()
+        strip_motd(@motd)
         @current_players = server_info[1].to_i
         @max_players = server_info[2].to_i
         @online = true
@@ -373,7 +371,7 @@ class MineStat
         @version = "#{server_info[3]} #{server_info[7]} (#{server_info[0]})"
         @mode = server_info[8]
         @motd = server_info[1]
-        strip_motd()
+        strip_motd(@motd)
         @current_players = server_info[4].to_i
         @max_players = server_info[5].to_i
         @online = true
@@ -386,7 +384,7 @@ class MineStat
         server_info = Hash[*server_info[0].split(delimiter).flatten(1)]
         @version = server_info["version"]
         @motd = server_info["hostname"]
-        strip_motd()
+        strip_motd(@motd)
         @current_players = server_info["numplayers"].to_i
         @max_players = server_info["maxplayers"].to_i
         unless server_info["plugins"].nil? || server_info["plugins"].empty?
@@ -405,7 +403,7 @@ class MineStat
         @protocol = server_info[1].to_i # contains the protocol version (51 for 1.9 or 78 for 1.6.4 for example)
         @version = server_info[2]
         @motd = server_info[3]
-        strip_motd()
+        strip_motd(@motd)
         @current_players = server_info[4].to_i
         @max_players = server_info[5].to_i
         @online = true
@@ -612,7 +610,7 @@ class MineStat
         @protocol = json_data['version']['protocol'].to_i
         @version = json_data['version']['name']
         @motd = json_data['description']
-        strip_motd()
+        strip_motd(@motd)
         @current_players = json_data['players']['online'].to_i
         @max_players = json_data['players']['max'].to_i
         @favicon_b64 = json_data['favicon']

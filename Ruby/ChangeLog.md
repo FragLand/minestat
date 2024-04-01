@@ -1,3 +1,6 @@
+## 3.0.5 (March 30, 2024)
+- Fixed nested JSON MotD issue
+
 ## 3.0.4 (March 25, 2024)
 - Fixed typo
 
