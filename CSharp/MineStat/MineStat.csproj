@@ -1,44 +1,55 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <!-- General Information about an assembly is controlled through the following set of attributes. Change these attribute values to modify the information associated with an assembly. -->
-    <AssemblyName>MineStat</AssemblyName>
-    <Description>A Minecraft server status checker</Description>
-    <Company>Frag Land</Company>
-    <Product>MineStat</Product>
-    <Copyright>Copyright © 2014-2023 Lloyd Dilley, 2021-2023 Felix Ern (MindSolve), 2022-2023 Ajoro</Copyright>
-    <Authors>Lloyd Dilley, Felix Ern, Ajoro</Authors>
+	<PropertyGroup>
+		<!-- General Information about an assembly is controlled through the following set of attributes. Change these attribute values to modify the information associated with an assembly. -->
+		<AssemblyName>MineStat</AssemblyName>
+		<Description>A Minecraft server status checker</Description>
+		<Company>Frag Land</Company>
+		<Product>MineStat</Product>
+		<Copyright>Copyright © 2014-2023 Lloyd Dilley, 2021-2023 Felix Ern (MindSolve), 2022-2023 Ajoro</Copyright>
+		<Authors>Lloyd Dilley, Felix Ern, Ajoro</Authors>
 
-    <!--The following GUID is for the ID of the typelib if this project is exposed to COM-->
-    <ProjectGuid>{11EDD760-FC1E-4BC0-8ED4-8F6D8FF97779}</ProjectGuid>
+		<!--The following GUID is for the ID of the typelib if this project is exposed to COM-->
+		<ProjectGuid>{11EDD760-FC1E-4BC0-8ED4-8F6D8FF97779}</ProjectGuid>
 
-    <!-- Version information for an assembly consists of the following four values: Major.Minor.Build.Revision -->
-    <AssemblyVersion>3.1.2.0</AssemblyVersion>
-    <FileVersion>3.1.2.0</FileVersion>
-    <Version>3.1.2.0</Version>
-  </PropertyGroup>
-  <PropertyGroup>
-    <TargetFrameworks>net46;netstandard20</TargetFrameworks>
-    <Deterministic>true</Deterministic>
-    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <DocumentationFile>bin\Debug\MineStat.xml</DocumentationFile>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <DocumentationFile>bin\Release\MineStat.xml</DocumentationFile>
-  </PropertyGroup>
+		<!-- Version information for an assembly consists of the following four values: Major.Minor.Build.Revision -->
+		<AssemblyVersion>3.1.2.0</AssemblyVersion>
+		<FileVersion>3.1.2.0</FileVersion>
+		<Version>3.1.2.0</Version>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<TargetFrameworks>net46;netstandard20</TargetFrameworks>
+		<Deterministic>true</Deterministic>
+		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+	</PropertyGroup>
+
+	<PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+		<DebugSymbols>true</DebugSymbols>
+		<DebugType>full</DebugType>
+		<Optimize>false</Optimize>
+		<OutputPath>bin\Debug\</OutputPath>
+		<DefineConstants>DEBUG;TRACE</DefineConstants>
+		<ErrorReport>prompt</ErrorReport>
+		<WarningLevel>4</WarningLevel>
+		<DocumentationFile>bin\Debug\MineStat.xml</DocumentationFile>
+	</PropertyGroup>
+
+	<PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+		<DebugType>pdbonly</DebugType>
+		<Optimize>true</Optimize>
+		<OutputPath>bin\Release\</OutputPath>
+		<DefineConstants>TRACE</DefineConstants>
+		<ErrorReport>prompt</ErrorReport>
+		<WarningLevel>4</WarningLevel>
+		<DocumentationFile>bin\Release\MineStat.xml</DocumentationFile>
+	</PropertyGroup>
+
+	<ItemGroup Condition="'$(TargetFramework)' == 'netstandard20'">
+		<PackageReference Include="DnsClient" Version="1.3.1" />
+	</ItemGroup>
+	<ItemGroup Condition="'$(TargetFramework)' == 'net46'">
+		<PackageReference Include="ARSoft.Tools.Net" Version="1.4.0" />
+	</ItemGroup>
+
 </Project>
