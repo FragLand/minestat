@@ -7,7 +7,7 @@
     <mkdir dir="build" />
     <javac includeantruntime="false" srcdir="." destdir="build">
       <include name="me/dilley/MineStat.java" />
-      <include name="Example.java" />
+      <exclude name="Example.java" />
       <exclude name="Test" />
     </javac>
     <echo>Thank you for using MineStat!</echo>
