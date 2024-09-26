@@ -316,6 +316,7 @@ Feel free to [submit an issue](https://github.com/FragLand/minestat/issues/new/c
 * [**@Spongecade**](https://github.com/Spongecade): Python documentation [_2023_]
 * **Stepan Melnikov** ([**@unn4m3d**](https://github.com/unn4m3d)): Ruby [_2016_]
 * **Steven Polglase** ([**@swpolgla**](https://github.com/swpolgla)): Ruby [_2021_]
+* [**@TENIOS**](https://github.com/TENIOS): Java [_2024_]
 * **ThisTNTSquid**: JavaScript [_2017_]
 * **Tony Publiski** ([**@Tonster**](https://github.com/tonster)): Minecraft and IRC server hosting [_2014 - present_]
 * **Vikas Dongre** ([**@zvikasdongre**](https://github.com/zvikasdongre)): Java issue report [_2022_]
