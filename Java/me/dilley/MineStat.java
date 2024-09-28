@@ -1,6 +1,6 @@
 /*
  * MineStat.java - A Minecraft server status checker
- * Copyright (C) 2014-2022 Lloyd Dilley
+ * Copyright (C) 2014-2024 Lloyd Dilley
  * http://www.dilley.me/
  *
  * This program is free software; you can redistribute it and/or modify
@@ -18,10 +18,6 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-/**
- * @author Lloyd Dilley
- */
-
 package me.dilley;
 
 import com.google.gson.*;
@@ -32,6 +28,9 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.Date;
 
+/**
+ * @author Lloyd Dilley
+ */
 public class MineStat
 {
   public static final String VERSION = "3.0.6";         // MineStat version
@@ -59,9 +58,10 @@ public class MineStat
     private final int magicNumber;
     private final String shortDescription;
 
-    private ConnectionStatus(int magicNumber, String shortDescription) {
-        this.magicNumber = magicNumber;
-        this.shortDescription = shortDescription;
+    private ConnectionStatus(int magicNumber, String shortDescription)
+    {
+      this.magicNumber = magicNumber;
+      this.shortDescription = shortDescription;
     }
 
     public int getMagicNumber() { return magicNumber; }
