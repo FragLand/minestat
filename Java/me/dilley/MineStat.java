@@ -58,9 +58,10 @@ public class MineStat
     private final int magicNumber;
     private final String shortDescription;
 
-    ConnectionStatus(int magicNumber, String shortDescription) {
-        this.magicNumber = magicNumber;
-        this.shortDescription = shortDescription;
+    private ConnectionStatus(int magicNumber, String shortDescription)
+    {
+      this.magicNumber = magicNumber;
+      this.shortDescription = shortDescription;
     }
 
     public int getMagicNumber() { return magicNumber; }
@@ -79,7 +80,7 @@ public class MineStat
 
     private final int request;
 
-    Request(int request) { this.request = request; }
+    private Request(int request) { this.request = request; }
 
     public int getRequest() { return request; }
   }
