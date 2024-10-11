@@ -4,9 +4,13 @@
 
 https://github.com/FragLand/minestat/issues
 
-## Discord
+## IRC
 
-https://discord.frag.land/
+irc://irc.frag.land:6697/minestat
+
+## Matrix
+
+https://matrix.frag.land/
 
 ## Coding Convention
 
