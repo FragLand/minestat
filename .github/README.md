@@ -4,7 +4,7 @@ MineStat :chart_with_upwards_trend:
 [![AppVeyor build status](https://img.shields.io/appveyor/ci/ldilley/minestat?label=AppVeyor%20build%20status)](https://ci.appveyor.com/project/ldilley/minestat)
 [![CodeQL build status](https://github.com/FragLand/minestat/actions/workflows/CodeQL.yml/badge.svg?branch=master)](https://github.com/FragLand/minestat/actions/workflows/CodeQL.yml)
 [![CodeFactor grade](https://img.shields.io/codefactor/grade/github/FragLand/minestat?label=CodeFactor%20quality)](https://www.codefactor.io/repository/github/fragland/minestat)
-[![Discord](https://img.shields.io/discord/540333638479380487?label=Discord)](https://discord.frag.land/)
+[![Matrix](https://img.shields.io/matrix/fragland%3Amatrix.org?label=Matrix)](https://matrix.frag.land/)
 
 MineStat is a Minecraft server status checker.
 
@@ -262,7 +262,7 @@ end
 ```
 
 ## Contributing and Support :octocat:
-Feel free to [submit an issue](https://github.com/FragLand/minestat/issues/new/choose) if you require assistance or would like to make a feature request. You are also welcome to [join our Discord server](https://discord.frag.land/). Any contributions such as build testing, creating bug reports or feature requests, and submitting pull requests are appreciated. Our code style guidelines can be found in the "Coding Convention" section of [CONTRIBUTING.md](https://github.com/FragLand/minestat/blob/master/.github/CONTRIBUTING.md). Please see the [fork and pull guide](https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/creating-a-pull-request-from-a-fork) if you are not certain how to submit a pull request.
+Feel free to [submit an issue](https://github.com/FragLand/minestat/issues/new/choose) if you require assistance or would like to make a feature request. You are also welcome to [join us on Matrix](https://matrix.frag.land/). Any contributions such as build testing, creating bug reports or feature requests, and submitting pull requests are appreciated. Our code style guidelines can be found in the "Coding Convention" section of [CONTRIBUTING.md](https://github.com/FragLand/minestat/blob/master/.github/CONTRIBUTING.md). Please see the [fork and pull guide](https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/creating-a-pull-request-from-a-fork) if you are not certain how to submit a pull request.
 
 ## Contributors
 * [**@Ajoro**](https://github.com/ajoro): C#, PowerShell, and GitHub Actions/automation [_2020 - present_]
