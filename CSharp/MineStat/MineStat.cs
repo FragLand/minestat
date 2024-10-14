@@ -30,6 +30,15 @@ using System.Runtime.Serialization.Json;
 using System.Xml;
 using System.Xml.Linq;
 using System.Xml.XPath;
+using System.Threading.Tasks;
+using System.Net;
+
+#if NETSTANDARD2_0
+using DnsClient;
+#elif NET46
+using ARSoft.Tools.Net;
+using ARSoft.Tools.Net.Dns;
+#endif
 
 namespace MineStatLib
 {
@@ -158,10 +167,10 @@ namespace MineStatLib
     /// <param name="port">Port to connect to on the address</param>
     /// <param name="timeout">(Optional) Timeout in seconds</param>
     /// <param name="protocol">(Optional) SLP protocol to use, defaults to automatic detection</param>
-    public MineStat(string address, ushort port, int timeout = DefaultTimeout, SlpProtocol protocol = SlpProtocol.Automatic)
+    public MineStat(string address, ushort? port = null, int timeout = DefaultTimeout, SlpProtocol protocol = SlpProtocol.Automatic)
     {
       Address = address;
-      Port = port;
+      Port = port ?? GetDefaultPort(address, timeout).GetAwaiter().GetResult();
       Timeout = timeout;
 
       // If the user manually selected a protocol, use that
@@ -231,11 +240,55 @@ namespace MineStatLib
       }
     }
 
-    /// <summary>
-    /// Function for stripping all formatting codes from a motd.
-    /// </summary>
-    /// <returns>string with the stripped motd</returns>
-    static private string strip_motd_formatting(string rawmotd)
+    private async Task<ushort> GetDefaultPort(string address, int timeout)
+    {
+        try
+        {
+            #if NETSTANDARD2_0
+            var lookup = new LookupClient();
+            var result = await lookup.QueryAsync($"_minecraft._tcp.{address}", QueryType.SRV);
+
+            var srvRecords = result.Answers.SrvRecords();
+
+            if (srvRecords.Any())
+                {
+                var srvRecord = result.Answers.SrvRecords().First();
+                return (ushort)srvRecord.Port;
+            }
+            #elif NET46
+            var dnsClient = new DnsClient(IPAddress.Parse(address), timeout);
+
+
+            var dnsMessage = await Task<DnsMessage>.Factory.FromAsync(
+                dnsClient.BeginResolve,
+                dnsClient.EndResolve,
+                $"_minecraft._tcp.{address}",
+                RecordType.Srv,
+                RecordClass.INet,
+                null);
+
+            var srvRecords = dnsMessage.AnswerRecords.OfType<SrvRecord>();
+
+            if (srvRecords.Any())
+            {
+                var srvRecord = srvRecords.First();
+                return (ushort)srvRecord.Port;
+            }
+            #endif
+            }
+            catch (Exception)
+            {
+                return 25565;
+            }
+
+        return 25565;
+    }
+
+        /// <summary>
+        /// Function for stripping all formatting codes from a motd.
+        /// </summary>
+        /// <returns>string with the stripped motd</returns>
+        static private string strip_motd_formatting(string rawmotd)
     {
       return Regex.Replace(rawmotd, @"\u00A7+[a-zA-Z0-9]", string.Empty);
     }
