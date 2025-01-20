@@ -239,6 +239,8 @@ class MineStat:
     """socket timeout"""
     self.slp_protocol: Optional[SlpProtocols] = None
     """Server List Ping protocol"""
+    self.protocol_version: Optional[int] = None
+    """Server protocol version"""
     self.favicon_b64: Optional[str] = None
     """base64-encoded favicon possibly contained in JSON 1.7 responses"""
     self.favicon: Optional[str] = None
@@ -316,10 +318,7 @@ class MineStat:
     if result is not ConnStatus.CONNFAIL:
       self.json_query()
 
-    if self.online:
-      self.connection_status = ConnStatus.SUCCESS
-    else:
-      self.connection_status = result
+    self.connection_status = ConnStatus.SUCCESS if self.online else result
 
   @staticmethod
   def motd_strip_formatting(raw_motd: Union[str, dict]) -> str:
@@ -394,10 +393,10 @@ class MineStat:
       # Parameter resolve_srv is True, error out
       raise RuntimeError(error_text) from e
 
-    srv_prefix: str = f"_minecraft._tcp."
+    srv_prefix: str = "_minecraft._tcp."
     try:
 
-      srv_record: dns.rdtypes.IN.SRV.SRV = dns.resolver.resolve(srv_prefix + addr, "SRV")[0]  # only use the first SRV record returned
+      srv_record: dns.rdtypes.IN.SRV.SRV = dns.resolver.resolve(srv_prefix + addr, "SRV")[0]  # type: ignore # only use the first SRV record returned
       srv_port: int = int(srv_record.port)
       srv_host: str = str(srv_record.target).rstrip(".")
       self.srv_record = True
@@ -425,9 +424,7 @@ class MineStat:
     sock.settimeout(self.timeout)
 
     try:
-      start_time = perf_counter()
-      sock.connect((self.address, self.port))
-      self.latency = round((perf_counter() - start_time) * 1000)
+      self._extracted_from_beta_query_19(sock)
     except socket.timeout:
       return ConnStatus.TIMEOUT
     except OSError:
@@ -500,9 +497,10 @@ class MineStat:
   def __parse_bedrock_payload(self, payload_str: str) -> ConnStatus:
     motd_index = ["edition", "motd_1", "protocol_version", "version", "current_players", "max_players",
                   "server_uid", "motd_2", "gamemode", "gamemode_numeric", "port_ipv4", "port_ipv6"]
-    payload = {e: f for e, f in zip(motd_index, payload_str.split(";"))}
+    payload = dict(zip(motd_index, payload_str.split(";")))
 
     self.online = True
+    self.protocol_version = int(payload["protocol_version"])
 
     self.current_players = int(payload["current_players"])
     self.max_players = int(payload["max_players"])
@@ -620,75 +618,75 @@ class MineStat:
     This implementation does not parse every value returned by the query protocol.
     """
     try:
-      # remove uneccessary padding
-      res = raw_res[11:]
-
-      # split stats from players
-      raw_stats, raw_players = res.split(b"\x00\x00\x01player_\x00\x00")
-
-      # split stat keys and values into individual elements and remove unnecessary padding
-      stat_list = raw_stats.split(b"\x00")[2:]
-
-      # move keys and values into a dictonary, the keys are also decoded
-      key = True
-      stats = {}
-      for index, key_name in enumerate(stat_list):
-        if key:
-          stats[key_name.decode("utf-8")] = stat_list[index + 1]
-          key = False
-        else:
-          key = True
-
-      # extract motd, the motd is named "hostname" in the Query protocol
-      if "hostname" in stats:
-        self.motd = stats["hostname"].decode("iso_8859_1")
-
-      # the "MOTD" key is used in a basic stats query reponse
-      elif "MOTD" in stats:
-        self.motd = stats["MOTD"].decode("iso_8859_1")
-
-      if self.motd != None:
-        # remove potential formatting
-        self.stripped_motd = self.motd_strip_formatting(self.motd)
-
-      # extract the servers Minecraft version
-      if "version" in stats:
-        self.version = stats["version"].decode("utf-8")
-
-      # extract list of plugins
-      if "plugins" in stats:
-        raw_plugins = stats["plugins"].decode("utf-8")
-        if not raw_plugins == "":
-          # the plugins are separated by " ;"
-          self.plugins = raw_plugins.split(" ;")
-          # there may be information about the server software in the first plugin element
-          # example: ["Paper on 1.19.3: AnExampleMod 7.3", "AnotherExampleMod 4.2", ...]
-          # more information on https://wiki.vg/Query
-          if ":" in self.plugins[0]:
-            self.version, self.plugins[0] = self.plugins[0].split(": ")
-
-      # extract the name of the map the server is running on
-      if "map" in stats:
-        self.map = stats["map"].decode("utf-8")
-
-      # extract number of online and maximum allowed players
-      if "numplayers" in stats:
-        self.current_players = int(stats["numplayers"])
-      if "numplayers" in stats:
-        self.max_players = int(stats["maxplayers"])
-
-      # split players (seperated by 0x00)
-      players = raw_players.split(b"\x00")
-
-      # decode players and sort out empty elements
-      self.player_list = [player.decode("utf-8") for player in players[:-2] if player != b""]
-
+      self.__extracted_from___parse_query_payload_11(raw_res)
     except Exception:
       return ConnStatus.UNKNOWN
 
     self.online = True
     self.slp_protocol = SlpProtocols.QUERY
     return ConnStatus.SUCCESS
+
+  def __extracted_from___parse_query_payload_11(self, raw_res):
+    # remove uneccessary padding
+    res = raw_res[11:]
+
+    # split stats from players
+    raw_stats, raw_players = res.split(b"\x00\x00\x01player_\x00\x00")
+
+    # split stat keys and values into individual elements and remove unnecessary padding
+    stat_list = raw_stats.split(b"\x00")[2:]
+
+    # move keys and values into a dictonary, the keys are also decoded
+    key = True
+    stats = {}
+    for index, key_name in enumerate(stat_list):
+      if key:
+        stats[key_name.decode("utf-8")] = stat_list[index + 1]
+        key = False
+      else:
+        key = True
+
+    # extract motd, the motd is named "hostname" in the Query protocol
+    if "hostname" in stats:
+      self.motd = stats["hostname"].decode("iso_8859_1")
+
+    # the "MOTD" key is used in a basic stats query reponse
+    elif "MOTD" in stats:
+      self.motd = stats["MOTD"].decode("iso_8859_1")
+
+    if self.motd is not None:
+      # remove potential formatting
+      self.stripped_motd = self.motd_strip_formatting(self.motd)
+
+    # extract the servers Minecraft version
+    if "version" in stats:
+      self.version = stats["version"].decode("utf-8")
+
+      # extract list of plugins
+    if "plugins" in stats:
+      raw_plugins = stats["plugins"].decode("utf-8")
+      if raw_plugins != "":
+        # the plugins are separated by " ;"
+        self.plugins = raw_plugins.split(" ;")
+        # there may be information about the server software in the first plugin element
+        # example: ["Paper on 1.19.3: AnExampleMod 7.3", "AnotherExampleMod 4.2", ...]
+        # more information on https://wiki.vg/Query
+        if ":" in self.plugins[0]: # type: ignore
+          self.version, self.plugins[0] = self.plugins[0].split(": ") # type: ignore
+
+    # extract the name of the map the server is running on
+    if "map" in stats:
+      self.map = stats["map"].decode("utf-8")
+
+    if "numplayers" in stats:
+      self.current_players = int(stats["numplayers"])
+      self.max_players = int(stats["maxplayers"])
+
+    # split players (seperated by 0x00)
+    players = raw_players.split(b"\x00")
+
+    # decode players and sort out empty elements
+    self.player_list = [player.decode("utf-8") for player in players[:-2] if player != b""]
 
   def json_query(self) -> ConnStatus:
     """
@@ -702,9 +700,7 @@ class MineStat:
     sock.settimeout(self.timeout)
 
     try:
-      start_time = perf_counter()
-      sock.connect((self.address, self.port))
-      self.latency = round((perf_counter() - start_time) * 1000)
+      self._extracted_from_beta_query_19(sock)
     except socket.timeout:
       return ConnStatus.TIMEOUT
     except OSError:
@@ -786,9 +782,10 @@ class MineStat:
       payload_obj = json.loads(payload_raw.decode('utf8'))
     except json.JSONDecodeError:
       return ConnStatus.UNKNOWN
-
+    
     # Now that we have the status object, set all fields
     self.version = payload_obj["version"]["name"]
+    self.protocol_version = payload_obj["version"]["protocol"]
 
     # The motd might be a string directly, not a json object
     if isinstance(payload_obj.get("description", ""), str):
@@ -860,9 +857,7 @@ class MineStat:
     sock.settimeout(self.timeout)
 
     try:
-      start_time = perf_counter()
-      sock.connect((self.address, self.port))
-      self.latency = round((perf_counter() - start_time) * 1000)
+      self._extracted_from_beta_query_19(sock)
     except socket.timeout:
       return ConnStatus.TIMEOUT
     except OSError:
@@ -939,9 +934,7 @@ class MineStat:
     sock.settimeout(self.timeout)
 
     try:
-      start_time = perf_counter()
-      sock.connect((self.address, self.port))
-      self.latency = round((perf_counter() - start_time) * 1000)
+      self._extracted_from_beta_query_19(sock)
     except socket.timeout:
       return ConnStatus.TIMEOUT
     except OSError:
@@ -1001,6 +994,11 @@ class MineStat:
 
     # - a fixed prefix '§1'
     # - the protocol version
+    # The legacy protocol doesn't always send protocol_version, and if you don't use an if judgment, it can sometimes result in a ValueError
+    if payload_list[1]:
+      self.protocol_version = int(payload_list[1][1:])
+    else:
+      self.protocol_version = None
     # - the server version
     self.version = payload_list[2]
     # - the MOTD
@@ -1027,9 +1025,7 @@ class MineStat:
     sock.settimeout(self.timeout)
 
     try:
-      start_time = perf_counter()
-      sock.connect((self.address, self.port))
-      self.latency = round((perf_counter() - start_time) * 1000)
+      self._extracted_from_beta_query_19(sock)
     except socket.timeout:
       return ConnStatus.TIMEOUT
     except OSError:
@@ -1091,6 +1087,11 @@ class MineStat:
 
     return ConnStatus.SUCCESS
 
+  def _extracted_from_beta_query_19(self, sock):
+    start_time = perf_counter()
+    sock.connect((self.address, self.port))
+    self.latency = round((perf_counter() - start_time) * 1000)
+
   @staticmethod
   def _recv_exact(sock: socket.socket, size: int) -> bytearray:
     """
@@ -1104,12 +1105,10 @@ class MineStat:
     data = bytearray()
 
     while len(data) < size:
-      temp_data = bytearray(sock.recv(size - len(data)))
+      if temp_data := bytearray(sock.recv(size - len(data))):
+        data += temp_data
 
-      # If the connection was closed, `sock.recv` returns an empty string
-      if not temp_data:
+      else:
         raise ConnectionAbortedError
-
-      data += temp_data
 
     return data

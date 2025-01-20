@@ -49,7 +49,6 @@ The following parameters exist for the `MineStat` object:
 - `resolve_srv`: Optional[bool] = None
   - Optional, whether to resolve Minecraft SRV records. Requires dnspython to be installed.
 
-
 Minimal example with port auto-detection:
 ```python
 import minestat
@@ -87,6 +86,8 @@ The following attributes are available on the `MineStat` object:
   - Time in milliseconds the server took to respond to the information request.
 - `slp_protocol`: minestat.SlpProtocol
   - Protocol used to retrieve information from the server.
+- `protocol_version`: int
+  - The protocol number of the server version.
 - `connection_status`: minestat.ConnStatus
   - Status of connection ("SUCCESS", "CONNFAIL", "TIMEOUT", or "UNKNOWN").
 - `srv_record`: bool
