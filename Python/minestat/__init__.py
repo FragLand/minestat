@@ -712,8 +712,8 @@ class MineStat:
 
     # Construct Handshake packet
     req_data = bytearray([0x00])
-    # Add protocol version. If pinging to determine version, use `-1`
-    req_data += bytearray([0xff, 0xff, 0xff, 0xff, 0x0f])
+    # Add protocol version. If pinging to determine version, use `773`(1.21.10)
+    req_data += bytearray([0x85, 0x06])
     # Add server address length
     req_data += self._pack_varint(len(self.address))
     # Server address. Encoded with UTF8
