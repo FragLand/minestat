@@ -23,7 +23,7 @@ If you are planning to host MineStat on a shared webhost, make sure that the pro
 |**1.6 (extended legacy)**|:heavy_check_mark:|:x:|:heavy_check_mark:|:x:|:x:|:heavy_check_mark:|:heavy_check_mark:|:heavy_check_mark:|:heavy_check_mark:|
 |**>=1.7 (JSON)**|:heavy_check_mark:|:x:|:heavy_check_mark:|:x:|:x:|:heavy_check_mark:|:heavy_check_mark:|:heavy_check_mark:|:heavy_check_mark:|
 |**Bedrock/PE/RakNet**|:heavy_check_mark:|:heavy_check_mark:|:heavy_check_mark:|:x:|:x:|:heavy_check_mark:|:heavy_check_mark:|:heavy_check_mark:|:heavy_check_mark:|
-|**UT3/GS4 Query**|:x:|:x:|:x:|:x:|:x:|:heavy_check_mark:|:heavy_check_mark:|:heavy_check_mark:|:heavy_check_mark:|
+|**UT3/GS4 Query**|:heavy_check_mark:|:x:|:x:|:x:|:x:|:heavy_check_mark:|:heavy_check_mark:|:heavy_check_mark:|:heavy_check_mark:|
 
 ## Examples :memo:
 
@@ -317,6 +317,7 @@ Feel free to [submit an issue](https://github.com/FragLand/minestat/issues/new/c
 * **Stepan Melnikov** ([**@unn4m3d**](https://github.com/unn4m3d)): Ruby [_2016_]
 * **Steven Polglase** ([**@swpolgla**](https://github.com/swpolgla)): Ruby [_2021_]
 * [**@TENIOS**](https://github.com/TENIOS): Java [_2024_]
+* [**@terenP**](https://github.com/terenP): C# [_2026_]
 * **ThisTNTSquid**: JavaScript [_2017_]
 * **Tony Publiski** ([**@Tonster**](https://github.com/tonster)): Minecraft and IRC server hosting [_2014 - present_]
 * **Vikas Dongre** ([**@zvikasdongre**](https://github.com/zvikasdongre)): Java issue report [_2022_]
