@@ -30,6 +30,7 @@ using System.Runtime.Serialization.Json;
 using System.Xml;
 using System.Xml.Linq;
 using System.Xml.XPath;
+using System.Net;
 
 namespace MineStatLib
 {
@@ -182,6 +183,9 @@ namespace MineStatLib
         case SlpProtocol.Bedrock_Raknet:
           ConnectionStatus = RequestWithRaknetProtocol();
           break;
+        case SlpProtocol.Ut3Gs4Query:
+          ConnectionStatus = RequestWithUt3Gs4QueryProtocol();
+          break;
         case SlpProtocol.Automatic:
           break;
         default:
@@ -201,14 +205,17 @@ namespace MineStatLib
       // For more information, see https://github.com/FragLand/minestat/issues/70
       //
       // 1.: Raknet (Bedrock)
-      // 2.: Legacy (1.4, 1.5)
-      // 3.: Beta (b1.8-rel1.3)
-      // 4.: Extended Legacy (1.6)
-      // 5.: JSON (1.7+)
+      // 2.: UT3/GS4 Query
+      // 3.: Legacy (1.4, 1.5)
+      // 4.: Beta (b1.8-rel1.3)
+      // 5.: Extended Legacy (1.6)
+      // 6.: JSON (1.7+)
 
       ConnectionStatus = RequestWithRaknetProtocol();
       if (ConnectionStatus == ConnStatus.Connfail || ConnectionStatus == ConnStatus.Success)
         return;
+
+      ConnectionStatus = RequestWithUt3Gs4QueryProtocol();
 
       ConnectionStatus = RequestWrapper(RequestWithLegacyProtocol);
       ConnStatus result;
@@ -783,6 +790,176 @@ namespace MineStatLib
     }
 
     /// <summary>
+    /// Requests the server data with the UT3/GS4 Query protocol.
+    /// </summary>
+    /// <returns>ConnStatus - See <see cref="ConnStatus"/> for possible values</returns>
+    /// <seealso cref="SlpProtocol.Ut3Gs4Query"/>
+    public ConnStatus RequestWithUt3Gs4QueryProtocol()
+    {
+      var sock = new UdpClient();
+      sock.Client.ReceiveTimeout = Timeout * 1000;
+      sock.Client.SendTimeout = Timeout * 1000;
+
+      var stopWatch = new Stopwatch();
+      stopWatch.Start();
+
+      try
+      {
+        sock.Connect(Address, Port);
+      }
+      catch (SocketException)
+      {
+        return ConnStatus.Connfail;
+      }
+
+      stopWatch.Stop();
+      Latency = stopWatch.ElapsedMilliseconds;
+
+      byte[] statResponse;
+      try
+      {
+        // Get Challenge Token
+        var challengeRequest = new byte[] { 0xFE, 0xFD, 0x09, 0x00, 0x00, 0x00, 0x00};
+        sock.Send(challengeRequest, challengeRequest.Length);
+
+        IPEndPoint remoteEP = new IPEndPoint(IPAddress.Any, Port);
+        byte[] challengeResponse = sock.Receive(ref remoteEP);
+
+        if (challengeResponse.Length < 11) return ConnStatus.Unknown;
+
+        //(Big-Endian)
+        byte[] tokenBytes = new byte[4];
+        Array.Copy(challengeResponse, 7, tokenBytes, 0, 4);
+        if (BitConverter.IsLittleEndian)
+            Array.Reverse(tokenBytes);
+        int token = BitConverter.ToInt32(tokenBytes, 0);
+
+        byte[] statRequest = new byte[11];
+        statRequest[0] = 0xFE; statRequest[1] = 0xFD; statRequest[2] = 0x00;
+
+        // Token Big-Endian
+        tokenBytes = BitConverter.GetBytes(token);
+        if (BitConverter.IsLittleEndian)
+            Array.Reverse(tokenBytes);
+        Array.Copy(tokenBytes, 0, statRequest, 7, 4);
+
+        sock.Send(statRequest, statRequest.Length);
+
+        // --- 3. RECEIVE STAT RESPONSE ---
+        statResponse = sock.Receive(ref remoteEP);
+      }      
+      catch (Exception)
+      {
+        return ConnStatus.Unknown;
+      }
+      finally
+      {
+        sock.Close();
+      }
+
+      return ParseUT3GS4Protocol(statResponse);
+    }
+
+    /// <summary>
+    /// Internal helper method for parsing the UT3/GS4 Query protocol payload.
+    /// </summary>
+    /// <param name="rawPayload">The raw payload, without packet length and -id</param>
+    /// <returns>ConnStatus - See <see cref="ConnStatus"/> for possible values</returns>
+    private ConnStatus ParseUT3GS4Protocol(byte[] rawPayload)
+    {
+      try
+      {
+        int pos = 5;
+
+        var data = new Dictionary<string, string>();
+
+        while (pos < rawPayload.Length && rawPayload[pos] != 0)
+        {
+          // Read Key
+          int keyStart = pos;
+          while (pos < rawPayload.Length && rawPayload[pos] != 0)
+            pos++;
+
+          if (pos >= rawPayload.Length) break;
+
+          string key = Encoding.UTF8.GetString(rawPayload, keyStart, pos - keyStart);
+          pos++; // We omit null
+
+          if (pos >= rawPayload.Length) break;
+
+          // Read value
+          int valStart = pos;
+          while (pos < rawPayload.Length && rawPayload[pos] != 0)
+            pos++;
+
+          if (pos >= rawPayload.Length) break;
+
+          string value = Encoding.UTF8.GetString(rawPayload, valStart, pos - valStart);
+          pos++; // We omit null
+
+          data[key] = value;
+        }
+
+        // Check if we have the minimum data
+        if (!data.ContainsKey("hostname") && !data.ContainsKey("numplayers"))
+        {
+          return ConnStatus.Unknown;
+        }
+
+        // MOTD
+        if (data.TryGetValue("hostname", out var hostname))
+        {
+          Motd = hostname;
+          Stripped_Motd = strip_motd_formatting(hostname);
+        }
+        else
+        {
+          Motd = "Unknown";
+          Stripped_Motd = "Unknown";
+        }
+
+        // Version
+        if (data.TryGetValue("version", out var version))
+        {
+          Version = version;
+        }
+        else
+        {
+          Version = "Unknown";
+        }
+
+        // Players count
+        if (data.TryGetValue("numplayers", out var num) && int.TryParse(num, out int current))
+        {
+          CurrentPlayersInt = current;
+        }
+        else
+        {
+          CurrentPlayersInt = 0;
+        }
+
+        if (data.TryGetValue("maxplayers", out var max) && int.TryParse(max, out int maximum))
+        {
+          MaximumPlayersInt = maximum;
+        }
+        else
+        {
+          MaximumPlayersInt = 0;
+        }
+
+        // --- SET STATUS ---
+        ServerUp = true;
+        Protocol = SlpProtocol.Ut3Gs4Query;
+
+        return ConnStatus.Success;
+      }
+      catch (Exception)
+      {
+        return ConnStatus.Unknown;
+      }
+    }
+
+    /// <summary>
     /// Internal helper method for connecting to a remote host and setting timeouts.
     /// </summary>
     /// <remarks>
@@ -1160,6 +1337,18 @@ namespace MineStatLib
     /// <i>Available since Minecraft Beta 1.8</i>
     /// </summary>
     Beta,
+
+    /// <summary>
+    /// Requests server data using the UT3/GS4 Query protocol (GameSpy 4).
+    /// UDP-based protocol used by Minecraft Beta 1.8 through 1.6.x.
+    /// 
+    /// /// Protocol flow:
+    /// 1. Send challenge request [FE FD 09 00 00 00 00]
+    /// 2. Receive token (4-byte Big-Endian integer)
+    /// 3. Send stat request with token [FE FD 00 session token]
+    /// 4. Parse null-terminated key-value pairs from response
+    /// </summary>
+    Ut3Gs4Query,
 
     /// <summary>
     /// Not a protocol. Used for setting the default, automatic protocol detection.
