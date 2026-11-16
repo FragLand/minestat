@@ -179,7 +179,8 @@ class MineStat:
                port: int = 0,
                timeout: int = DEFAULT_TIMEOUT,
                query_protocol: SlpProtocols = SlpProtocols.ALL,
-               resolve_srv: Optional[bool] = None) -> None:
+               resolve_srv: Optional[bool] = None,
+               protocol_version: int = -1) -> None:
     """
     minestat - The Minecraft status checker. Supports Minecraft Java edition and Bedrock/Education/PE servers.
 
@@ -188,7 +189,11 @@ class MineStat:
     :param timeout: Optional timeout in seconds for each connection attempt. Defaults to 5 seconds.
     :param query_protocol: Optional protocol to use. See minestat.SlpProtocols for available choices. Defaults to auto detection.
     :param resolve_srv: Optional, whether to resolve Minecraft SRV records. Requires dnspython to be installed.
+    :param protocol_version: Optional, client protocol version sent in Java Edition JSON SLP handshakes. Defaults to -1.
     """
+
+    self.protocol_version: int = protocol_version
+    """client protocol version sent in Java Edition JSON SLP handshakes"""
 
     self.__resolve_srv: Optional[bool] = resolve_srv
     """Whether to resolved SRV records"""
@@ -712,8 +717,8 @@ class MineStat:
 
     # Construct Handshake packet
     req_data = bytearray([0x00])
-    # Add protocol version. If pinging to determine version, use `773`(1.21.10)
-    req_data += bytearray([0x85, 0x06])
+    # Add protocol version as a signed 32-bit VarInt.
+    req_data += self._pack_varint(self.protocol_version)
     # Add server address length
     req_data += self._pack_varint(len(self.address))
     # Server address. Encoded with UTF8
@@ -834,8 +839,9 @@ class MineStat:
 
     return data
 
-  def _pack_varint(self, data) -> bytes:
-    """ Small helper method for packing a varint from an int. """
+  def _pack_varint(self, data: int) -> bytes:
+    """ Small helper method for packing a signed 32-bit VarInt from an int. """
+    data &= 0xFFFFFFFF
     ordinal = b''
 
     while True:
