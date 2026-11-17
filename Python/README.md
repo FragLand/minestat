@@ -46,9 +46,10 @@ The following parameters exist for the `MineStat` object:
   - Optional timeout in seconds for each connection attempt. Defaults to 5 seconds.
 - `query_protocol`: SlpProtocols = SlpProtocols.ALL,
   - Optional protocol to use. See minestat.SlpProtocols for available choices. Defaults to auto detection.
-- `resolve_srv`: Optional[bool] = None
+- `resolve_srv`: Optional[bool] = None,
   - Optional, whether to resolve Minecraft SRV records. Requires dnspython to be installed.
-
+- `protocol_version`: int = -1
+  - Optional, client protocol version sent in Java Edition JSON SLP handshakes. Defaults to -1.
 
 Minimal example with port auto-detection:
 ```python
@@ -93,7 +94,7 @@ The following attributes are available on the `MineStat` object:
   - wether the server has a SRV record.
 
 #### Extra attributes
-The following attributes are not availabe with every protocol.
+The following attributes are not available with every protocol.
 
 - `player_list`: list[str] (***UT3/GS4 Query specific***)
   - List of online players, may be empty even if `current_players` is over 0.

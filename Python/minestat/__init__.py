@@ -1,5 +1,5 @@
 # minestat.py - A Minecraft server status checker
-# Copyright (C) 2016-2023 Lloyd Dilley, Felix Ern (MindSolve)
+# Copyright (C) 2016-2026 Lloyd Dilley, Felix Ern (MindSolve)
 # http://www.dilley.me/
 #
 # This program is free software; you can redistribute it and/or modify
@@ -165,7 +165,7 @@ Contains possible SLP (Server List Ping) protocols.
 
 
 class MineStat:
-  VERSION = "2.6.3"
+  VERSION = "2.7.0"
   """The MineStat version"""
   DEFAULT_TCP_PORT = 25565
   """default TCP port for SLP queries"""
