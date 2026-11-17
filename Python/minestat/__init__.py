@@ -840,7 +840,7 @@ class MineStat:
     return data
 
   def _pack_varint(self, data: int) -> bytes:
-    """ Small helper method for packing a signed 32-bit VarInt from an int. """
+    """ Small helper method for packing a signed 32-bit integer as an unsigned varint. """
     data &= 0xFFFFFFFF
     ordinal = b''
 
